@@ -1,6 +1,6 @@
 # Hospital management system
 
-
+Lets start.
 
 ## Getting started
 
