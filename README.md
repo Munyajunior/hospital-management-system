@@ -1,8 +1,32 @@
 # Hospital management system
 
+## Project Structure
+
+/hospital_management_system
+│── /backend
+│   ├── /database
+│   │   ├── base.py
+│   │   ├── session.py
+│   ├── /models
+│   │   ├── user.py
+│   ├── /schemas
+│   │   ├── auth.py
+│   ├── /routes
+│   │   ├── auth.py
+│   │   ├── login.py
+│   ├── /utils
+│   │   ├── security.py
+│   │   ├── token.py
+│   ├── main.py
+│── /frontend  # PySide6-based Desktop UI (to be developed later)
+│── .env  # Environment variables
+│── requirements.txt
+│── README.MD
+
 
 ## Getting started
-Let'sstart
+
+Let's start
 
 To make it easy for you to get started with GitLab, here's a list of recommended next steps.
 
