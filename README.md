@@ -6,7 +6,6 @@ This project is a **Hospital Management System** with a **desktop application** 
 
 ### **Project Structure**
 
-```
 /hospital_management_system
 │── /backend               # FastAPI backend
 │   ├── /app
