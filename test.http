@@ -1,0 +1,45 @@
+
+#All Get Request Testing 
+###
+get http://127.0.0.1:8000/patients
+content-type: application/json
+
+###
+get http://127.0.0.1:8000/nurses
+content-type: application/json
+
+###
+get http://127.0.0.1:8000/doctors
+content-type: application/json
+
+###
+get http://127.0.0.1:8000/pharmacy
+content-type: application/json
+
+###
+get http://127.0.0.1:8000/radiology
+content-type: application/json
+
+###
+get http://127.0.0.1:8000/lab
+content-type: application/json
+
+###
+get http://127.0.0.1:8000/icu
+content-type: application/json
+
+###
+get http://127.0.0.1:8000/auth
+content-type: application/json
+
+### ALL POST requests Testing
+
+###
+POST http://127.0.0.1:8000/auth/register
+Content-Type: application/json
+{
+  "full_name": "khalid",
+  "email": "khalid@example.com",
+  "role": "admin",
+  "password": "123456"
+}
