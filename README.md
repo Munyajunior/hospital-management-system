@@ -6,6 +6,7 @@ This project is a **Hospital Management System** with a **desktop application** 
 
 ### **Project Structure**
 
+```
 /hospital_management_system
 │── /backend               # FastAPI backend
 │   ├── /app
@@ -24,7 +25,7 @@ This project is a **Hospital Management System** with a **desktop application** 
 │   ├── main.py           # Entry point
 │── requirements.txt      # Dependencies
 │── README.md             # Documentation
-
+```
 
 ```
 backend/
