@@ -5,6 +5,27 @@
 This project is a **Hospital Management System** with a **desktop application** (PySide6) for admins, nurses, and department users. The **mobile application** (to be developed later) will be for doctors and patients.
 
 ### **Project Structure**
+
+/hospital_management_system
+│── /backend               # FastAPI backend
+│   ├── /app
+│   │   ├── /core          # Database, config, security settings
+│   │   ├── /models        # SQLAlchemy models
+│   │   ├── /schemas       # Pydantic schemas
+│   │   ├── /routers       # API routes
+│   │   ├── /services      # Business logic
+│   │   ├── /tests         # Unit tests
+│── /frontend              # PySide6 frontend
+│   ├── /assets           # Icons, images, styles
+│   ├── /components       # Reusable UI components
+│   ├── /views            # Screens/windows
+│   ├── /controllers      # UI logic
+│   ├── /utils            # Helper functions
+│   ├── main.py           # Entry point
+│── requirements.txt      # Dependencies
+│── README.md             # Documentation
+
+
 ```
 backend/
 │── models/
