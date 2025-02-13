@@ -6,31 +6,74 @@ This project is a **Hospital Management System** with a **desktop application** 
 
 ### **Project Structure**
 
+#### **Frontend**
+
 ```
-/hospital_management_system
-│── /backend               # FastAPI backend
-│   ├── /app
-│   │   ├── /core          # Database, config, security settings
-│   │   ├── /models        # SQLAlchemy models
-│   │   ├── /schemas       # Pydantic schemas
-│   │   ├── /routers       # API routes
-│   │   ├── /services      # Business logic
-│   │   ├── /tests         # Unit tests
-│── /frontend              # PySide6 frontend
-│   ├── /assets           # Icons, images, styles
-│   ├── /components       # Reusable UI components
-│   ├── /views            # Screens/windows
-│   ├── /controllers      # UI logic
-│   ├── /utils            # Helper functions
-│   ├── main.py           # Entry point
-│── requirements.txt      # Dependencies
-│── README.md             # Documentation
+/hms_desktop/
+/frontend/
+│── main.py                 # Entry point of the application
+│── requirements.txt         # Dependencies
+│── config.py                # Configuration settings
+│── database.py              # (If local storage or caching is needed)
+│── utils.py                 # Utility functions (e.g., validation, formatting)
+│
+├─── core/                   # Core logic (backend interaction)
+│    ├── api_client.py       # Handles API requests to FastAPI backend
+│    ├── auth.py             # Authentication logic (JWT/session handling)
+│    ├── rbac.py             # Role-Based Access Control enforcement
+│
+├─── models/                 # Data models (Sync with backend)
+│    ├── user.py             # User model
+│    ├── patient.py          # Patient model
+│    ├── doctor.py           # Doctor model
+│    ├── pharmacy.py         # Pharmacy model
+│    ├── lab.py              # Lab model
+│    ├── radiology.py        # Radiology model
+│    ├── icu.py              # ICU model
+│
+├─── views/                  # UI components (QWidgets & QMainWindow)
+│    ├── main_window.py      # Main application window
+│    ├── login.py            # Login screen UI
+│    ├── dashboard.py        # Dashboard UI
+│    ├── user_management.py  # User management UI (Admin Panel)
+│    ├── patient_view.py     # Patient management UI
+│    ├── doctor_view.py      # Doctor management UI
+│    ├── pharmacy_view.py    # Pharmacy UI
+│    ├── lab_view.py         # Lab UI
+│    ├── radiology_view.py   # Radiology UI
+│    ├── icu_view.py         # ICU UI
+│
+├─── controllers/            # Handles logic between UI and backend
+│    ├── main_controller.py  # Main application controller
+│    ├── auth_controller.py  # Login & authentication handling
+│    ├── user_controller.py  # User management logic
+│    ├── patient_controller.py # Patient management logic
+│    ├── doctor_controller.py # Doctor management logic
+│    ├── pharmacy_controller.py # Pharmacy logic
+│    ├── lab_controller.py # Lab logic
+│    ├── radiology_controller.py # Radiology logic
+│    ├── icu_controller.py # ICU logic
+│
+├─── assets/                 # Static assets (icons, images, stylesheets)
+│    ├── icons/              # Icons for UI elements
+│    ├── styles.qss          # Global stylesheet
+│
+└─── tests/                  # Unit and integration tests
+     ├── test_auth.py        # Tests for authentication
+     ├── test_patient.py     # Tests for patient management
+     ├── test_doctor.py      # Tests for doctor management
+
 ```
+
+#### **Backend**
 
 ```
 backend/
+app/
+│── api/
+│   ├── auth.py 
 │── models/
-│   ├── user.py         # User models (Admin, Nurse, Receptionist, Pharmacist, Lab Technician, Radiologist)
+│   ├── user.py         # User models (Admin, Nurse, Receptionist, Pharmacist, Lab Technician,Radiologist)
 │   ├── patient.py      # Patient models (Admissions, Records, Appointments, Billing)
 │   ├── doctor.py       # Doctor models (Doctors assigned to patients)
 │   ├── pharmacy.py     # Pharmacy models (Prescriptions, Inventory, Billing)
@@ -55,12 +98,12 @@ backend/
 │   ├── lab.py          # Lab management
 │   ├── radiology.py    # Radiology management
 │   ├── icu.py          # ICU management
-│── database/
-│   ├── base.py         # Base database setup
-│   ├── session.py      # Database session handling
+│── core/
+│   ├── database.py         # Database session handling
+│   ├── security.py      # Database session handling
 │── main.py             # Application entry point
-│── config.py           # Configuration settings
-│── tests/              # Unit tests for each module
+│── utils/
+    ├──security.py
 ```
 
 ## **Authentication & User Roles**
