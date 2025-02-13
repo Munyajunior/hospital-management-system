@@ -37,7 +37,7 @@ def update_patient(patient_id: int, patient_data: PatientCreate, db: Session = D
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
     
-    for key, value in patient_data.dict().items():
+    for key, value in patient_data.model_dump().items():
         setattr(patient, key, value)
     
     db.commit()
