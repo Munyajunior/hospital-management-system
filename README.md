@@ -9,59 +9,45 @@ This project is a **Hospital Management System** with a **desktop application** 
 #### **Frontend**
 
 ```
-/hms_desktop/
+hospital_management_system_desktop/
 /frontend/
 │── main.py                 # Entry point of the application
-│── requirements.txt         # Dependencies
-│── config.py                # Configuration settings
-│── database.py              # (If local storage or caching is needed)
-│── utils.py                 # Utility functions (e.g., validation, formatting)
-│
-├─── core/                   # Core logic (backend interaction)
-│    ├── api_client.py       # Handles API requests to FastAPI backend
-│    ├── auth.py             # Authentication logic (JWT/session handling)
-│    ├── rbac.py             # Role-Based Access Control enforcement
-│
-├─── models/                 # Data models (Sync with backend)
-│    ├── user.py             # User model
-│    ├── patient.py          # Patient model
-│    ├── doctor.py           # Doctor model
-│    ├── pharmacy.py         # Pharmacy model
-│    ├── lab.py              # Lab model
-│    ├── radiology.py        # Radiology model
-│    ├── icu.py              # ICU model
-│
-├─── views/                  # UI components (QWidgets & QMainWindow)
-│    ├── main_window.py      # Main application window
-│    ├── login.py            # Login screen UI
-│    ├── dashboard.py        # Dashboard UI
-│    ├── user_management.py  # User management UI (Admin Panel)
-│    ├── patient_view.py     # Patient management UI
-│    ├── doctor_view.py      # Doctor management UI
-│    ├── pharmacy_view.py    # Pharmacy UI
-│    ├── lab_view.py         # Lab UI
-│    ├── radiology_view.py   # Radiology UI
-│    ├── icu_view.py         # ICU UI
-│
-├─── controllers/            # Handles logic between UI and backend
-│    ├── main_controller.py  # Main application controller
-│    ├── auth_controller.py  # Login & authentication handling
-│    ├── user_controller.py  # User management logic
-│    ├── patient_controller.py # Patient management logic
-│    ├── doctor_controller.py # Doctor management logic
-│    ├── pharmacy_controller.py # Pharmacy logic
-│    ├── lab_controller.py # Lab logic
-│    ├── radiology_controller.py # Radiology logic
-│    ├── icu_controller.py # ICU logic
-│
-├─── assets/                 # Static assets (icons, images, stylesheets)
-│    ├── icons/              # Icons for UI elements
-│    ├── styles.qss          # Global stylesheet
-│
-└─── tests/                  # Unit and integration tests
-     ├── test_auth.py        # Tests for authentication
-     ├── test_patient.py     # Tests for patient management
-     ├── test_doctor.py      # Tests for doctor management
+│── core/
+│   ├── database.py         # Handles database connections (communicating with FastAPI backend)
+│   ├── settings.py         # Configuration settings (API base URL, authentication settings)
+│── models/
+│   ├── user.py             # Data models for users
+│   ├── patient.py          # Data models for patients
+│   ├── doctor.py           # Data models for doctors
+│   ├── pharmacy.py         # Data models for pharmacy
+│   ├── lab.py              # Data models for lab
+│   ├── radiology.py        # Data models for radiology
+│   ├── icu.py              # Data models for ICU
+│── views/
+│   ├── main_window.py      # Main dashboard UI
+│   ├── login.py            # Login UI
+│   ├── patient.py          # Patient management UI
+│   ├── doctor.py           # Doctor management UI
+│   ├── pharmacy.py         # Pharmacy UI
+│   ├── lab.py              # Lab UI
+│   ├── radiology.py        # Radiology UI
+│   ├── icu.py              # ICU UI
+│── controllers/
+│   ├── auth_controller.py  # Handles login, authentication logic
+│   ├── patient_controller.py # Handles patient-related operations
+│   ├── doctor_controller.py  # Handles doctor-related operations
+│   ├── pharmacy_controller.py # Handles pharmacy-related operations
+│   ├── lab_controller.py    # Handles lab-related operations
+│   ├── radiology_controller.py # Handles radiology operations
+│   ├── icu_controller.py    # Handles ICU operations
+│── utils/
+│   ├── api.py              # Handles API requests to the FastAPI backend
+│   ├── helpers.py          # Reusable helper functions (validations, date formatting)
+│── resources/
+│   ├── icons/              # Stores application icons
+│   ├── styles/             # Stores QSS style files for UI
+│── assets/
+    ├── logo.png            # Application logo
 
 ```
 
