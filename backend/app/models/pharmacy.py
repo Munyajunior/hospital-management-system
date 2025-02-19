@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime,Text
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.core.database import Base
@@ -11,8 +11,9 @@ class Prescription(Base):
     drug_name = Column(String, nullable=False)
     dosage = Column(String, nullable=False)
     instructions = Column(Text, nullable=False)
-    status = Column(String, default="pending")  # pending, dispensed
-    created_at = Column(DateTime, default=datetime.now())
+    status = Column(String, default="pending")  # Consider using an Enum here
+    created_at = Column(DateTime, default=datetime.utcnow)
     
-    patient = relationship("Patient")
+    # Relationships
+    patient = relationship("Patient", back_populates="prescriptions")
     doctor = relationship("User", foreign_keys=[prescribed_by])

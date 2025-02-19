@@ -11,6 +11,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     role = Column(String, nullable=False)  # admin, nurse, doctor, pharmacy, lab, radiology, icu
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.now)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
+    # Relationships
     doctor = relationship("Doctor", back_populates="user", uselist=False)  # One-to-One

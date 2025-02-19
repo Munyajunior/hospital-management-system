@@ -16,8 +16,9 @@ class LabTest(Base):
     requested_by = Column(Integer, ForeignKey("users.id"), nullable=False)  # Doctor who requested
     test_type = Column(String, nullable=False)
     results = Column(Text, nullable=True)
-    status = Column(String, default="pending")  # pending, completed
-    created_at = Column(DateTime, default=datetime.now())
+    status = Column(Enum(LabTestStatus), default=LabTestStatus.PENDING)
+    created_at = Column(DateTime, default=datetime.utcnow)
     
-    patient = relationship("Patient")
+    # Relationships
+    patient = relationship("Patient", back_populates="lab_tests")
     doctor = relationship("User", foreign_keys=[requested_by])

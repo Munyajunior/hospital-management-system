@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text
-from sqlalchemy.orm import relationship
 from enum import Enum as PyEnum
+from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.core.database import Base
 
@@ -16,8 +16,9 @@ class RadiologyTest(Base):
     requested_by = Column(Integer, ForeignKey("users.id"), nullable=False)  # Doctor who requested
     scan_type = Column(String, nullable=False)
     scan_results = Column(Text, nullable=True)
-    status = Column(String, default="pending")  # pending, completed
-    created_at = Column(DateTime, default=datetime.now())
+    status = Column(Enum(RadiologyTestStatus), default=RadiologyTestStatus.PENDING)
+    created_at = Column(DateTime, default=datetime.utcnow)
     
-    patient = relationship("Patient")
+    # Relationships
+    patient = relationship("Patient", back_populates="radiology_tests")
     doctor = relationship("User", foreign_keys=[requested_by])

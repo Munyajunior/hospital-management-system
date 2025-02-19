@@ -11,5 +11,5 @@ class Nurse(Base):
     phone_number = Column(String, unique=True, nullable=False)
     department = Column(String, nullable=False)
 
-    # Relationship with ICU Patients
+    # Relationships
     icu_patients = relationship("ICUPatient", back_populates="assigned_nurse")
