@@ -10,7 +10,6 @@ from app.core.database import get_db
 
 router = APIRouter(prefix="/icu", tags=["ICU Management"])
 
-# Admit a patient to ICU
 @router.post("/", response_model=ICUPatientResponse)
 def admit_patient_to_icu(icu_data: ICUCreate, db: Session = Depends(get_db)):
     patient = db.query(Patient).filter(Patient.id == icu_data.patient_id).first()
@@ -25,12 +24,10 @@ def admit_patient_to_icu(icu_data: ICUCreate, db: Session = Depends(get_db)):
     db.refresh(new_icu_patient)
     return new_icu_patient
 
-# Get all ICU patients
 @router.get("/", response_model=List[ICUPatientResponse])
 def get_icu_patients(db: Session = Depends(get_db)):
     return db.query(ICUPatient).all()
 
-# Get a single ICU patient by ID
 @router.get("/{icu_id}", response_model=ICUPatientResponse)
 def get_icu_patient(icu_id: int, db: Session = Depends(get_db)):
     icu_patient = db.query(ICUPatient).filter(ICUPatient.id == icu_id).first()
@@ -38,7 +35,6 @@ def get_icu_patient(icu_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="ICU patient not found")
     return icu_patient
 
-# Update ICU patient status
 @router.put("/{icu_id}/update", response_model=ICUPatientResponse)
 def update_icu_patient(icu_id: int, status: ICUStatus, db: Session = Depends(get_db)):
     icu_patient = db.query(ICUPatient).filter(ICUPatient.id == icu_id).first()
@@ -53,7 +49,6 @@ def update_icu_patient(icu_id: int, status: ICUStatus, db: Session = Depends(get
     db.refresh(icu_patient)
     return icu_patient
 
-# Discharge a patient from ICU
 @router.delete("/{icu_id}", status_code=status.HTTP_204_NO_CONTENT)
 def discharge_icu_patient(icu_id: int, db: Session = Depends(get_db)):
     icu_patient = db.query(ICUPatient).filter(ICUPatient.id == icu_id).first()

@@ -10,7 +10,6 @@ from app.core.database import get_db
 
 router = APIRouter(prefix="/lab", tags=["Lab"])
 
-# Create a new lab test request
 @router.post("/", response_model=LabTestResponse)
 def create_lab_test(lab_test: LabTestCreate, db: Session = Depends(get_db)):
     patient = db.query(Patient).filter(Patient.id == lab_test.patient_id).first()
@@ -25,12 +24,10 @@ def create_lab_test(lab_test: LabTestCreate, db: Session = Depends(get_db)):
     db.refresh(new_lab_test)
     return new_lab_test
 
-# Get all lab tests
 @router.get("/", response_model=List[LabTestResponse])
 def get_lab_tests(db: Session = Depends(get_db)):
     return db.query(LabTest).all()
 
-# Get a single lab test by ID
 @router.get("/{test_id}", response_model=LabTestResponse)
 def get_lab_test(test_id: int, db: Session = Depends(get_db)):
     lab_test = db.query(LabTest).filter(LabTest.id == test_id).first()
@@ -38,7 +35,6 @@ def get_lab_test(test_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Lab test not found")
     return lab_test
 
-# Update lab test status and result
 @router.put("/{test_id}/update", response_model=LabTestResponse)
 def update_lab_test(test_id: int, status: LabTestStatus, result: str, db: Session = Depends(get_db)):
     lab_test = db.query(LabTest).filter(LabTest.id == test_id).first()
@@ -54,7 +50,6 @@ def update_lab_test(test_id: int, status: LabTestStatus, result: str, db: Sessio
     db.refresh(lab_test)
     return lab_test
 
-# Delete a lab test
 @router.delete("/{test_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_lab_test(test_id: int, db: Session = Depends(get_db)):
     lab_test = db.query(LabTest).filter(LabTest.id == test_id).first()

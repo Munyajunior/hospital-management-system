@@ -1,14 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from typing import List
 from app.schemas.patients import PatientCreate, PatientResponse
 from app.models.patient import Patient
 from app.models.user import User
 from app.core.database import get_db
-from typing import List
 
 router = APIRouter(prefix="/patients", tags=["Patients"])
 
-# Create new patient
 @router.post("/", response_model=PatientResponse)
 def create_patient(patient: PatientCreate, db: Session = Depends(get_db)):
     new_patient = Patient(**patient.model_dump())
@@ -17,12 +16,10 @@ def create_patient(patient: PatientCreate, db: Session = Depends(get_db)):
     db.refresh(new_patient)
     return new_patient
 
-# Get all patients
 @router.get("/", response_model=List[PatientResponse])
 def get_patients(db: Session = Depends(get_db)):
     return db.query(Patient).all()
 
-# Get a single patient by ID
 @router.get("/{patient_id}", response_model=PatientResponse)
 def get_patient(patient_id: int, db: Session = Depends(get_db)):
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
@@ -30,7 +27,6 @@ def get_patient(patient_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Patient not found")
     return patient
 
-# Update patient details
 @router.put("/{patient_id}", response_model=PatientResponse)
 def update_patient(patient_id: int, patient_data: PatientCreate, db: Session = Depends(get_db)):
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
@@ -44,7 +40,6 @@ def update_patient(patient_id: int, patient_data: PatientCreate, db: Session = D
     db.refresh(patient)
     return patient
 
-# Delete a patient
 @router.delete("/{patient_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_patient(patient_id: int, db: Session = Depends(get_db)):
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
@@ -55,7 +50,6 @@ def delete_patient(patient_id: int, db: Session = Depends(get_db)):
     db.commit()
     return
 
-# Assign a patient to a doctor
 @router.put("/{patient_id}/assign/{doctor_id}", response_model=PatientResponse)
 def assign_patient_to_doctor(patient_id: int, doctor_id: int, db: Session = Depends(get_db)):
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
@@ -69,5 +63,4 @@ def assign_patient_to_doctor(patient_id: int, doctor_id: int, db: Session = Depe
     patient.assigned_doctor_id = doctor_id
     db.commit()
     db.refresh(patient)
-
     return patient
