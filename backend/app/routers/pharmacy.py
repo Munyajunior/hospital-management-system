@@ -3,14 +3,20 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.models.pharmacy import Prescription
 from app.models.patient import Patient
+from app.models.user import User
 from app.models.doctor import Doctor
 from app.schemas.pharmacy import PrescriptionCreate, PrescriptionResponse
 from app.core.database import get_db
+from app.core.dependencies import RoleChecker
 
 router = APIRouter(prefix="/pharmacy", tags=["Pharmacy"])
 
+admin_only = RoleChecker(["pharmacy"])
+staff_only = RoleChecker(["doctor"])
+
 @router.post("/", response_model=PrescriptionResponse)
-def create_prescription(prescription: PrescriptionCreate, db: Session = Depends(get_db)):
+def create_prescription(prescription: PrescriptionCreate, db: Session = Depends(get_db)
+                        , user: User = Depends(staff_only)):
     patient = db.query(Patient).filter(Patient.id == prescription.patient_id).first()
     doctor = db.query(Doctor).filter(Doctor.id == prescription.doctor_id).first()
 
@@ -35,7 +41,8 @@ def get_prescription(prescription_id: int, db: Session = Depends(get_db)):
     return prescription
 
 @router.put("/{prescription_id}/dispense", response_model=PrescriptionResponse)
-def dispense_prescription(prescription_id: int, db: Session = Depends(get_db)):
+def dispense_prescription(prescription_id: int, db: Session = Depends(get_db),
+                          user: User = Depends(admin_only)):
     prescription = db.query(Prescription).filter(Prescription.id == prescription_id).first()
     if not prescription:
         raise HTTPException(status_code=404, detail="Prescription not found")

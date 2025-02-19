@@ -5,14 +5,19 @@ from datetime import datetime
 from app.models.radiology import RadiologyTest, RadiologyTestStatus
 from app.models.patient import Patient
 from app.models.doctor import Doctor
+from app.models.user import User
 from app.schemas.radiology import RadiologyTestCreate, RadiologyTestResponse
 from app.core.database import get_db
+from app.core.dependencies import RoleChecker
 
 router = APIRouter(prefix="/radiology", tags=["Radiology"])
 
+
+staff_only = RoleChecker(["doctor"])
 # Create a new radiology test request
 @router.post("/", response_model=RadiologyTestResponse)
-def create_radiology_test(radiology_test: RadiologyTestCreate, db: Session = Depends(get_db)):
+def create_radiology_test(radiology_test: RadiologyTestCreate, db: Session = Depends(get_db),
+                          user: User = Depends(staff_only)):
     patient = db.query(Patient).filter(Patient.id == radiology_test.patient_id).first()
     doctor = db.query(Doctor).filter(Doctor.id == radiology_test.doctor_id).first()
 
@@ -32,7 +37,7 @@ def get_radiology_tests(db: Session = Depends(get_db)):
 
 # Get a single radiology test by ID
 @router.get("/{test_id}", response_model=RadiologyTestResponse)
-def get_radiology_test(test_id: int, db: Session = Depends(get_db)):
+def get_radiology_test(test_id: int, db: Session = Depends(get_db),user: User = Depends(staff_only)):
     radiology_test = db.query(RadiologyTest).filter(RadiologyTest.id == test_id).first()
     if not radiology_test:
         raise HTTPException(status_code=404, detail="Radiology test not found")
@@ -40,7 +45,7 @@ def get_radiology_test(test_id: int, db: Session = Depends(get_db)):
 
 # Update radiology test status and report
 @router.put("/{test_id}/update", response_model=RadiologyTestResponse)
-def update_radiology_test(test_id: int, status: RadiologyTestStatus, report: str, db: Session = Depends(get_db)):
+def update_radiology_test(test_id: int, status: RadiologyTestStatus, report: str, db: Session = Depends(get_db),):
     radiology_test = db.query(RadiologyTest).filter(RadiologyTest.id == test_id).first()
     if not radiology_test:
         raise HTTPException(status_code=404, detail="Radiology test not found")

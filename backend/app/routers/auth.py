@@ -5,11 +5,16 @@ from app.schemas.auth import UserCreate, UserResponse, Token
 from app.models.user import User
 from app.utils.security import hash_password, verify_password, create_access_token
 from app.core.database import get_db
+from app.core.dependencies import RoleChecker
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+
+# Allow only admins to create users
+admin_only = RoleChecker(["admin"])
 @router.post("/register", response_model=UserResponse)
-def register_user(user: UserCreate, db: Session = Depends(get_db)):
+def register_user(user: UserCreate, db: Session = Depends(get_db),
+    _: User = Depends(admin_only) ): # Only admins can register users
     # Check if user already exists
     existing_user = db.query(User).filter(User.email == user.email).first()
     if existing_user:
@@ -29,6 +34,9 @@ def register_user(user: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login_user(email: str, password: str, db: Session = Depends(get_db)):
+    """
+    Logs in a user and returns a JWT token.
+    """
     user = db.query(User).filter(User.email == email).first()
     if not user or not verify_password(password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
