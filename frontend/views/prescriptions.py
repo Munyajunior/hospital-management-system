@@ -1,15 +1,23 @@
 import os
 import requests
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem, 
+    QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
     QMessageBox, QComboBox, QTextEdit
 )
 from PySide6.QtCore import Qt
 
-class PrescriptionManagement(QWidget):
-    def __init__(self, doctor_id):
+
+class Prescriptions(QWidget):
+    def __init__(self, user_role, user_id):
+        """
+        Initializes the Prescription Management interface.
+
+        :param user_role: Role of the logged-in user (doctor/nurse/pharmacist)
+        :param user_id: ID of the logged-in user (for filtering prescriptions)
+        """
         super().__init__()
-        self.doctor_id = doctor_id
+        self.user_role = user_role
+        self.user_id = user_id
         self.init_ui()
 
     def init_ui(self):
@@ -24,123 +32,95 @@ class PrescriptionManagement(QWidget):
         # Prescription Table
         self.prescription_table = QTableWidget()
         self.prescription_table.setColumnCount(4)
-        self.prescription_table.setHorizontalHeaderLabels(["Patient", "Medications", "Lab Tests", "Scans"])
+        self.prescription_table.setHorizontalHeaderLabels(["Patient", "Doctor", "Medication", "Instructions"])
         layout.addWidget(self.prescription_table)
 
-        # Buttons for actions
-        self.refresh_button = QPushButton("Refresh Prescriptions")
-        self.refresh_button.clicked.connect(self.load_prescriptions)
-        layout.addWidget(self.refresh_button)
+        # Dropdown to select a patient
+        self.patient_dropdown = QComboBox()
+        self.load_patients()
+        layout.addWidget(self.patient_dropdown)
 
-        self.prescribe_button = QPushButton("Prescribe Medication / Tests / Scans")
-        self.prescribe_button.clicked.connect(self.show_prescribe_form)
+        # Medication Input
+        self.medication_input = QTextEdit()
+        self.medication_input.setPlaceholderText("Enter medication name(s)...")
+        layout.addWidget(self.medication_input)
+
+        # Instructions Input
+        self.instructions_input = QTextEdit()
+        self.instructions_input.setPlaceholderText("Enter dosage instructions...")
+        layout.addWidget(self.instructions_input)
+
+        # Button to prescribe medication
+        self.prescribe_button = QPushButton("Prescribe Medication")
+        self.prescribe_button.clicked.connect(self.prescribe_medication)
         layout.addWidget(self.prescribe_button)
 
-        self.setLayout(layout)
-
+        # Load existing prescriptions
         self.load_prescriptions()
-
-    def load_prescriptions(self):
-        """Fetch prescription data from API"""
-        try:
-            api_url = os.getenv("PRESCRIPTION_LIST_URL")
-            response = requests.get(f"{api_url}?doctor_id={self.doctor_id}")
-            if response.status_code == 200:
-                prescriptions = response.json()
-                self.populate_table(prescriptions)
-            else:
-                QMessageBox.critical(self, "Error", "Failed to fetch prescription data.")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred: {e}")
-
-    def populate_table(self, prescriptions):
-        """Populate table with prescription data"""
-        self.prescription_table.setRowCount(len(prescriptions))
-        for row, prescription in enumerate(prescriptions):
-            self.prescription_table.setItem(row, 0, QTableWidgetItem(prescription["patient_name"]))
-            self.prescription_table.setItem(row, 1, QTableWidgetItem(", ".join(prescription["medications"])))
-            self.prescription_table.setItem(row, 2, QTableWidgetItem(", ".join(prescription["lab_tests"])))
-            self.prescription_table.setItem(row, 3, QTableWidgetItem(", ".join(prescription["scans"])))
-
-    def show_prescribe_form(self):
-        """Show prescription form for the doctor"""
-        self.prescribe_window = PrescriptionForm(self)
-        self.prescribe_window.show()
-
-
-class PrescriptionForm(QWidget):
-    def __init__(self, parent):
-        super().__init__()
-        self.parent = parent
-        self.init_ui()
-
-    def init_ui(self):
-        self.setWindowTitle("Prescribe Medication & Tests")
-
-        layout = QVBoxLayout()
-
-        self.patient_input = QComboBox()
-        self.load_patients()
-        layout.addWidget(self.patient_input)
-
-        self.medications_input = QTextEdit()
-        self.medications_input.setPlaceholderText("Enter prescribed medications (comma-separated)")
-        layout.addWidget(self.medications_input)
-
-        self.lab_tests_input = QTextEdit()
-        self.lab_tests_input.setPlaceholderText("Enter lab tests (comma-separated)")
-        layout.addWidget(self.lab_tests_input)
-
-        self.scans_input = QTextEdit()
-        self.scans_input.setPlaceholderText("Enter scan types (comma-separated)")
-        layout.addWidget(self.scans_input)
-
-        self.submit_button = QPushButton("Submit Prescription")
-        self.submit_button.clicked.connect(self.submit_prescription)
-        layout.addWidget(self.submit_button)
 
         self.setLayout(layout)
 
     def load_patients(self):
-        """Fetch assigned patients for the doctor"""
+        """Fetches and populates the dropdown with assigned patients."""
         try:
             api_url = os.getenv("ASSIGNED_PATIENTS_URL")
-            response = requests.get(f"{api_url}?doctor_id={self.parent.doctor_id}")
+            response = requests.get(f"{api_url}?user_id={self.user_id}&role={self.user_role}")
             if response.status_code == 200:
                 patients = response.json()
                 for patient in patients:
-                    self.patient_input.addItem(patient["name"], patient["id"])
+                    self.patient_dropdown.addItem(patient["name"], patient["id"])
             else:
-                QMessageBox.critical(self, "Error", "Failed to fetch patients.")
+                QMessageBox.critical(self, "Error", "Failed to fetch patient list.")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"An error occurred: {e}")
 
-    def submit_prescription(self):
-        """Submit prescription data to API"""
-        patient_id = self.patient_input.currentData()
-        medications = [med.strip() for med in self.medications_input.toPlainText().split(",") if med.strip()]
-        lab_tests = [test.strip() for test in self.lab_tests_input.toPlainText().split(",") if test.strip()]
-        scans = [scan.strip() for scan in self.scans_input.toPlainText().split(",") if scan.strip()]
+    def load_prescriptions(self):
+        """Fetches and displays prescriptions."""
+        try:
+            api_url = os.getenv("PRESCRIPTIONS_URL")
+            response = requests.get(f"{api_url}?user_id={self.user_id}&role={self.user_role}")
+            if response.status_code == 200:
+                prescriptions = response.json()
+                self.populate_table(prescriptions)
+            else:
+                QMessageBox.critical(self, "Error", "Failed to fetch prescriptions.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"An error occurred: {e}")
 
-        if not patient_id or not (medications or lab_tests or scans):
-            QMessageBox.warning(self, "Validation Error", "Please enter at least one medication, lab test, or scan!")
+    def populate_table(self, prescriptions):
+        """Fills the table with prescription data."""
+        self.prescription_table.setRowCount(len(prescriptions))
+        for row, prescription in enumerate(prescriptions):
+            self.prescription_table.setItem(row, 0, QTableWidgetItem(prescription["patient_name"]))
+            self.prescription_table.setItem(row, 1, QTableWidgetItem(prescription["doctor_name"]))
+            self.prescription_table.setItem(row, 2, QTableWidgetItem(prescription["medication"]))
+            self.prescription_table.setItem(row, 3, QTableWidgetItem(prescription["instructions"]))
+
+    def prescribe_medication(self):
+        """Prescribes new medication to a patient."""
+        patient_id = self.patient_dropdown.currentData()
+        medication = self.medication_input.toPlainText().strip()
+        instructions = self.instructions_input.toPlainText().strip()
+
+        if not patient_id or not medication or not instructions:
+            QMessageBox.warning(self, "Validation Error", "Please provide all required fields.")
             return
 
         try:
-            api_url = os.getenv("SUBMIT_PRESCRIPTION_URL")
+            api_url = os.getenv("PRESCRIBE_MEDICATION_URL")
             data = {
-                "doctor_id": self.parent.doctor_id,
+                "doctor_id": self.user_id,
                 "patient_id": patient_id,
-                "medications": medications,
-                "lab_tests": lab_tests,
-                "scans": scans
+                "medication": medication,
+                "instructions": instructions,
             }
             response = requests.post(api_url, json=data)
             if response.status_code == 201:
-                QMessageBox.information(self, "Success", "Prescription submitted successfully!")
-                self.parent.load_prescriptions()
-                self.close()
+                QMessageBox.information(self, "Success", "Medication prescribed successfully!")
+                self.load_prescriptions()  # Refresh the table
+                self.medication_input.clear()
+                self.instructions_input.clear()
             else:
-                QMessageBox.critical(self, "Error", "Failed to submit prescription.")
+                QMessageBox.critical(self, "Error", "Failed to prescribe medication.")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"An error occurred: {e}")
