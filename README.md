@@ -10,44 +10,26 @@ This project is a **Hospital Management System** with a **desktop application** 
 
 ```
 hospital_management_system_desktop/
-/frontend/
-│── main.py                 # Entry point of the application
-│── core/
-│   ├── database.py         # Handles database connections (communicating with FastAPI backend)
-│   ├── settings.py         # Configuration settings (API base URL, authentication settings)
-│── models/
-│   ├── user.py             # Data models for users
-│   ├── patient.py          # Data models for patients
-│   ├── doctor.py           # Data models for doctors
-│   ├── pharmacy.py         # Data models for pharmacy
-│   ├── lab.py              # Data models for lab
-│   ├── radiology.py        # Data models for radiology
-│   ├── icu.py              # Data models for ICU
+frontend/
+│── main.py                # Entry point for the frontend
 │── views/
-│   ├── main_window.py      # Main dashboard UI
-│   ├── login.py            # Login UI
-│   ├── patient.py          # Patient management UI
-│   ├── doctor.py           # Doctor management UI
-│   ├── pharmacy.py         # Pharmacy UI
-│   ├── lab.py              # Lab UI
-│   ├── radiology.py        # Radiology UI
-│   ├── icu.py              # ICU UI
-│── controllers/
-│   ├── auth_controller.py  # Handles login, authentication logic
-│   ├── patient_controller.py # Handles patient-related operations
-│   ├── doctor_controller.py  # Handles doctor-related operations
-│   ├── pharmacy_controller.py # Handles pharmacy-related operations
-│   ├── lab_controller.py    # Handles lab-related operations
-│   ├── radiology_controller.py # Handles radiology operations
-│   ├── icu_controller.py    # Handles ICU operations
+│   ├── login.py           # Login UI
+│   ├── dashboard.py       # Dashboard UI
+│   ├── patient.py         # Patient Management UI
+│   ├── doctor.py          # Doctor Management UI
+│   ├── pharmacy.py        # Pharmacy UI
+│   ├── lab.py             # Lab Management UI
+│   ├── radiology.py       # Radiology UI
+│   ├── icu.py             # ICU Management UI
+│── components/
+│   ├── sidebar.py         # Sidebar navigation
+│   ├── header.py          # Header bar
+│── core/
+│   ├── api.py             # API calls
+│   ├── auth.py            # Authentication handler
 │── utils/
-│   ├── api.py              # Handles API requests to the FastAPI backend
-│   ├── helpers.py          # Reusable helper functions (validations, date formatting)
-│── resources/
-│   ├── icons/              # Stores application icons
-│   ├── styles/             # Stores QSS style files for UI
-│── assets/
-    ├── logo.png            # Application logo
+│   ├── config.py          # Environment variables & settings
+│── assets/                # Icons, images, etc.
 
 ```
 
