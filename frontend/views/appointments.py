@@ -1,15 +1,27 @@
 import os
 import requests
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem, QMessageBox, QLineEdit, QComboBox, QDateTimeEdit
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
+    QMessageBox, QComboBox, QDateTimeEdit, QTextEdit
+)
 from PySide6.QtCore import Qt
 
-class AppointmentManagement(QWidget):
-    def __init__(self):
+
+class Appointments(QWidget):
+    def __init__(self, user_role, user_id):
+        """
+        Initializes the Appointments Management interface.
+
+        :param user_role: Role of the logged-in user (doctor/nurse)
+        :param user_id: ID of the logged-in user (for filtering appointments)
+        """
         super().__init__()
+        self.user_role = user_role
+        self.user_id = user_id
         self.init_ui()
 
     def init_ui(self):
-        self.setWindowTitle("Appointment Management")
+        self.setWindowTitle("Appointments Management")
 
         layout = QVBoxLayout()
 
@@ -17,128 +29,91 @@ class AppointmentManagement(QWidget):
         self.title_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.title_label)
 
-        # Appointment Table
-        self.appointment_table = QTableWidget()
-        self.appointment_table.setColumnCount(5)
-        self.appointment_table.setHorizontalHeaderLabels(["ID", "Patient", "Doctor", "Date & Time", "Status"])
-        layout.addWidget(self.appointment_table)
+        # Appointments Table
+        self.appointments_table = QTableWidget()
+        self.appointments_table.setColumnCount(4)
+        self.appointments_table.setHorizontalHeaderLabels(["Patient", "Doctor", "Date/Time", "Reason"])
+        layout.addWidget(self.appointments_table)
 
-        # Buttons for actions
-        self.refresh_button = QPushButton("Refresh Appointments")
-        self.refresh_button.clicked.connect(self.load_appointments)
-        layout.addWidget(self.refresh_button)
+        # Dropdown to select a patient
+        self.patient_dropdown = QComboBox()
+        self.load_patients()
+        layout.addWidget(self.patient_dropdown)
 
-        self.schedule_button = QPushButton("Schedule New Appointment")
-        self.schedule_button.clicked.connect(self.show_schedule_form)
+        # Date & Time Picker
+        self.datetime_picker = QDateTimeEdit()
+        self.datetime_picker.setCalendarPopup(True)
+        layout.addWidget(self.datetime_picker)
+
+        # Appointment Reason Input
+        self.reason_input = QTextEdit()
+        self.reason_input.setPlaceholderText("Enter appointment reason...")
+        layout.addWidget(self.reason_input)
+
+        # Button to schedule appointment
+        self.schedule_button = QPushButton("Schedule Appointment")
+        self.schedule_button.clicked.connect(self.schedule_appointment)
         layout.addWidget(self.schedule_button)
 
-        self.setLayout(layout)
-
+        # Load existing appointments
         self.load_appointments()
-
-    def load_appointments(self):
-        """Fetch appointment data from API"""
-        try:
-            api_url = os.getenv("APPOINTMENT_LIST_URL")
-            response = requests.get(api_url)
-            if response.status_code == 200:
-                appointments = response.json()
-                self.populate_table(appointments)
-            else:
-                QMessageBox.critical(self, "Error", "Failed to fetch appointment data.")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred: {e}")
-
-    def populate_table(self, appointments):
-        """Populate table with appointment data"""
-        self.appointment_table.setRowCount(len(appointments))
-        for row, appointment in enumerate(appointments):
-            self.appointment_table.setItem(row, 0, QTableWidgetItem(str(appointment["id"])))
-            self.appointment_table.setItem(row, 1, QTableWidgetItem(appointment["patient_name"]))
-            self.appointment_table.setItem(row, 2, QTableWidgetItem(appointment["doctor_name"]))
-            self.appointment_table.setItem(row, 3, QTableWidgetItem(appointment["datetime"]))
-            self.appointment_table.setItem(row, 4, QTableWidgetItem(appointment["status"]))
-
-    def show_schedule_form(self):
-        """Show appointment scheduling form"""
-        self.schedule_window = AppointmentScheduleForm(self)
-        self.schedule_window.show()
-
-
-class AppointmentScheduleForm(QWidget):
-    def __init__(self, parent):
-        super().__init__()
-        self.parent = parent
-        self.init_ui()
-
-    def init_ui(self):
-        self.setWindowTitle("Schedule Appointment")
-
-        layout = QVBoxLayout()
-
-        self.patient_input = QComboBox()
-        self.load_patients()
-        layout.addWidget(self.patient_input)
-
-        self.doctor_input = QComboBox()
-        self.load_doctors()
-        layout.addWidget(self.doctor_input)
-
-        self.datetime_input = QDateTimeEdit()
-        self.datetime_input.setCalendarPopup(True)
-        layout.addWidget(self.datetime_input)
-
-        self.submit_button = QPushButton("Schedule Appointment")
-        self.submit_button.clicked.connect(self.schedule_appointment)
-        layout.addWidget(self.submit_button)
 
         self.setLayout(layout)
 
     def load_patients(self):
-        """Fetch patient list from API"""
+        """Fetches and populates the dropdown with assigned patients."""
         try:
-            api_url = os.getenv("PATIENT_LIST_URL")
-            response = requests.get(api_url)
+            api_url = os.getenv("ASSIGNED_PATIENTS_URL")
+            response = requests.get(f"{api_url}?user_id={self.user_id}&role={self.user_role}")
             if response.status_code == 200:
                 patients = response.json()
                 for patient in patients:
-                    self.patient_input.addItem(patient["name"], patient["id"])
+                    self.patient_dropdown.addItem(patient["name"], patient["id"])
             else:
-                QMessageBox.critical(self, "Error", "Failed to fetch patients.")
+                QMessageBox.critical(self, "Error", "Failed to fetch patient list.")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"An error occurred: {e}")
 
-    def load_doctors(self):
-        """Fetch doctor list from API"""
+    def load_appointments(self):
+        """Fetches and displays scheduled appointments."""
         try:
-            api_url = os.getenv("DOCTOR_LIST_URL")
-            response = requests.get(api_url)
+            api_url = os.getenv("APPOINTMENTS_URL")
+            response = requests.get(f"{api_url}?user_id={self.user_id}&role={self.user_role}")
             if response.status_code == 200:
-                doctors = response.json()
-                for doctor in doctors:
-                    self.doctor_input.addItem(doctor["name"], doctor["id"])
+                appointments = response.json()
+                self.populate_table(appointments)
             else:
-                QMessageBox.critical(self, "Error", "Failed to fetch doctors.")
+                QMessageBox.critical(self, "Error", "Failed to fetch appointments.")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"An error occurred: {e}")
+
+    def populate_table(self, appointments):
+        """Fills the table with appointment data."""
+        self.appointments_table.setRowCount(len(appointments))
+        for row, appointment in enumerate(appointments):
+            self.appointments_table.setItem(row, 0, QTableWidgetItem(appointment["patient_name"]))
+            self.appointments_table.setItem(row, 1, QTableWidgetItem(appointment["doctor_name"]))
+            self.appointments_table.setItem(row, 2, QTableWidgetItem(appointment["datetime"]))
+            self.appointments_table.setItem(row, 3, QTableWidgetItem(appointment["reason"]))
 
     def schedule_appointment(self):
-        """Send appointment scheduling data to API"""
-        patient_id = self.patient_input.currentData()
-        doctor_id = self.doctor_input.currentData()
-        appointment_datetime = self.datetime_input.dateTime().toString("yyyy-MM-dd HH:mm:ss")
+        """Schedules a new appointment."""
+        patient_id = self.patient_dropdown.currentData()
+        datetime = self.datetime_picker.dateTime().toString("yyyy-MM-dd HH:mm:ss")
+        reason = self.reason_input.toPlainText().strip()
 
-        if not patient_id or not doctor_id:
-            QMessageBox.warning(self, "Validation Error", "Please select both patient and doctor!")
+        if not patient_id or not reason:
+            QMessageBox.warning(self, "Validation Error", "Please provide all required fields.")
             return
 
         try:
             api_url = os.getenv("SCHEDULE_APPOINTMENT_URL")
-            response = requests.post(api_url, json={"patient_id": patient_id, "doctor_id": doctor_id, "datetime": appointment_datetime})
+            data = {"doctor_id": self.user_id, "patient_id": patient_id, "datetime": datetime, "reason": reason}
+            response = requests.post(api_url, json=data)
             if response.status_code == 201:
                 QMessageBox.information(self, "Success", "Appointment scheduled successfully!")
-                self.parent.load_appointments()
-                self.close()
+                self.load_appointments()  # Refresh the table
+                self.reason_input.clear()
             else:
                 QMessageBox.critical(self, "Error", "Failed to schedule appointment.")
         except Exception as e:
