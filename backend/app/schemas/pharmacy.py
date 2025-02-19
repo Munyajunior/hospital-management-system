@@ -1,11 +1,15 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
+from enum import Enum
+
+class PrescriptionStatus(str, Enum):
+    PENDING = "pending"
+    DISPENSED = "dispensed"
 
 class PrescriptionBase(BaseModel):
     patient_id: int
-    doctor_id: int
-    medication_name: str
+    prescribed_by: int  # Doctor ID
+    drug_name: str
     dosage: str
     instructions: str
 
@@ -14,8 +18,8 @@ class PrescriptionCreate(PrescriptionBase):
 
 class PrescriptionResponse(PrescriptionBase):
     id: int
-    prescribed_date: datetime
-    is_dispensed: bool
+    status: PrescriptionStatus
+    created_at: datetime
 
     class Config:
         from_attributes = True

@@ -11,8 +11,7 @@ class ICUStatus(str, Enum):
 
 class ICUBase(BaseModel):
     patient_id: int
-    assigned_nurse_id: int
-    bed_number: str
+    admitted_by: int  # Nurse ID (matches model's `admitted_by` field)
 
 class ICUCreate(ICUBase):
     pass
@@ -22,6 +21,7 @@ class ICUPatientResponse(ICUBase):
     status: ICUStatus
     admission_date: datetime
     discharge_date: Optional[datetime] = None
+    assigned_nurse_id: Optional[int] = None  # From relationship
 
     class Config:
         from_attributes = True

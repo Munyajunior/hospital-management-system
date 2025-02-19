@@ -1,18 +1,17 @@
-from pydantic import BaseModel, EmailStr
-from typing import Optional
+from pydantic import BaseModel, EmailStr, Field
 
 class DoctorBase(BaseModel):
     full_name: str
-    specialization: str  # Ensure consistency with the database column name
-    contact_number: str
+    specialization: str
+    contact_number: str = Field(..., pattern="^\+?[0-9\s-]{8,}$")
     email: EmailStr
 
 class DoctorCreate(DoctorBase):
-    user_id: int  # Link the doctor to a user account
+    user_id: int  # Admin must link to existing User
 
 class DoctorResponse(DoctorBase):
     id: int
-    user_id: Optional[int] = None  # Allow flexibility in responses
+    user_id: int
 
     class Config:
         from_attributes = True

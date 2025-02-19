@@ -10,8 +10,8 @@ class LabTestStatus(str, Enum):
 
 class LabTestBase(BaseModel):
     patient_id: int
-    doctor_id: int
-    test_name: str
+    requested_by: int  # Doctor ID
+    test_type: str  # Matches model field name
 
 class LabTestCreate(LabTestBase):
     pass
@@ -19,9 +19,8 @@ class LabTestCreate(LabTestBase):
 class LabTestResponse(LabTestBase):
     id: int
     status: LabTestStatus
-    result: Optional[str] = None
-    requested_date: datetime
-    completed_date: Optional[datetime] = None
+    results: Optional[str] = None  # Matches model field name
+    created_at: datetime  # Matches model timestamp field
 
     class Config:
         from_attributes = True

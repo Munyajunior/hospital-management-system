@@ -10,7 +10,7 @@ class RadiologyTestStatus(str, Enum):
 
 class RadiologyTestBase(BaseModel):
     patient_id: int
-    doctor_id: int
+    requested_by: int  # Doctor ID
     scan_type: str
 
 class RadiologyTestCreate(RadiologyTestBase):
@@ -19,9 +19,8 @@ class RadiologyTestCreate(RadiologyTestBase):
 class RadiologyTestResponse(RadiologyTestBase):
     id: int
     status: RadiologyTestStatus
-    report: Optional[str] = None
-    requested_date: datetime
-    completed_date: Optional[datetime] = None
+    scan_results: Optional[str] = None  # Matches model field name
+    created_at: datetime  # Matches model timestamp field
 
     class Config:
         from_attributes = True
