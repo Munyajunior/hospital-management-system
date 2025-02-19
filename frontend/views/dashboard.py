@@ -6,7 +6,7 @@ from views.patient import PatientManagement
 from views.doctor import DoctorManagement
 from views.pharmacy import PharmacyManagement
 from views.lab import LabManagement
-from views.radiology import RadiologyManagement
+from frontend.views.scans import RadiologyManagement
 from views.icu import ICUManagement
 
 class Dashboard(QWidget):
