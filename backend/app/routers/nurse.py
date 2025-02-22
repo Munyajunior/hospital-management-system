@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-from app.models.nurse import Nurse
-from app.models.user import User
-from app.schemas.nurse import NurseCreate, NurseResponse
-from app.core.database import get_db
-from app.core.dependencies import RoleChecker
+from models.nurse import Nurse
+from models.user import User
+from schemas.nurse import NurseCreate, NurseResponse
+from core.database import get_db
+from core.dependencies import RoleChecker
 
 router = APIRouter(prefix="/nurses", tags=["Nurse Management"])
 

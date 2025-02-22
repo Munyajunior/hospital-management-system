@@ -2,13 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime
-from app.models.lab import LabTest, LabTestStatus
-from app.models.patient import Patient
-from app.models.doctor import Doctor
-from app.schemas.lab import LabTestCreate, LabTestResponse
-from app.core.database import get_db
-from app.models.user import User
-from app.core.dependencies import RoleChecker
+from models.lab import LabTest, LabTestStatus
+from models.patient import Patient
+from models.doctor import Doctor
+from schemas.lab import LabTestCreate, LabTestResponse
+from core.database import get_db
+from models.user import User
+from core.dependencies import RoleChecker
 
 router = APIRouter(prefix="/lab", tags=["Lab"])
 

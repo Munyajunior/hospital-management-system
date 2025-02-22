@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-from app.models.pharmacy import Prescription
-from app.models.patient import Patient
-from app.models.user import User
-from app.models.doctor import Doctor
-from app.schemas.pharmacy import PrescriptionCreate, PrescriptionResponse
-from app.core.database import get_db
-from app.core.dependencies import RoleChecker
+from models.pharmacy import Prescription
+from models.patient import Patient
+from models.user import User
+from models.doctor import Doctor
+from schemas.pharmacy import PrescriptionCreate, PrescriptionResponse
+from core.database import get_db
+from core.dependencies import RoleChecker
 
 router = APIRouter(prefix="/pharmacy", tags=["Pharmacy"])
 

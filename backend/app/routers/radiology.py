@@ -2,13 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime
-from app.models.radiology import RadiologyTest, RadiologyTestStatus
-from app.models.patient import Patient
-from app.models.doctor import Doctor
-from app.models.user import User
-from app.schemas.radiology import RadiologyTestCreate, RadiologyTestResponse
-from app.core.database import get_db
-from app.core.dependencies import RoleChecker
+from models.radiology import RadiologyTest, RadiologyTestStatus
+from models.patient import Patient
+from models.doctor import Doctor
+from models.user import User
+from schemas.radiology import RadiologyTestCreate, RadiologyTestResponse
+from core.database import get_db
+from core.dependencies import RoleChecker
 
 router = APIRouter(prefix="/radiology", tags=["Radiology"])
 

@@ -2,13 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from datetime import datetime
-from app.models.icu import ICUPatient, ICUStatus
-from app.models.patient import Patient
-from app.models.user import User
-from app.models.nurse import Nurse
-from app.schemas.icu import ICUCreate, ICUPatientResponse
-from app.core.database import get_db
-from app.core.dependencies import RoleChecker
+from models.icu import ICUPatient, ICUStatus
+from models.patient import Patient
+from models.user import User
+from models.nurse import Nurse
+from schemas.icu import ICUCreate, ICUPatientResponse
+from core.database import get_db
+from core.dependencies import RoleChecker
 
 router = APIRouter(prefix="/icu", tags=["ICU Management"])
 
