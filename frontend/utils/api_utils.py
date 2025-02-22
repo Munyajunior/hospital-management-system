@@ -9,15 +9,19 @@ def fetch_data(api_url, auth_token=None, params=None):
         response = requests.get(api_url, headers=headers, params=params)
         if response.status_code == 200:
             return response.json()
+        elif response.status_code == 403:
+                QMessageBox.critical("Error", "Access forbidden. You don't have permission.")
+        elif response.status_code == 401:
+                QMessageBox.critical("Error", "Unauthorized. Please log in again.")
         else:
-            QMessageBox.critical(None, "Error", f"Failed to fetch data from {api_url}")
-            return None
+                QMessageBox.critical("Error", f"Failed to fetch data. Error {response.status_code}")
     except Exception as e:
         QMessageBox.critical(None, "Error", f"An error occurred: {e}")
         return None
 
 def post_data(api_url, data, auth_token=None):
     """Generic function to post data to an API."""
+    
     headers = {"Authorization": f"Bearer {auth_token}"} if auth_token else {}
     try:
         response = requests.post(api_url, json=data, headers=headers)
