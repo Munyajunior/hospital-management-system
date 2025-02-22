@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime, Date
 from sqlalchemy.orm import relationship
 from datetime import datetime
-from app.core.database import Base
+from core.database import Base
 
 class Patient(Base):
     __tablename__ = "patients"
@@ -21,3 +21,5 @@ class Patient(Base):
     registered_by_user = relationship("User", foreign_keys=[registered_by])
     icu_records = relationship("ICUPatient", back_populates="patient", cascade="all, delete-orphan")
     lab_tests = relationship("LabTest", back_populates="patient", cascade="all, delete-orphan")
+    prescriptions = relationship("Prescription", back_populates="patient", cascade="all, delete-orphan")
+    radiology_test = relationship("RadiologyTest", back_populates="patient", cascade="all, delete-orphan")
