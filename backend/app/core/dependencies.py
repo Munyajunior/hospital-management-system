@@ -2,11 +2,11 @@
 from fastapi import Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 from jose import JWTError, jwt
-from app.core.database import get_db
-from app.models.user import User
-from app.core.security import SECRET_KEY, ALGORITHM
+from core.database import get_db
+from models.user import User
+from core.security import SECRET_KEY, ALGORITHM
 
-async def get_current_user(authorization: str = Header(...),db: Session = Depends(get_db)) -> User:
+async def get_current_user(authorization: str = Header(...), db: Session = Depends(get_db)) -> User:
     """
     Extracts the current user from the JWT token.
     """
@@ -17,19 +17,24 @@ async def get_current_user(authorization: str = Header(...),db: Session = Depend
     )
     
     try:
-        token = authorization.split(" ")[1]  # Extract token from "Bearer <token>"
+        token = authorization.split(" ")[1]  
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
+        
+        id: str = payload.get("sub")
+        role: str = payload.get("role")
+        
+        if not id or not role:
             raise credentials_exception
-    except (JWTError, IndexError):
+    except (JWTError, IndexError) as e:
+        print(f"Error decoding token: {str(e)}")
         raise credentials_exception
-
-    user = db.query(User).filter(User.email == email).first()
+    
+    user = db.query(User).filter(User.id == id).first()
     if user is None:
         raise credentials_exception
         
     return user
+
 
 def get_current_active_user(current_user: User = Depends(get_current_user)):
     """
