@@ -10,6 +10,7 @@ class PatientBase(BaseModel):
     medical_history: str | None = None
 
 class PatientCreate(PatientBase):
+    assigned_doctor_id: int | None = None  # Allow assigning a doctor during registration
     pass
 
 class PatientResponse(PatientBase):
