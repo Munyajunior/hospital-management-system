@@ -1,27 +1,34 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-from app.schemas.patients import PatientCreate, PatientResponse
-from app.models.patient import Patient
-from app.models.user import User
-from app.core.database import get_db
-from app.core.dependencies import RoleChecker
+from schemas.patients import PatientCreate, PatientResponse
+from models.patient import Patient
+from models.user import User
+from core.database import get_db
+from core.dependencies import RoleChecker
 
 router = APIRouter(prefix="/patients", tags=["Patients"])
 
 
 
 # Allow nurses and receptionists
-staff_only = RoleChecker(["nurse", "receptionist", "doctor"])
+staff_only = RoleChecker(["admin","nurse", "receptionist", "doctor"])
 
 @router.post("/", response_model=PatientResponse)
 def create_patient(patient: PatientCreate, db: Session = Depends(get_db), 
                    user: User = Depends(staff_only)):
+    # Validate doctor if provided
+    if patient.assigned_doctor_id:
+        doctor = db.query(User).filter(User.id == patient.assigned_doctor_id, User.role == "doctor").first()
+        if not doctor:
+            raise HTTPException(status_code=400, detail="Invalid doctor ID")
+
     new_patient = Patient(**patient.model_dump())
     db.add(new_patient)
     db.commit()
     db.refresh(new_patient)
     return new_patient
+
 
 @router.get("/", response_model=List[PatientResponse])
 def get_patients(db: Session = Depends(get_db),
