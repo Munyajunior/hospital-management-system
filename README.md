@@ -112,7 +112,7 @@ app/
    - Requests lab/radiology tests
    - Communicates with patients via real-time chat
 
-## **API Updates Based on New Logic**
+## **API Updates to secure endpoints**
 
 ### **Authentication (auth.py)**
 
@@ -166,10 +166,45 @@ app/
 - `GET /icu/` → Retrieve all ICU patients.
 - `POST /icu/discharge/` → Discharge patient.
 
-## **Next Steps**
+## **Next Steps for future enhancements**
 
-✅ **Refactor existing code to match new structure.**  
+✅ **Refactor existing code to reduce redundancy and make code base modular.**  
 ✅ **Ensure all endpoints follow new access control rules.**  
-✅ **Update test cases based on new logic.**  
+✅ **Update test cases **  
 ⏳ **Implement frontend (PySide6) once backend is finalized.**
 
+## How to RUN/Start Project
+
+### In the terminal: Create virtual environment
+
+```
+python -m venv .venv
+```
+
+**Activate virtual environment**
+
+```
+.venv/scripts/activate
+```
+
+**Install required libraries**
+
+`pip install -r requirements`
+
+**Navigate to backend/app**
+
+`cd backend/app`
+
+**Start Server and initialize all routes**
+
+`uvicorn main:app --reload`
+
+**Navigate to frontend/**
+
+`cd ../../frontend/`
+
+**run main.py**
+
+```
+python main.py
+```
