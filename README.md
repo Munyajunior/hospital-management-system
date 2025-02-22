@@ -189,19 +189,19 @@ python -m venv .venv
 
 **Install required libraries**
 
-`pip install -r requirements`
+```pip install -r requirements```
 
 **Navigate to backend/app**
 
-`cd backend/app`
+```cd backend/app```
 
 **Start Server and initialize all routes**
 
-`uvicorn main:app --reload`
+```uvicorn main:app --reload```
 
 **Navigate to frontend/**
 
-`cd ../../frontend/`
+```cd ../../frontend/```
 
 **run main.py**
 
