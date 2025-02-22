@@ -39,7 +39,7 @@ class Dashboard(QWidget):
 
         # Add different modules to the main content
         self.patient_management = PatientManagement()
-        #self.doctor_management = DoctorManagement()
+        self.doctor_management = DoctorManagement()
         #self.pharmacy_management = Pharmacy(self.role, self.user_id, self.auth_token)
         # self.lab_management = LabTestManagement(self.role, self.user_id, self.auth_token)
         # self.radiology_management = RadiologyManagement(self.role, self.user_id, self.auth_token)
@@ -52,7 +52,7 @@ class Dashboard(QWidget):
         # self.user_management = UserManagement(self.auth_token, self.role)
 
         self.main_content.addWidget(self.patient_management)
-        # self.main_content.addWidget(self.doctor_management)
+        self.main_content.addWidget(self.doctor_management)
         # self.main_content.addWidget(self.pharmacy_management)
         # self.main_content.addWidget(self.lab_management)
         # self.main_content.addWidget(self.radiology_management)

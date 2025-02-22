@@ -1,73 +1,102 @@
 import os
 import requests
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem, QMessageBox, QLineEdit, QComboBox, QInputDialog, QDateEdit, QTextEdit
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTableWidget,
+    QTableWidgetItem, QMessageBox, QLineEdit, QComboBox, QInputDialog,
+    QDateEdit, QTextEdit
+)
 from PySide6.QtCore import Qt
+from utils.load_auth_cred import LoadAuthCred
+from utils.api_utils import fetch_data, post_data
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class PatientManagement(QWidget):
     def __init__(self):
         super().__init__()
-        self.token = self.load_auth_token()  # Load stored token
+        self.token = LoadAuthCred.load_auth_token(self)  # Load stored token
         self.init_ui()
 
     def init_ui(self):
         self.setWindowTitle("Patient Management")
-        
-        layout = QVBoxLayout()
-        
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #f7f7f7;
+            }
+            QLabel#titleLabel {
+                font-size: 24px;
+                font-weight: bold;
+                color: #333;
+                padding: 10px;
+            }
+            QTableWidget {
+                background-color: white;
+                border: 1px solid #ccc;
+            }
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                padding: 10px;
+                font-size: 14px;
+                border-radius: 4px;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+        """)
+
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(15, 15, 15, 15)
+        main_layout.setSpacing(10)
+
+        # Header Label
         self.title_label = QLabel("Patient Management")
+        self.title_label.setObjectName("titleLabel")
         self.title_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.title_label)
-        
+        main_layout.addWidget(self.title_label)
+
         # Patient Table
         self.patient_table = QTableWidget()
         self.patient_table.setColumnCount(5)
         self.patient_table.setHorizontalHeaderLabels(["ID", "Name", "Age", "Doctor Assigned", "Actions"])
-        layout.addWidget(self.patient_table)
+        self.patient_table.horizontalHeader().setStretchLastSection(True)
+        self.patient_table.setStyleSheet("QTableWidget { border: 1px solid #ccc; }")
+        main_layout.addWidget(self.patient_table, stretch=1)
 
-        # Buttons for actions
+        # Buttons Layout
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(20)
+        
         self.refresh_button = QPushButton("Refresh Patients")
         self.refresh_button.clicked.connect(self.load_patients)
-        layout.addWidget(self.refresh_button)
-
+        button_layout.addWidget(self.refresh_button)
+        
         self.register_patient_button = QPushButton("Register New Patient")
         self.register_patient_button.clicked.connect(self.show_registration_form)
-        layout.addWidget(self.register_patient_button)
+        button_layout.addWidget(self.register_patient_button)
+        
+        # Center the buttons by adding stretch on both sides
+        centered_button_layout = QHBoxLayout()
+        centered_button_layout.addStretch(1)
+        centered_button_layout.addLayout(button_layout)
+        centered_button_layout.addStretch(1)
+        
+        main_layout.addLayout(centered_button_layout, stretch=0)
 
-        self.setLayout(layout)
-
+        self.setLayout(main_layout)
         self.load_patients()
-        
-        
-    def load_auth_token(self):
-        """Load authentication token stored after login"""
-        try:
-            with open("auth_token.txt", "r") as f:
-                return f.read().strip()
-        except FileNotFoundError:
-            return None
+
 
     def load_patients(self):
         """Fetch patient data from API with Authorization"""
-        if not self.token:
-            QMessageBox.critical(self, "Error", "Authentication token missing. Please log in again.")
-            return
-        try:
-            api_url = os.getenv("PATIENT_LIST_URL")
-            headers = {"Authorization": f"Bearer {self.token}"}
-            response = requests.get(api_url, headers=headers)
-
-            if response.status_code == 200:
-                patients = response.json()
-                self.populate_table(patients)
-            elif response.status_code == 403:
-                QMessageBox.critical(self, "Error", "Access forbidden. You don't have permission.")
-            elif response.status_code == 401:
-                QMessageBox.critical(self, "Error", "Unauthorized. Please log in again.")
-            else:
-                QMessageBox.critical(self, "Error", f"Failed to fetch patient data. Error {response.status_code}")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred: {e}")
+        
+        api_url = os.getenv("PATIENT_LIST_URL")
+        patients = fetch_data(api_url, self.token)
+        self.populate_table(patients)
+            
 
     def populate_table(self, patients):
         """Populate table with patient data"""
@@ -77,7 +106,7 @@ class PatientManagement(QWidget):
             self.patient_table.setItem(row, 1, QTableWidgetItem(patient["name"]))
             self.patient_table.setItem(row, 2, QTableWidgetItem(str(patient["age"])))
             self.patient_table.setItem(row, 3, QTableWidgetItem(patient.get("doctor", "Not Assigned")))
-
+            
             assign_button = QPushButton("Assign Doctor")
             assign_button.clicked.connect(lambda checked, p_id=patient["id"]: self.assign_doctor(p_id))
             self.patient_table.setCellWidget(row, 4, assign_button)
@@ -99,21 +128,43 @@ class PatientManagement(QWidget):
 
     def show_registration_form(self):
         """Show patient registration form"""
-        self.registration_window = PatientRegistrationForm(self)
+        self.registration_window = PatientRegistrationForm(self, self.token)
         self.registration_window.show()
 
 
 class PatientRegistrationForm(QWidget):
-    def __init__(self, parent):
+    def __init__(self, parent, token):
         super().__init__()
         self.parent = parent
-        self.token = self.load_auth_token()
+        self.token = LoadAuthCred.load_auth_token(self)  # Load stored token
         self.init_ui()
 
     def init_ui(self):
         self.setWindowTitle("Register New Patient")
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #ffffff;
+            }
+            QLineEdit, QDateEdit, QComboBox, QTextEdit {
+                padding: 5px;
+                font-size: 14px;
+            }
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                padding: 8px;
+                border: none;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
+        """)
         
         layout = QVBoxLayout()
+        layout.setSpacing(10)
+        layout.setContentsMargins(15, 15, 15, 15)
        
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("Enter Patient Name")
@@ -150,33 +201,16 @@ class PatientRegistrationForm(QWidget):
 
         self.setLayout(layout)
         
-    def load_auth_token(self):
-        """Load authentication token stored after login"""
-        try:
-            with open("auth_token.txt", "r") as f:
-                return f.read().strip()
-        except FileNotFoundError:
-            return None
-
     def load_doctors(self):
         """Fetch list of doctors from API"""
-        if not self.token:
-            QMessageBox.critical(self, "Error", "Authentication token missing. Please log in again.")
-            return
-        try:
-            api_url = os.getenv("DOCTOR_LIST_URL")
-            headers = {"Authorization": f"Bearer {self.token}"}
-            response = requests.get(api_url, headers=headers)
-            
-            if response.status_code == 200:
-                doctors = response.json()
-                self.doctor_input.addItem("Select Doctor", None)
-                for doctor in doctors:
-                    self.doctor_input.addItem(f"{doctor['full_name']} (ID: {doctor['id']})", doctor["id"])
-            else:
-                QMessageBox.critical(self, "Error", "Failed to fetch doctors.")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred: {e}")
+        
+        api_url = os.getenv("DOCTOR_LIST_URL")
+        doctors = fetch_data(api_url, self.token)
+        if doctors is None:
+            self.doctor_input.addItem("Select Doctor", None)
+            for doctor in doctors:
+                self.doctor_input.addItem(f"{doctor['full_name']} (ID: {doctor['id']})", doctor["id"])
+        
 
     def register_patient(self):
         """Send patient registration data to API"""
@@ -192,24 +226,22 @@ class PatientRegistrationForm(QWidget):
             QMessageBox.warning(self, "Validation Error", "All fields except medical history are required!")
             return
 
-        try:
-            api_url = os.getenv("REGISTER_PATIENT_URL")
-            response = requests.post(api_url, json={
-                "full_name": name,
-                "date_of_birth": dob,
-                "gender": gender,
-                "contact_number": contact_number,
-                "address": address,
-                "medical_history": medical_history,
-                "assigned_doctor_id": assigned_doctor_id
-            })
-            if response.status_code == 201:
-                QMessageBox.information(self, "Success", "Patient registered successfully!")
-                self.parent.load_patients()
-                self.close()
-            else:
-                QMessageBox.critical(self, "Error", "Failed to register patient.")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred: {e}")
-
-
+        
+        api_url = os.getenv("REGISTER_PATIENT_URL")
+        data = {
+            "full_name": name,
+            "date_of_birth": dob,
+            "gender": gender,
+            "contact_number": contact_number,
+            "address": address,
+            "medical_history": medical_history,
+            "assigned_doctor_id": assigned_doctor_id
+        }
+        register = post_data(api_url,data,self.token)
+        if register == True: 
+            QMessageBox.information(self, "Success", "Patient registered successfully!")
+            self.parent.load_patients()
+            self.close()
+        else:
+            QMessageBox.critical(self, "Error", "Failed to register patient.")
+        

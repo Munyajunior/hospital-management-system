@@ -2,10 +2,14 @@ import os
 import requests
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem, QMessageBox, QLineEdit, QComboBox
 from PySide6.QtCore import Qt
+from utils.api_utils import fetch_data, post_data
+from utils.load_auth_cred import LoadAuthCred
 
 class DoctorManagement(QWidget):
     def __init__(self):
         super().__init__()
+        self.token = LoadAuthCred.load_auth_token(self)
+        self.user_id = LoadAuthCred.load_user_id(self)
         self.init_ui()
 
     def init_ui(self):
@@ -38,16 +42,10 @@ class DoctorManagement(QWidget):
 
     def load_doctors(self):
         """Fetch doctor data from API"""
-        try:
-            api_url = os.getenv("DOCTOR_LIST_URL")
-            response = requests.get(api_url)
-            if response.status_code == 200:
-                doctors = response.json()
-                self.populate_table(doctors)
-            else:
-                QMessageBox.critical(self, "Error", "Failed to fetch doctor data.")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred: {e}")
+        api_url = os.getenv("DOCTOR_LIST_URL")
+        doctors = fetch_data(api_url,self.token)
+        self.populate_table(doctors)
+            
 
     def populate_table(self, doctors):
         """Populate table with doctor data"""
@@ -63,16 +61,10 @@ class DoctorManagement(QWidget):
 
     def view_assigned_patients(self, doctor_id):
         """View patients assigned to a doctor"""
-        try:
-            api_url = os.getenv("ASSIGNED_PATIENTS_URL")
-            response = requests.get(f"{api_url}/{doctor_id}")
-            if response.status_code == 200:
-                patients = response.json()
-                self.show_assigned_patients(patients)
-            else:
-                QMessageBox.critical(self, "Error", "Failed to fetch assigned patients.")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred: {e}")
+        api_url = os.getenv(f"ASSIGNED_PATIENTS_URL"+"/{self.user_id}/{patients}")
+        patients = fetch_data(api_url,self.token)
+        self.show_assigned_patients(patients)
+            
 
     def show_assigned_patients(self, patients):
         """Display assigned patients in a message box"""
@@ -89,6 +81,8 @@ class DoctorRegistrationForm(QWidget):
     def __init__(self, parent):
         super().__init__()
         self.parent = parent
+        self.token = LoadAuthCred.load_auth_token(self)
+        self.user_id = int(LoadAuthCred.load_user_id(self))
         self.init_ui()
 
     def init_ui(self):
@@ -103,6 +97,18 @@ class DoctorRegistrationForm(QWidget):
         self.specialization_input = QComboBox()
         self.specialization_input.addItems(["Cardiology", "Neurology", "Pediatrics", "Oncology", "General Medicine"])
         layout.addWidget(self.specialization_input)
+        
+        self.contact_number = QLineEdit()
+        self.contact_number.setPlaceholderText("Enter Doctor Contact")
+        layout.addWidget(self.contact_number)
+        
+        self.email_input = QLineEdit()
+        self.email_input.setPlaceholderText("Enter Doctor Email")
+        layout.addWidget(self.email_input)
+        
+        self.password = QLineEdit()
+        self.password.setPlaceholderText("Enter Doctor Password")
+        layout.addWidget(self.password)
 
         self.submit_button = QPushButton("Register Doctor")
         self.submit_button.clicked.connect(self.register_doctor)
@@ -114,19 +120,28 @@ class DoctorRegistrationForm(QWidget):
         """Send doctor registration data to API"""
         name = self.name_input.text().strip()
         specialization = self.specialization_input.currentText()
+        contact = self.contact_number.text().strip()
+        email = self.email_input.text().strip()
+        password = self.password.text().strip()
+        user_id: int = int(self.user_id)
 
-        if not name:
-            QMessageBox.warning(self, "Validation Error", "Doctor name is required!")
+        if not name or not specialization or not contact or not email or not user_id:
+            QMessageBox.warning(self, "Validation Error", "All fields are required!")
             return
-
-        try:
-            api_url = os.getenv("REGISTER_DOCTOR_URL")
-            response = requests.post(api_url, json={"name": name, "specialization": specialization})
-            if response.status_code == 201:
-                QMessageBox.information(self, "Success", "Doctor registered successfully!")
-                self.parent.load_doctors()
-                self.close()
-            else:
-                QMessageBox.critical(self, "Error", "Failed to register doctor.")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred: {e}")
+        
+        if "@" not in email:
+            QMessageBox.warning(self, "Validation Error", "Please Enter valid Email!")
+            return
+      
+        api_url = os.getenv("REGISTER_DOCTOR_URL")
+        data = {
+            "full_name": name, 
+            "specialization": specialization,
+            "contact_number": contact,
+            "email": email,
+            "hash_password": password,
+            "user_id": user_id
+        }
+        post_data(api_url, data, self.token)
+        self.parent.load_doctors()
+        self.close()
