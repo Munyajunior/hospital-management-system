@@ -189,7 +189,7 @@ python -m venv .venv
 
 **Install required libraries**
 
-```pip install -r requirements```
+```pip install -r requirements.txt```
 
 **Navigate to backend/app**
 
