@@ -16,19 +16,21 @@ router = APIRouter(prefix="/doctors", tags=["Doctors"])
 admin_only = RoleChecker(["admin"])
 
 # Allow staff to view doctors
-staff_only = RoleChecker(["admin","nurse", "receptionists"])
+staff_only = RoleChecker(["doctor","admin","nurse", "receptionists"])
 
 @router.post("/", response_model=DoctorResponse)
 def create_doctor(doctor: DoctorCreate, db: Session = Depends(get_db), user: User = Depends(admin_only)):
-    # user = db.query(User).filter(User.id == User.user_id, User.role == "admin").first()
-    # if not user:
-    #     raise HTTPException(status_code=400, detail="Invalid user ID or user is not a doctor")
+    #Optionally, check that the provided user_id exists and is eligible.
+    db_user = db.query(User).filter(User.id == doctor.user_id).first()
+    print("Fetched user:", db_user)
+    if not db_user or db_user.role != "doctor":
+        raise HTTPException(status_code=400, detail="Invalid user ID or user is not a doctor")
 
     new_doctor = Doctor(full_name = doctor.full_name, 
     specialization = doctor.specialization,
     contact_number = doctor.contact_number, 
     email = doctor.email,
-    hash_password = hash_password(doctor.hash_password),
+    password_hash = hash_password(doctor.password),
     user_id = doctor.user_id    
     )
     
