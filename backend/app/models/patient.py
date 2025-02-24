@@ -12,6 +12,13 @@ class Patient(Base):
     contact_number = Column(String, nullable=False)
     address = Column(Text, nullable=False)
     medical_history = Column(Text, nullable=True)
+    medical_history = Column(Text, nullable=True)
+    diagnosis = Column(Text, nullable=True)
+    treatment_plan = Column(Text, nullable=True)
+    prescription = Column(Text, nullable=True)
+    lab_tests_requested = Column(Text, nullable=True)
+    scan_results = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
     assigned_doctor_id = Column(Integer, ForeignKey("doctors.id"))
     registered_by = Column(Integer, ForeignKey("users.id"), nullable=False)  # Nurse who registered the patient
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -23,3 +30,4 @@ class Patient(Base):
     lab_tests = relationship("LabTest", back_populates="patient", cascade="all, delete-orphan")
     prescriptions = relationship("Prescription", back_populates="patient", cascade="all, delete-orphan")
     radiology_test = relationship("RadiologyTest", back_populates="patient", cascade="all, delete-orphan")
+    
