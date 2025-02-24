@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-from schemas.patients import PatientCreate, PatientResponse
+from schemas.patients import PatientCreate, PatientResponse, PatientUpdate
 from models.patient import Patient
 from models.user import User
 from core.database import get_db
@@ -16,14 +16,18 @@ staff_only = RoleChecker(["admin","nurse", "receptionist", "doctor"])
 
 @router.post("/", response_model=PatientResponse)
 def create_patient(patient: PatientCreate, db: Session = Depends(get_db), 
-                   user: User = Depends(staff_only)):
+                   current_user: User = Depends(staff_only)):
     # Validate doctor if provided
     if patient.assigned_doctor_id:
         doctor = db.query(User).filter(User.id == patient.assigned_doctor_id, User.role == "doctor").first()
         if not doctor:
             raise HTTPException(status_code=400, detail="Invalid doctor ID")
 
-    new_patient = Patient(**patient.model_dump())
+    # setting the registered_by to the ID of the current user (nurse, receptionist, etc.)
+    patient_data = patient.model_dump()
+    patient_data["registered_by"] = current_user.id
+
+    new_patient = Patient(**patient_data)
     db.add(new_patient)
     db.commit()
     db.refresh(new_patient)
@@ -44,7 +48,7 @@ def get_patient(patient_id: int, db: Session = Depends(get_db),
     return patient
 
 @router.put("/{patient_id}", response_model=PatientResponse)
-def update_patient(patient_id: int, patient_data: PatientCreate, db: Session = Depends(get_db),
+def update_patient(patient_id: int, patient_data: PatientUpdate, db: Session = Depends(get_db),
                    user: User = Depends(staff_only)):
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
     if not patient:
@@ -53,7 +57,7 @@ def update_patient(patient_id: int, patient_data: PatientCreate, db: Session = D
     for key, value in patient_data.model_dump().items():
         setattr(patient, key, value)
     
-    db.commit()
+    db.commit(patient)
     db.refresh(patient)
     return patient
 
@@ -80,6 +84,20 @@ def assign_patient_to_doctor(patient_id: int, doctor_id: int, db: Session = Depe
         raise HTTPException(status_code=404, detail="Doctor not found")
 
     patient.assigned_doctor_id = doctor_id
+    db.commit()
+    db.refresh(patient)
+    return patient
+
+
+@router.put("/{patient_id}/update-medical-records", response_model=PatientResponse)
+def update_medical_records(patient_id: int, updates: PatientUpdate, db: Session = Depends(get_db)):
+    patient = db.query(Patient).filter(Patient.id == patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    for key, value in updates.model_dump(exclude_unset=True).items():
+        setattr(patient, key, value)
+    
     db.commit()
     db.refresh(patient)
     return patient
