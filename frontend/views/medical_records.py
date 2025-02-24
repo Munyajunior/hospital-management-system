@@ -39,8 +39,9 @@ class MedicalRecords(BaseView):
         if not patient_id:
             QMessageBox.warning(self, "Validation Error", "Please select a patient!")
             return
-
-        record = fetch_data(os.getenv("MEDICAL_RECORD_URL"), params={"patient_id": patient_id})
+        api_url = os.getenv("MEDICAL_RECORD_URL")
+        data = {"patient_id": patient_id}
+        record = fetch_data(api_url, data, self.token)
         if record:
             self.populate_table([record])
 
