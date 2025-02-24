@@ -1,6 +1,7 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QStackedWidget
-from PySide6.QtGui import QFont
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QStackedWidget, QFrame
+from PySide6.QtGui import QFont, QColor, QPainter, QPen
 from PySide6.QtCore import Qt
+from PySide6.QtCharts import QChart, QChartView, QPieSeries, QPieSlice, QBarSet, QBarSeries, QBarCategoryAxis
 from components.sidebar import Sidebar
 from views.patients import PatientManagement
 from views.doctors import DoctorManagement
@@ -26,20 +27,44 @@ class Dashboard(QWidget):
     def init_ui(self):
         self.setWindowTitle("Hospital Management System - Dashboard")
         self.setGeometry(100, 100, 1200, 800)
+        self.setStyleSheet("background-color: #F5F5F5;")  # Light background
 
         main_layout = QHBoxLayout()
-
+        
         # Sidebar Navigation
         self.sidebar = Sidebar(self)
         main_layout.addWidget(self.sidebar)
 
         # Main content area
-        self.main_content = QStackedWidget()
-        main_layout.addWidget(self.main_content)
+        content_layout = QVBoxLayout()
 
-        # Add different modules to the main content
+        # Header Section
+        header = QLabel("🏥 Hospital Management System Dashboard")
+        header.setFont(QFont("Arial", 16, QFont.Bold))
+        header.setAlignment(Qt.AlignCenter)
+        header.setStyleSheet("color: #333; padding: 10px; background-color: #EAEAEA; border-radius: 5px;")
+
+        content_layout.addWidget(header)
+
+        # Metrics Section
+        metrics_layout = QHBoxLayout()
+        self.add_metric(metrics_layout, "Total Patients", "1200")
+        self.add_metric(metrics_layout, "Appointments Today", "45")
+        self.add_metric(metrics_layout, "Pending Lab Tests", "30")
+        self.add_metric(metrics_layout, "Billing Transactions", "75")
+        content_layout.addLayout(metrics_layout)
+
+        # Charts Section
+        charts_layout = QHBoxLayout()
+        charts_layout.addWidget(self.create_pie_chart())
+        charts_layout.addWidget(self.create_bar_chart())
+        content_layout.addLayout(charts_layout)
+
+        # Main Stacked Content Area (Hidden Modules)
+        self.main_content = QStackedWidget()
         self.patient_management = PatientManagement()
         self.doctor_management = DoctorManagement()
+        
         #self.pharmacy_management = Pharmacy(self.role, self.user_id, self.auth_token)
         # self.lab_management = LabTestManagement(self.role, self.user_id, self.auth_token)
         # self.radiology_management = RadiologyManagement(self.role, self.user_id, self.auth_token)
@@ -50,6 +75,7 @@ class Dashboard(QWidget):
         # self.billing = Billing(self.auth_token, self.role)
         # self.settings = Settings(self.auth_token, self.role)
         # self.user_management = UserManagement(self.auth_token, self.role)
+        
 
         self.main_content.addWidget(self.patient_management)
         self.main_content.addWidget(self.doctor_management)
@@ -64,7 +90,81 @@ class Dashboard(QWidget):
         # self.main_content.addWidget(self.settings)
         # self.main_content.addWidget(self.user_management)
 
+        content_layout.addWidget(self.main_content)
+
+        # Add content layout to main layout
+        main_layout.addLayout(content_layout)
         self.setLayout(main_layout)
 
+    def add_metric(self, layout, title, value):
+        """Creates a simple metric display with a title and value."""
+        metric_box = QFrame()
+        metric_box.setFrameShape(QFrame.Box)
+        metric_box.setStyleSheet("background-color: white; border-radius: 5px; padding: 10px;")
+        metric_box.setFixedWidth(200)
+
+        vbox = QVBoxLayout()
+        title_label = QLabel(title)
+        title_label.setFont(QFont("Arial", 12, QFont.Bold))
+        title_label.setAlignment(Qt.AlignCenter)
+        value_label = QLabel(value)
+        value_label.setFont(QFont("Arial", 14, QFont.Bold))
+        value_label.setAlignment(Qt.AlignCenter)
+        value_label.setStyleSheet("color: #007BFF;")  # Blue color for emphasis
+
+        vbox.addWidget(title_label)
+        vbox.addWidget(value_label)
+        metric_box.setLayout(vbox)
+        layout.addWidget(metric_box)
+
+    def create_pie_chart(self):
+        """Creates a pie chart for patient distribution by department."""
+        series = QPieSeries()
+        series.append("Outpatients", 500)
+        series.append("Inpatients", 350)
+        series.append("ICU", 100)
+        series.append("Emergency", 250)
+
+        for slice in series.slices():
+            slice.setLabel(f"{slice.label()} - {slice.value()}")
+
+        chart = QChart()
+        chart.addSeries(series)
+        chart.setTitle("Patient Distribution")
+        chart.legend().setAlignment(Qt.AlignBottom)
+
+        chart_view = QChartView(chart)
+        chart_view.setRenderHint(QPainter.Antialiasing)
+        chart_view.setFixedHeight(250)
+        return chart_view
+
+    def create_bar_chart(self):
+        """Creates a bar chart for daily appointments."""
+        set0 = QBarSet("Completed")
+        set1 = QBarSet("Pending")
+        set0.append([20, 25, 30, 22, 28])
+        set1.append([10, 15, 10, 12, 7])
+
+        series = QBarSeries()
+        series.append(set0)
+        series.append(set1)
+
+        chart = QChart()
+        chart.addSeries(series)
+        chart.setTitle("Daily Appointments")
+        chart.setAnimationOptions(QChart.SeriesAnimations)
+
+        categories = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+        axisX = QBarCategoryAxis()
+        axisX.append(categories)
+        chart.createDefaultAxes()
+        chart.setAxisX(axisX, series)
+
+        chart_view = QChartView(chart)
+        chart_view.setRenderHint(QPainter.Antialiasing)
+        chart_view.setFixedHeight(250)
+        return chart_view
+
     def switch_module(self, index):
+        """Switches between different modules in the dashboard."""
         self.main_content.setCurrentIndex(index)
