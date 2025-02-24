@@ -14,3 +14,10 @@ class LoadAuthCred():
                 return f.read().strip()
         except FileNotFoundError:
             return None
+    def load_user_role(self):
+        """Load authenticated user_id stored after login"""
+        try:
+            with open("role.txt", "r") as f:
+                return f.read().strip()
+        except FileNotFoundError:
+            return None
