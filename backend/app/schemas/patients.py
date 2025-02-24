@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 from datetime import date
+from typing import Optional
 
 class PatientBase(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=100)
@@ -13,10 +14,28 @@ class PatientCreate(PatientBase):
     assigned_doctor_id: int | None = None  # Allow assigning a doctor during registration
     pass
 
+class PatientUpdate(BaseModel):
+    medical_history: Optional[str] = None
+    diagnosis: Optional[str] = None
+    treatment_plan: Optional[str] = None
+    prescription: Optional[str] = None
+    lab_tests_requested: Optional[str] = None
+    scan_results: Optional[str] = None
+    notes: Optional[str] = None
+
 class PatientResponse(PatientBase):
     id: int
     assigned_doctor_id: int | None = None
     registered_by: int  # Added missing field from model
+    medical_history: Optional[str] = None
+    diagnosis: Optional[str] = None
+    treatment_plan: Optional[str] = None
+    prescription: Optional[str] = None
+    lab_tests_requested: Optional[str] = None
+    scan_results: Optional[str] = None
+    notes: Optional[str] = None
 
     class Config:
         from_attributes = True
+        orm_mode = True
+        
