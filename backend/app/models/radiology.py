@@ -1,35 +1,26 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Enum
-from enum import Enum as PyEnum
+from enum import Enum as PythonEnum
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from core.database import Base
 
-class RadiologyTestStatus(str, PyEnum):
+class RadiologyScanStatus(PythonEnum):
     PENDING = "Pending"
     IN_PROGRESS = "In Progress"
     COMPLETED = "Completed"
 
-class RadiologyTest(Base):
+class RadiologyScan(Base):
     __tablename__ = "radiology_scans"
     id = Column(Integer, primary_key=True, index=True)
     patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False)
     requested_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     scan_type = Column(String, nullable=False)
-    scan_results = Column(Text, nullable=True)
-    status = Column(
-    Enum(
-        RadiologyTestStatus,
-        name="radiology_test_status",
-        native_enum=True,  
-        create_type=True   
-    ),
-    default=RadiologyTestStatus.PENDING,
-    nullable=False
-)
-
-
+    additional_notes = Column(String, nullable=True)
+    results = Column(Text, nullable=True)
+    status = Column(Enum(RadiologyScanStatus, name="radiology_scan_status"), default=RadiologyScanStatus.PENDING)
     created_at = Column(DateTime, default=datetime.utcnow)
+    completed_date = Column(DateTime, nullable=True)  # Track completion time
 
     # Relationships
-    patient = relationship("Patient", back_populates="radiology_test")
+    patient = relationship("Patient", back_populates="radiology_scan")
     doctor = relationship("User", foreign_keys=[requested_by])
