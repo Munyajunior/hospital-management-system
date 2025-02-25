@@ -1,66 +1,76 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 from models.lab import LabTest, LabTestStatus
 from models.patient import Patient
-from models.doctor import Doctor
-from schemas.lab import LabTestCreate, LabTestResponse
+from schemas.lab import LabTestCreate, LabTestResponse, LabTestUpdate
 from core.database import get_db
 from models.user import User
 from core.dependencies import RoleChecker
 
 router = APIRouter(prefix="/lab", tags=["Lab"])
 
-staff_only = RoleChecker(["lab"])
+doctor_only = RoleChecker(["doctor"])
+lab_staff_only = RoleChecker(["lab"])
 
 @router.post("/", response_model=LabTestResponse)
-def create_lab_test(lab_test: LabTestCreate, db: Session = Depends(get_db), user: User = Depends(staff_only)):
+def request_lab_test(
+    lab_test: LabTestCreate, 
+    db: Session = Depends(get_db), 
+    user: User = Depends(doctor_only)
+):
     patient = db.query(Patient).filter(Patient.id == lab_test.patient_id).first()
-    doctor = db.query(Doctor).filter(Doctor.id == lab_test.doctor_id).first()
+    if not patient:
+        raise HTTPException(status_code=400, detail="Invalid patient ID")
 
-    if not patient or not doctor:
-        raise HTTPException(status_code=400, detail="Invalid patient ID or doctor ID")
-
-    new_lab_test = LabTest(**lab_test.model_dump())
+    new_lab_test = LabTest(
+        requested_by=user.id,  # Doctor making the request
+        patient_id=lab_test.patient_id,
+        test_type=lab_test.test_type,
+        additional_notes=lab_test.additional_notes
+    )
     db.add(new_lab_test)
     db.commit()
     db.refresh(new_lab_test)
     return new_lab_test
 
 @router.get("/", response_model=List[LabTestResponse])
-def get_lab_tests(db: Session = Depends(get_db), user: User = Depends(staff_only)):
+def get_lab_tests(db: Session = Depends(get_db), user: User = Depends(lab_staff_only)):
     return db.query(LabTest).all()
 
 @router.get("/{test_id}", response_model=LabTestResponse)
-def get_lab_test(test_id: int, db: Session = Depends(get_db), user: User = Depends(staff_only)):
+def get_lab_test(test_id: int, db: Session = Depends(get_db), user: User = Depends(lab_staff_only)):
     lab_test = db.query(LabTest).filter(LabTest.id == test_id).first()
     if not lab_test:
         raise HTTPException(status_code=404, detail="Lab test not found")
     return lab_test
 
 @router.put("/{test_id}/update", response_model=LabTestResponse)
-def update_lab_test(test_id: int, status: LabTestStatus, result: str, db: Session = Depends(get_db), 
-                    user: User = Depends(staff_only)):
+def update_lab_test(
+    test_id: int, 
+    update_data: LabTestUpdate, 
+    db: Session = Depends(get_db), 
+    user: User = Depends(lab_staff_only)
+):
     lab_test = db.query(LabTest).filter(LabTest.id == test_id).first()
     if not lab_test:
         raise HTTPException(status_code=404, detail="Lab test not found")
 
-    lab_test.status = status
-    if status == LabTestStatus.COMPLETED:
-        lab_test.result = result
-        lab_test.completed_date = datetime.now()
+    lab_test.status = update_data.status
+    if update_data.status == LabTestStatus.COMPLETED and update_data.results:
+        lab_test.results = update_data.results
+        lab_test.completed_date = datetime.utcnow()
 
     db.commit()
     db.refresh(lab_test)
     return lab_test
 
 @router.delete("/{test_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_lab_test(test_id: int, db: Session = Depends(get_db), user: User = Depends(staff_only)):
+def delete_lab_test(test_id: int, db: Session = Depends(get_db), user: User = Depends(lab_staff_only)):
     lab_test = db.query(LabTest).filter(LabTest.id == test_id).first()
     if not lab_test:
         raise HTTPException(status_code=404, detail="Lab test not found")
 
     db.delete(lab_test)
     db.commit()
-    return
