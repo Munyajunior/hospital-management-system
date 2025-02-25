@@ -7,7 +7,7 @@ class DoctorBase(BaseModel):
     email: EmailStr
 
 class DoctorCreate(DoctorBase):
-    password: str = Field(..., min_length=8)
+    password_hash: str = Field(..., min_length=8)
     user_id: int  # Admin must link to existing User
 
 class DoctorResponse(DoctorBase):
