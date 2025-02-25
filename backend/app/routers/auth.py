@@ -14,7 +14,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 admin_only = RoleChecker(["admin"])
 @router.post("/register", response_model=UserResponse)
 def register_user(user: UserCreate, db: Session = Depends(get_db),
-    _: User = Depends(admin_only) ): # Only admins can register users
+                  _:User = Depends(admin_only)): # Only admins can register users
     # Check if user already exists
     existing_user = db.query(User).filter(User.email == user.email).first()
     if existing_user:
