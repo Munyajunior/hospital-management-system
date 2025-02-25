@@ -3,24 +3,32 @@ from datetime import datetime
 from typing import Optional
 from enum import Enum
 
-class RadiologyTestStatus(str, Enum):
+class RadiologyScanStatus(str, Enum):
     PENDING = "Pending"
     IN_PROGRESS = "In Progress"
     COMPLETED = "Completed"
 
-class RadiologyTestBase(BaseModel):
+class RadiologyScanBase(BaseModel):
     patient_id: int
-    requested_by: int  # Doctor ID
     scan_type: str
 
-class RadiologyTestCreate(RadiologyTestBase):
-    pass
+class RadiologyScanCreate(RadiologyScanBase):
+    requested_by: int  # Doctor ID
+    additional_notes: str | None = None
 
-class RadiologyTestResponse(RadiologyTestBase):
+class RadiologyScanUpdate(BaseModel):
+    status: RadiologyScanStatus
+    results : Optional[str] = None
+    
+    
+class RadiologyScanResponse(RadiologyScanBase):
     id: int
-    status: RadiologyTestStatus
-    scan_results: Optional[str] = None  # Matches model field name
+    requested_by: int
+    status: RadiologyScanStatus
+    results: Optional[str] = None  # Matches model field name
     created_at: datetime  # Matches model timestamp field
+    completed_date: Optional[datetime] = None
+    
 
     class Config:
         from_attributes = True
