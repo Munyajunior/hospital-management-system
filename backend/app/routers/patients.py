@@ -12,7 +12,8 @@ router = APIRouter(prefix="/patients", tags=["Patients"])
 
 
 # Allow nurses and receptionists
-staff_only = RoleChecker(["admin","nurse", "receptionist", "doctor"])
+staff_only = RoleChecker(["admin", "nurse", "receptionist"])
+doctor_only = RoleChecker(["doctor","admin"])
 
 @router.post("/", response_model=PatientResponse)
 def create_patient(patient: PatientCreate, db: Session = Depends(get_db), 
@@ -36,12 +37,12 @@ def create_patient(patient: PatientCreate, db: Session = Depends(get_db),
 
 @router.get("/", response_model=List[PatientResponse])
 def get_patients(db: Session = Depends(get_db),
-                 user: User = Depends(staff_only)):
+                 user: User = Depends(doctor_only)):
     return db.query(Patient).all()
 
 @router.get("/{patient_id}", response_model=PatientResponse)
 def get_patient(patient_id: int, db: Session = Depends(get_db),
-                user: User = Depends(staff_only)):
+                user: User = Depends(doctor_only)):
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
@@ -49,7 +50,7 @@ def get_patient(patient_id: int, db: Session = Depends(get_db),
 
 @router.put("/{patient_id}", response_model=PatientResponse)
 def update_patient(patient_id: int, patient_data: PatientUpdate, db: Session = Depends(get_db),
-                   user: User = Depends(staff_only)):
+                   user: User = Depends(doctor_only)):
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
@@ -57,7 +58,7 @@ def update_patient(patient_id: int, patient_data: PatientUpdate, db: Session = D
     for key, value in patient_data.model_dump().items():
         setattr(patient, key, value)
     
-    db.commit(patient)
+    db.commit()
     db.refresh(patient)
     return patient
 
