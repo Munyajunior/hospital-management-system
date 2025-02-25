@@ -302,7 +302,7 @@ class PatientRegistrationForm(QWidget):
             "medical_history": medical_history,
             "assigned_doctor_id": assigned_doctor_id
         }
-        register = post_data(api_url,data,self.token)
+        register = post_data(self, api_url,data,self.token)
         if register: 
             QMessageBox.information(self, "Success", "Patient registered successfully!")
             self.parent.load_doctor_list()
