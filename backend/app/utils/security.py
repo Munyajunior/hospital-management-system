@@ -14,7 +14,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # Secret key for JWT
 SECRET_KEY:str = os.getenv("SECRET_KEY")
 ALGORITHM :str= os.getenv("ALGORITHM")
-ACCESS_TOKEN_EXPIRE_MINUTES :int = 30  # Recommended expiry time
+ACCESS_TOKEN_EXPIRE  = int(os.getenv("ACCESS_TOKEN_EXPIRE_HOURS"))# Recommended expiry time
 
 # Hash password
 def hash_password(password: str) -> str:
@@ -34,7 +34,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
