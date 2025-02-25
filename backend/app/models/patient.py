@@ -17,6 +17,8 @@ class Patient(Base):
     treatment_plan = Column(Text, nullable=True)
     prescription = Column(Text, nullable=True)
     lab_tests_requested = Column(Text, nullable=True)
+    scans_requested = Column(Text, nullable=True)
+    lab_tests_results= Column(Text, nullable=True)
     scan_results = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
     assigned_doctor_id = Column(Integer, ForeignKey("doctors.id"))
@@ -29,5 +31,5 @@ class Patient(Base):
     icu_records = relationship("ICUPatient", back_populates="patient", cascade="all, delete-orphan")
     lab_tests = relationship("LabTest", back_populates="patient", cascade="all, delete-orphan")
     prescriptions = relationship("Prescription", back_populates="patient", cascade="all, delete-orphan")
-    radiology_test = relationship("RadiologyTest", back_populates="patient", cascade="all, delete-orphan")
+    radiology_scan = relationship("RadiologyScan", back_populates="patient", cascade="all, delete-orphan")
     
