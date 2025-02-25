@@ -20,24 +20,45 @@ staff_only = RoleChecker(["doctor","admin","nurse", "receptionists"])
 
 @router.post("/", response_model=DoctorResponse)
 def create_doctor(doctor: DoctorCreate, db: Session = Depends(get_db), user: User = Depends(admin_only)):
-    #Optionally, check that the provided user_id exists and is eligible.
-    db_user = db.query(User).filter(User.id == doctor.user_id).first()
-    print("Fetched user:", db_user)
-    if not db_user or db_user.role != "doctor":
-        raise HTTPException(status_code=400, detail="Invalid user ID or user is not a doctor")
 
-    new_doctor = Doctor(full_name = doctor.full_name, 
-    specialization = doctor.specialization,
-    contact_number = doctor.contact_number, 
-    email = doctor.email,
-    password_hash = hash_password(doctor.password),
-    user_id = doctor.user_id    
+    """
+    Create a new doctor. Automatically creates a corresponding User account.
+    """
+    # Check if doctor email already exists
+    existing_doctor = db.query(Doctor).filter(Doctor.email == doctor.email).first()
+    if existing_doctor:
+        raise HTTPException(status_code=400, detail="A doctor with this email already exists")
+
+    # Check if user with the same email exists
+    existing_user = db.query(User).filter(User.email == doctor.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="A user with this email already exists")
+
+    # Create User
+    new_user = User(
+        full_name=doctor.full_name,
+        email=doctor.email,
+        hashed_password=hash_password(doctor.password),
+        role="doctor"
     )
-    
+    db.add(new_user)
+    db.flush()  # Ensures user.id is available before creating Doctor
+
+    # Create Doctor linked to the User
+    new_doctor = Doctor(
+        full_name=doctor.full_name,
+        specialization=doctor.specialization,
+        contact_number=doctor.contact_number,
+        email=doctor.email,
+        password_hash=hash_password(doctor.password),
+        user_id=new_user.id  # Link doctor to the created user
+    )
     db.add(new_doctor)
     db.commit()
     db.refresh(new_doctor)
+    
     return new_doctor
+
 
 @router.get("/", response_model=List[DoctorResponse])
 def get_doctors(db: Session = Depends(get_db), user: User = Depends(staff_only)):
