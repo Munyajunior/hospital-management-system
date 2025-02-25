@@ -20,6 +20,8 @@ class PatientUpdate(BaseModel):
     treatment_plan: Optional[str] = None
     prescription: Optional[str] = None
     lab_tests_requested: Optional[str] = None
+    scans_requested: Optional[str] = None
+    lab_tests_results: Optional[str] = None
     scan_results: Optional[str] = None
     notes: Optional[str] = None
 
@@ -32,10 +34,10 @@ class PatientResponse(PatientBase):
     treatment_plan: Optional[str] = None
     prescription: Optional[str] = None
     lab_tests_requested: Optional[str] = None
+    scans_requested: Optional[str] = None
+    lab_tests_results: Optional[str] = None
     scan_results: Optional[str] = None
     notes: Optional[str] = None
 
     class Config:
         from_attributes = True
-        orm_mode = True
-        
