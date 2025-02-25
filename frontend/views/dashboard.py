@@ -1,10 +1,12 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QStackedWidget, QFrame
-from PySide6.QtGui import QFont, QColor, QPainter, QPen
+from PySide6.QtGui import QFont, QIcon, QPainter, QPen
 from PySide6.QtCore import Qt
 from PySide6.QtCharts import QChart, QChartView, QPieSeries, QPieSlice, QBarSet, QBarSeries, QBarCategoryAxis
 from components.sidebar import Sidebar
 from views.patients import PatientManagement
 from views.doctors import DoctorManagement
+import os
+import sys
 from views.pharmacy import Pharmacy
 from views.lab_test_management import LabTestManagement
 from views.radiology_management import RadiologyManagement
@@ -32,19 +34,36 @@ class Dashboard(QWidget):
         main_layout = QHBoxLayout()
         
         # Sidebar Navigation
-        self.sidebar = Sidebar(self)
+        self.sidebar = Sidebar(self, self.role)
         main_layout.addWidget(self.sidebar)
 
         # Main content area
         content_layout = QVBoxLayout()
 
+        # Header Section with Sign Out Button
+        header_layout = QHBoxLayout()
+
         # Header Section
-        header = QLabel("🏥 Hospital Management System Dashboard")
+        header = QLabel("Hospital Management System Dashboard")
+        #header.setIcon(QIcon("assets/icons/hospital.png"))
         header.setFont(QFont("Arial", 16, QFont.Bold))
         header.setAlignment(Qt.AlignCenter)
         header.setStyleSheet("color: #333; padding: 10px; background-color: #EAEAEA; border-radius: 5px;")
 
-        content_layout.addWidget(header)
+        header_layout.addWidget(header)
+        
+         # Sign Out Button
+        self.sign_out_button = QPushButton("Sign Out")
+        self.sign_out_button.setStyleSheet("""
+            background-color: #FF4C4C; 
+            color: white; 
+            font-size: 14px; 
+            padding: 5px 15px; 
+            border-radius: 5px;
+        """)
+        self.sign_out_button.clicked.connect(self.logout_user)
+        header_layout.addWidget(self.sign_out_button)
+        content_layout.addLayout(header_layout)
 
         # Metrics Section
         metrics_layout = QHBoxLayout()
@@ -76,9 +95,10 @@ class Dashboard(QWidget):
         # self.settings = Settings(self.auth_token, self.role)
         # self.user_management = UserManagement(self.auth_token, self.role)
         
-
-        self.main_content.addWidget(self.patient_management)
-        self.main_content.addWidget(self.doctor_management)
+        if self.role == "admin" or self.role == "nurse":
+            self.main_content.addWidget(self.patient_management)
+        if self.role == "doctor" or self.role == "admin":
+            self.main_content.addWidget(self.doctor_management)
         # self.main_content.addWidget(self.pharmacy_management)
         # self.main_content.addWidget(self.lab_management)
         # self.main_content.addWidget(self.radiology_management)
@@ -116,6 +136,18 @@ class Dashboard(QWidget):
         vbox.addWidget(value_label)
         metric_box.setLayout(vbox)
         layout.addWidget(metric_box)
+    
+    def logout_user(self):
+        """Logs out the user and restarts the application to show the login screen."""
+        print("Logging out user...")
+
+        # Clear authentication details
+        self.auth_token = None
+        self.user_id = None
+
+        # Restart the application
+        python = sys.executable
+        os.execl(python, python, "main.py")  # Restart main.py
 
     def create_pie_chart(self):
         """Creates a pie chart for patient distribution by department."""
