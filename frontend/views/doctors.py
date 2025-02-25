@@ -1,6 +1,8 @@
 import os
 import requests
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget,QGroupBox, QHeaderView,QTableWidgetItem, QMessageBox, QLineEdit, QComboBox, QFormLayout, QHBoxLayout, QTextEdit
+from PySide6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget,QGroupBox,
+                               QHeaderView,QTableWidgetItem, QMessageBox, QLineEdit, QComboBox, 
+                               QFormLayout, QHBoxLayout, QTextEdit)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
 from utils.api_utils import fetch_data, post_data, update_data
@@ -91,15 +93,20 @@ class DoctorManagement(QWidget):
             self.doctor_table.setItem(row, 0, QTableWidgetItem(str(doctor["id"])))
             self.doctor_table.setItem(row, 1, QTableWidgetItem(doctor["full_name"]))
             self.doctor_table.setItem(row, 2, QTableWidgetItem(doctor["specialization"]))
-
-            # View Patients Button
-            self.doctor_table.setCellWidget(row, 3, self.view_patients_button(doctor))
             
-    def view_patients_button(self, doctor):
-        button = QPushButton("View Patients")
-        button.setStyleSheet(self.button_style(small=True))
-        button.clicked.connect(lambda checked, d_id=doctor["id"], d_name=doctor["full_name"]: 
+            if self.user_role == "doctor":
+                view_patient_button = QPushButton(f"All Doctor {doctor["full_name"]} patients")
+                view_patient_button.setStyleSheet(self.button_style(small=True))
+                view_patient_button.clicked.connect(lambda checked, d_id=doctor["id"], d_name=doctor["full_name"]: 
                                                 self.view_assigned_patients(d_id, d_name))
+            else:
+                view_patient_button = QPushButton("You Are not a Doctor")
+                view_patient_button.setEnabled(False)
+                view_patient_button.setToolTip("Only Doctor can view Patients")
+            # View Patients Button
+            self.doctor_table.setCellWidget(row, 3, view_patient_button)
+            
+        
        
 
     def view_assigned_patients(self, doctor_id, doctor_name):
@@ -222,7 +229,6 @@ class DoctorRegistrationForm(QWidget):
         contact = self.contact_number.text().strip()
         email = self.email_input.text().strip()
         password = self.password_input.text().strip()
-        user_id = self.user_id
 
         # Input Validation
         if not name or not specialization or not contact or not email or not password:
@@ -243,10 +249,9 @@ class DoctorRegistrationForm(QWidget):
             "specialization": specialization,
             "contact_number": contact,
             "email": email,
-            "password": password,
-            "user_id": user_id
+            "password_hash": password
         }
-        if post_data(api_url, data, self.token):
+        if post_data(self, api_url, data, self.token):
             QMessageBox.information(self, "Success", "Doctor registered successfully!")
             self.parent.load_doctors()  # Refresh UI
             self.close()
@@ -399,6 +404,7 @@ class PatientRecordWindow(QWidget):
         super().__init__()
         self.patient_id = patient_id
         self.token = LoadAuthCred.load_auth_token(self)
+        self.doctor_id = LoadAuthCred.load_user_id(self)
         self.setWindowTitle(f"Patient Record - {patient_id}")
         self.setGeometry(250, 250, 750, 650)
         self.init_ui()
@@ -460,6 +466,8 @@ class PatientRecordWindow(QWidget):
         self.treatment_plan_text = QTextEdit()
         self.prescription_text = QTextEdit()
         self.lab_tests_text = QTextEdit()
+        self.lab_tests_results_text =QTextEdit()
+        self.scan_requested_text = QTextEdit()
         self.scan_results_text = QTextEdit()
         self.notes_text = QTextEdit()
 
@@ -468,6 +476,8 @@ class PatientRecordWindow(QWidget):
         self.treatment_plan_text.setPlaceholderText("Enter treatment plan...")
         self.prescription_text.setPlaceholderText("Enter prescriptions...")
         self.lab_tests_text.setPlaceholderText("Requested lab tests...")
+        self.lab_tests_results_text.setPlaceholderText("Enter Lab tests results...")
+        self.scan_requested_text.setPlaceholderText("Requested scans...")
         self.scan_results_text.setPlaceholderText("Enter scan results...")
         self.notes_text.setPlaceholderText("Additional notes...")
 
@@ -477,6 +487,8 @@ class PatientRecordWindow(QWidget):
         records_layout.addRow("Treatment Plan:", self.treatment_plan_text)
         records_layout.addRow("Prescription:", self.prescription_text)
         records_layout.addRow("Lab Tests Requested:", self.lab_tests_text)
+        records_layout.addRow("Lab Tests Results:", self.lab_tests_results_text)
+        records_layout.addRow("Scan Requested:", self.scan_requested_text)
         records_layout.addRow("Scan Results:", self.scan_results_text)
         records_layout.addRow("Notes:", self.notes_text)
         records_group.setLayout(records_layout)
@@ -524,6 +536,8 @@ class PatientRecordWindow(QWidget):
             self.treatment_plan_text.setPlainText(patient.get("treatment_plan", ""))
             self.prescription_text.setPlainText(patient.get("prescription", ""))
             self.lab_tests_text.setPlainText(patient.get("lab_tests_requested", ""))
+            self.lab_tests_results_text.setPlainText(patient.get("lab_tests_results", ""))
+            self.scan_requested_text.setPlainText(patient.get("scans_requested", ""))
             self.scan_results_text.setPlainText(patient.get("scan_results", ""))
             self.notes_text.setPlainText(patient.get("notes", ""))
         else:
@@ -542,9 +556,11 @@ class PatientRecordWindow(QWidget):
             "lab_tests_requested": self.lab_tests_text.toPlainText().strip(),
             "scan_results": self.scan_results_text.toPlainText().strip(),
             "notes": self.notes_text.toPlainText().strip(),
+            "scans_requested": self.scan_requested_text.toPlainText().strip(),
+            "lab_tests_results": self.lab_tests_results_text.toPlainText().strip(),
         }
 
-        success = update_data(api_url, updated_data, self.token)
+        success = update_data(self, api_url, updated_data, self.token)
         if success:
             self.load_patient_data()
             QMessageBox.information(self, "Success", "Medical record updated successfully.")
@@ -552,13 +568,120 @@ class PatientRecordWindow(QWidget):
             QMessageBox.critical(self, "Error", "Failed to update medical record.")
 
     def request_lab_test(self):
-        # TODO: """Open lab test request dialog (to be implemented).""" 
-        QMessageBox.information(self, "Lab Test", "Feature to request lab tests will be implemented soon.")
+        self.lab_test = LabTests(self.patient_id, self.token)
+        self.lab_test.show()
 
     def request_radiology_scan(self):
-        # TODO: """Open radiology scan request dialog (to be implemented)."""
-        QMessageBox.information(self, "Radiology Scan", "Feature to request radiology scans will be implemented soon.")
-
+        self.radiology_request = RequestRadiologyScan(self.patient_id, self.doctor_id,self.token)
+        self.radiology_request.show()
     def manage_appointments(self):
         # TODO: """Open appointment management window (to be implemented)."""
         QMessageBox.information(self, "Manage Appointments", "Feature to manage appointments will be implemented soon.")
+
+    
+
+
+class LabTests(QWidget):
+    """Dialog for requesting lab tests for a patient."""
+
+    def __init__(self, patient_id, token):
+        super().__init__()
+        self.patient_id = patient_id
+        self.user_id = LoadAuthCred.load_user_id(self)
+        self.token = token
+        self.setWindowTitle("Request Lab Test")
+        self.setGeometry(300, 300, 400, 300)
+        self.init_ui()
+
+    def init_ui(self):
+        """Initialize the UI components for lab test requests."""
+        layout = QVBoxLayout()
+
+        # Title Label
+        self.title_label = QLabel(f"Request Lab Test for Patient ID: {self.patient_id}")
+        self.title_label.setStyleSheet("font-size: 16px; font-weight: bold; color: #007BFF;")
+        layout.addWidget(self.title_label)
+
+        # Lab Test Selection
+        self.lab_test_label = QLabel("Enter Lab Tests:")
+        self.lab_test_input = QTextEdit()
+        layout.addWidget(self.lab_test_label)
+        layout.addWidget(self.lab_test_input)
+
+        # Additional Notes
+        self.notes_label = QLabel("Additional Notes:")
+        self.notes_text = QTextEdit()
+        layout.addWidget(self.notes_label)
+        layout.addWidget(self.notes_text)
+
+        # Request Button
+        self.request_button = QPushButton("Submit Request")
+        self.request_button.setStyleSheet("background-color: #28a745; color: white; font-weight: bold; padding: 8px;")
+        self.request_button.clicked.connect(self.submit_request)
+        layout.addWidget(self.request_button)
+
+        self.setLayout(layout)
+
+    def submit_request(self):
+        """Send the lab test request to the backend."""
+        api_url = os.getenv("LAB_TEST_REQUEST_URL")
+        
+        request_data = {
+            "requested_by": self.user_id,
+            "patient_id": self.patient_id,
+            "test_type": self.lab_test_input.toPlainText().strip(),
+            "additional_notes": self.notes_text.toPlainText().strip(),
+        }
+
+        success = post_data(self, api_url, request_data, self.token)
+
+        if success:
+            QMessageBox.information(self, "Success", "Lab test request submitted successfully.")
+            self.close()
+        else:
+            QMessageBox.critical(self, "Error", "Failed to submit lab test request.")
+
+
+class RequestRadiologyScan(QWidget):
+    def __init__(self, patient_id,doctor_id, token):
+        super().__init__()
+        self.patient_id = patient_id
+        self.doctor_id = doctor_id
+        self.token = token
+        self.setWindowTitle("Request Radiology Scan")
+        self.setGeometry(300, 300, 400, 200)
+        self.init_ui()
+
+    def init_ui(self):
+        layout = QVBoxLayout()
+
+        self.label = QLabel("Select Scan Type:")
+        self.scan_type_dropdown = QComboBox()
+        self.scan_type_dropdown.addItems(["X-Ray", "MRI", "CT Scan", "Ultrasound", "PET Scan"])
+        
+        self.submit_button = QPushButton("Request Scan")
+        self.submit_button.clicked.connect(self.submit_scan_request)
+
+        layout.addWidget(self.label)
+        layout.addWidget(self.scan_type_dropdown)
+        layout.addWidget(self.submit_button)
+        self.setLayout(layout)
+
+    def submit_scan_request(self):
+        """Send radiology scan request to the API"""
+        scan_type = self.scan_type_dropdown.currentText().strip()
+        api_url = os.getenv("RADIOLOGY_SCAN_URL")
+       
+
+        data = {
+            "patient_id": self.patient_id,
+            "requested_by": self.doctor_id,
+            "scan_type": scan_type
+        }
+
+        response = post_data(self, api_url, data, self.token)
+        if response:
+            QMessageBox.information(self, "Success", "Radiology scan requested successfully.")
+            #self.accept()
+        else:
+            QMessageBox.critical(self, "Error", "Failed to request radiology scan.")
