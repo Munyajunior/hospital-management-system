@@ -7,12 +7,12 @@ class DoctorBase(BaseModel):
     email: EmailStr
 
 class DoctorCreate(DoctorBase):
-    password_hash: str = Field(..., min_length=8)
-    user_id: int  # Admin must link to existing User
+    password: str = Field(..., min_length=8)
+    
 
 class DoctorResponse(DoctorBase):
     id: int
-    user_id: int
+    contact_number: int
 
     class Config:
         from_attributes = True
