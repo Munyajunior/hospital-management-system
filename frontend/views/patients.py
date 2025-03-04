@@ -3,7 +3,7 @@ import requests
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTableWidget,
     QTableWidgetItem, QMessageBox, QLineEdit, QComboBox, QInputDialog,
-    QDateEdit, QTextEdit
+    QDateEdit, QTextEdit, QSpacerItem, QSizePolicy
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
@@ -26,6 +26,7 @@ class PatientManagement(QWidget):
         self.setStyleSheet("""
             QWidget {
                 background-color: #f5f7fa;
+                font-family: 'Arial', sans-serif;
             }
             QLabel#titleLabel {
                 font-size: 26px;
@@ -40,9 +41,23 @@ class PatientManagement(QWidget):
                 border: 1px solid #dcdcdc;
                 font-size: 14px;
                 alternate-background-color: #f9f9f9;
+                border-radius: 10px;
             }
             QTableWidget::item {
                 padding: 8px;
+            }
+            QTableWidget::horizontalHeader {
+                background-color: #3498db;
+                color: white;
+                font-weight: bold;
+                font-size: 14px;
+                border-radius: 5px;
+                padding: 5px;
+            }
+            QTableWidget::horizontalHeader::section {
+                padding-left: 10px;
+                padding-right: 10px;
+                text-align: center;
             }
             QPushButton {
                 background-color: #3498db;
@@ -51,6 +66,7 @@ class PatientManagement(QWidget):
                 padding: 10px;
                 font-size: 14px;
                 border-radius: 5px;
+                min-width: 150px;
             }
             QPushButton:hover {
                 background-color: #2980b9;
@@ -58,11 +74,23 @@ class PatientManagement(QWidget):
             QPushButton:pressed {
                 background-color: #1e6fa7;
             }
+            QPushButton:disabled {
+                background-color: #95a5a6;
+            }
+            QPushButton#refreshButton {
+                background-color: #2ecc71;
+            }
+            QPushButton#registerButton {
+                background-color: #f39c12;
+            }
+            QPushButton#assignDoctorButton {
+                background-color: #2ecc71;
+            }
         """)
 
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(15)
+        main_layout.setSpacing(20)
 
         # Header Label
         self.title_label = QLabel("Patient Management")
@@ -83,11 +111,13 @@ class PatientManagement(QWidget):
         button_layout.setSpacing(20)
 
         self.refresh_button = QPushButton("Refresh Patients")
+        self.refresh_button.setObjectName("refreshButton")
         self.refresh_button.setIcon(QIcon("assets/icons/refresh.png"))
         self.refresh_button.clicked.connect(self.load_patients)
         button_layout.addWidget(self.refresh_button)
 
         self.register_patient_button = QPushButton("Register New Patient")
+        self.register_patient_button.setObjectName("registerButton")
         self.register_patient_button.setIcon(QIcon("assets/icons/add.png"))
         self.register_patient_button.clicked.connect(self.show_registration_form)
         button_layout.addWidget(self.register_patient_button)
@@ -134,13 +164,14 @@ class PatientManagement(QWidget):
 
             # Assign Doctor Button
             assign_button = QPushButton("Assign Doctor")
+            assign_button.setObjectName("assignDoctorButton")
             assign_button.setIcon(QIcon("assets/icons/doctor.png"))
             assign_button.setStyleSheet("""
                 QPushButton {
                     background-color: #2ecc71;
                     color: white;
-                    border-radius: 4px;
-                    padding: 5px;
+                    border-radius: 5px;
+                    padding: 8px;
                 }
                 QPushButton:hover {
                     background-color: #27ae60;
@@ -158,6 +189,7 @@ class PatientManagement(QWidget):
 
             self.patient_table.setCellWidget(row, 4, assign_button)
 
+
     def assign_doctor(self, patient_id):
         """Assign a doctor to a patient"""
         doctor_names = list(self.doctor_dict.values())
@@ -169,10 +201,10 @@ class PatientManagement(QWidget):
 
         patient_id = self.patient_table.item(selected_row, 0).text()
         selected_index, ok = QInputDialog.getItem(self, "Select Doctor", "Choose a doctor:", doctor_names, 0, False)
+        
+        doctor_name = selected_index
+        doctor_id = [key for key, value in self.doctor_dict.items() if value == doctor_name][0]
         if ok and selected_index:
-            doctor_name = selected_index
-            doctor_id = [key for key, value in self.doctor_dict.items() if value == doctor_name][0]
-
             try:
                 base_url = os.getenv("ASSIGN_DOCTOR_URL")
                 api_url = f"{base_url}/{patient_id}/assign/{doctor_id}"
