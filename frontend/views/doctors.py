@@ -15,7 +15,7 @@ class DoctorManagement(QWidget):
         self.user_id = LoadAuthCred.load_user_id(self)
         self.user_role = LoadAuthCred.load_user_role(self)
         
-        self.setWindowTitle("Doctor Management")
+        self.setWindowTitle("Patient Management")
         self.setGeometry(300, 200, 800, 500)
         self.init_ui()
 
@@ -249,8 +249,9 @@ class DoctorRegistrationForm(QWidget):
             "specialization": specialization,
             "contact_number": contact,
             "email": email,
-            "password_hash": password
+            "password": password
         }
+        
         if post_data(self, api_url, data, self.token):
             QMessageBox.information(self, "Success", "Doctor registered successfully!")
             self.parent.load_doctors()  # Refresh UI
@@ -395,11 +396,11 @@ class PatientListWindow(QWidget):
 
     def open_patient_record(self, patient_id):
         """Open the patient record management window."""
-        self.patient_record_window = PatientRecordWindow(patient_id)
+        self.patient_record_window = PatientRecordUpdateWindow(patient_id)
         self.patient_record_window.show()
 
 
-class PatientRecordWindow(QWidget):
+class PatientRecordUpdateWindow(QWidget):
     def __init__(self, patient_id):
         super().__init__()
         self.patient_id = patient_id
@@ -508,13 +509,13 @@ class PatientRecordWindow(QWidget):
         self.update_record_button.clicked.connect(self.update_medical_record)
         self.request_lab_test_button.clicked.connect(self.request_lab_test)
         self.request_scan_button.clicked.connect(self.request_radiology_scan)
-        self.manage_appointments_button.clicked.connect(self.manage_appointments)
+       
 
         # Adding buttons to layout
         button_layout.addWidget(self.update_record_button)
         button_layout.addWidget(self.request_lab_test_button)
         button_layout.addWidget(self.request_scan_button)
-        button_layout.addWidget(self.manage_appointments_button)
+        
 
         main_layout.addLayout(button_layout)
         self.setLayout(main_layout)
@@ -574,9 +575,6 @@ class PatientRecordWindow(QWidget):
     def request_radiology_scan(self):
         self.radiology_request = RequestRadiologyScan(self.patient_id, self.doctor_id,self.token)
         self.radiology_request.show()
-    def manage_appointments(self):
-        # TODO: """Open appointment management window (to be implemented)."""
-        QMessageBox.information(self, "Manage Appointments", "Feature to manage appointments will be implemented soon.")
 
     
 
