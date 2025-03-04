@@ -20,7 +20,6 @@ staff_only = RoleChecker(["doctor","admin","nurse", "receptionists"])
 
 @router.post("/", response_model=DoctorResponse)
 def create_doctor(doctor: DoctorCreate, db: Session = Depends(get_db), user: User = Depends(admin_only)):
-
     """
     Create a new doctor. Automatically creates a corresponding User account.
     """
@@ -33,6 +32,7 @@ def create_doctor(doctor: DoctorCreate, db: Session = Depends(get_db), user: Use
     existing_user = db.query(User).filter(User.email == doctor.email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="A user with this email already exists")
+    
 
     # Create User
     new_user = User(
@@ -41,17 +41,18 @@ def create_doctor(doctor: DoctorCreate, db: Session = Depends(get_db), user: Use
         hashed_password=hash_password(doctor.password),
         role="doctor"
     )
+    
     db.add(new_user)
     db.flush()  # Ensures user.id is available before creating Doctor
 
     # Create Doctor linked to the User
     new_doctor = Doctor(
+        id=new_user.id, # Link doctor to the created user 
         full_name=doctor.full_name,
         specialization=doctor.specialization,
         contact_number=doctor.contact_number,
         email=doctor.email,
-        password_hash=hash_password(doctor.password),
-        user_id=new_user.id  # Link doctor to the created user
+        hashed_password=hash_password(doctor.password)
     )
     db.add(new_doctor)
     db.commit()
