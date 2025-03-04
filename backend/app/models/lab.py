@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Enum
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from sqlalchemy.sql import func
 from core.database import Base
 from enum import Enum as PythonEnum
 
@@ -19,8 +19,8 @@ class LabTest(Base):
     additional_notes = Column(String, nullable=True)
     results = Column(Text, nullable=True)
     status = Column(Enum(LabTestStatus), default=LabTestStatus.PENDING)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    completed_date = Column(DateTime, nullable=True)  # Track completion time
+    created_at = Column(DateTime, server_default=func.now(),default=func.now())
+    completed_date = Column(DateTime, server_default=func.now(),onupdate=func.now())  # Track completion time
 
     # Relationships
     patient = relationship("Patient", back_populates="lab_tests")

@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from sqlalchemy.sql import func
 from core.database import Base
 
 class Prescription(Base):
@@ -12,7 +12,7 @@ class Prescription(Base):
     dosage = Column(String, nullable=False)
     instructions = Column(Text, nullable=False)
     status = Column(String, default="pending")  # Consider using an Enum here
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, server_default=func.now(),default=func.now())
     
     # Relationships
     patient = relationship("Patient", back_populates="prescriptions")
