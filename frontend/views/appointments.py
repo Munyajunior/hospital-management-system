@@ -167,8 +167,6 @@ class ManageAppointments(QWidget):
             api_url = f"{os.getenv('APPOINTMENTS_URL')}/doctor/{self.doctor_id}/"
             appointments = fetch_data(self, api_url, self.token)
 
-            print("Fetched Appointments:", appointments)  # Debugging line
-
             self.appointment_list.clear()
 
             # Create a "header" item (not selectable)
