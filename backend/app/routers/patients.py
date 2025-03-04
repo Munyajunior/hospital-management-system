@@ -4,6 +4,7 @@ from typing import List
 from schemas.patients import PatientCreate, PatientResponse, PatientUpdate
 from models.patient import Patient
 from models.user import User
+from models.doctor import Doctor
 from core.database import get_db
 from core.dependencies import RoleChecker
 
@@ -13,14 +14,14 @@ router = APIRouter(prefix="/patients", tags=["Patients"])
 
 # Allow nurses and receptionists
 staff_only = RoleChecker(["admin", "nurse", "receptionist"])
-doctor_only = RoleChecker(["doctor","admin"])
+doctor_only = RoleChecker(["doctor","nurse"])
 
 @router.post("/", response_model=PatientResponse)
 def create_patient(patient: PatientCreate, db: Session = Depends(get_db), 
                    current_user: User = Depends(staff_only)):
     # Validate doctor if provided
     if patient.assigned_doctor_id:
-        doctor = db.query(User).filter(User.id == patient.assigned_doctor_id, User.role == "doctor").first()
+        doctor = db.query(Doctor).filter(Doctor.id == patient.assigned_doctor_id).first()
         if not doctor:
             raise HTTPException(status_code=400, detail="Invalid doctor ID")
 
@@ -37,16 +38,30 @@ def create_patient(patient: PatientCreate, db: Session = Depends(get_db),
 
 @router.get("/", response_model=List[PatientResponse])
 def get_patients(db: Session = Depends(get_db),
-                 user: User = Depends(doctor_only)):
+                 user: User = Depends(staff_only)):
     return db.query(Patient).all()
 
-@router.get("/{patient_id}", response_model=PatientResponse)
+@router.get("/{patient_id}", response_model=dict)
 def get_patient(patient_id: int, db: Session = Depends(get_db),
                 user: User = Depends(doctor_only)):
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
-    return patient
+    return {
+        "id": patient.id,
+        "full_name": patient.full_name,
+        "date_of_birth": patient.date_of_birth,
+        "gender": patient.gender,
+        "contact_number": patient.contact_number,
+        "address": patient.address,
+        "medical_history": patient.medical_history,
+        "diagnosis": patient.diagnosis,
+        "treatment_plan": patient.treatment_plan,
+        "prescription": patient.prescription,
+        "lab_tests_results": patient.lab_tests_results,
+        "scan_results": patient.scan_results,
+        "notes": patient.notes,
+    }
 
 @router.put("/{patient_id}", response_model=PatientResponse)
 def update_patient(patient_id: int, patient_data: PatientUpdate, db: Session = Depends(get_db),
