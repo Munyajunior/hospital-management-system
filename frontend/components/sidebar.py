@@ -16,23 +16,24 @@ class Sidebar(QWidget):
 
         # Define menu items with required roles
         menu_items = [
-            ("Patients", 0, ["admin", "nurse"]),  # Visible only to admin and nurses
-            ("Doctors", 1, ["admin"]),
-            ("Pharmacy", 2, ["admin", "pharmacist"]),
-            ("Lab", 3, ["admin", "lab_technician"]),
-            ("Radiology", 4, ["admin", "radiologist"]),
-            ("ICU", 5, ["admin", "icu_staff"]),
-            ("Appointments", 6, ["admin", "nurse", "doctor"]),
-            ("Medical Records", 7, ["admin", "doctor", "nurse"]),
-            ("Prescriptions", 8, ["admin", "doctor", "pharmacist"]),
-            ("Billing", 9, ["admin", "billing_staff"]),
-            ("Settings", 10, ["admin"]),
-            ("User Management", 11, ["admin"]),
+            ("Dashboard", "dashboard", ["admin", "nurse", "doctor", "pharmacist", "lab_technician", "radiologist", "icu_staff", "billing_staff"]),
+            ("Patients", "patients", ["admin", "nurse"]),
+            ("Doctors", "doctors", ["admin","doctor"]),
+            ("Pharmacy", "pharmacy", ["admin", "pharmacist"]),
+            ("Lab", "lab", ["admin", "lab_technician"]),
+            ("Radiology", "radiology", ["admin", "radiologist"]),
+            ("ICU", "icu", ["admin", "icu_staff"]),
+            ("Appointments", "appointments", ["nurse", "doctor"]),
+            ("Medical Records", "medical_records", ["admin", "doctor", "nurse"]),
+            ("Prescriptions", "prescriptions", ["admin", "doctor", "pharmacist"]),
+            ("Billing", "billing", ["admin", "billing_staff"]),
+            ("Settings", "settings", ["admin"]),
+            ("User Management", "user_management", ["admin"]),
         ]
 
         # Create buttons dynamically based on role
         self.buttons = []
-        for text, index, allowed_roles in menu_items:
+        for text, module, allowed_roles in menu_items:
             if self.role in allowed_roles:  # Check role permissions
                 button = QPushButton(text)
                 button.setFixedHeight(40)
@@ -52,7 +53,8 @@ class Sidebar(QWidget):
                         background-color: #1A252F;
                     }
                 """)
-                button.clicked.connect(lambda checked, i=index: self.parent.switch_module(i))
+                # Fix: Correctly capture the module string
+                button.clicked.connect(lambda checked, mod=module: self.parent.switch_module(mod))
                 layout.addWidget(button)
                 self.buttons.append(button)
 
