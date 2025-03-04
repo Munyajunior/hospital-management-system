@@ -1,7 +1,12 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Enum
+from enum import Enum as PyEnum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from core.database import Base
+
+class PrescriptionStatus(str, PyEnum):
+    PENDING = "pending"
+    DISPENSED = "dispensed"
 
 class Prescription(Base):
     __tablename__ = "prescriptions"
@@ -11,8 +16,9 @@ class Prescription(Base):
     drug_name = Column(String, nullable=False)
     dosage = Column(String, nullable=False)
     instructions = Column(Text, nullable=False)
-    status = Column(String, default="pending")  # Consider using an Enum here
-    created_at = Column(DateTime, server_default=func.now(),default=func.now())
+    status = Column(Enum(PrescriptionStatus, name="prescription_status"), default=PrescriptionStatus.PENDING, nullable=False)  
+    created_at = Column(DateTime, server_default=func.now())
+    dispensed_at = Column(DateTime, onupdate=func.now(),server_default=func.now())
     
     # Relationships
     patient = relationship("Patient", back_populates="prescriptions")
