@@ -25,7 +25,7 @@ class Sidebar(QWidget):
             ("ICU", "icu", ["admin", "icu_staff"]),
             ("Appointments", "appointments", ["nurse", "doctor"]),
             ("Medical Records", "medical_records", ["admin", "doctor", "nurse"]),
-            ("Prescriptions", "prescriptions", ["admin", "doctor", "pharmacist"]),
+            ("Prescriptions", "prescriptions", ["nurse", "doctor", "pharmacist"]),
             ("Billing", "billing", ["admin", "billing_staff"]),
             ("Settings", "settings", ["admin"]),
             ("User Management", "user_management", ["admin"]),
