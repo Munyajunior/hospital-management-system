@@ -1,22 +1,14 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QStackedWidget, QFrame
-from PySide6.QtGui import QFont, QIcon, QPainter, QPen
+from PySide6.QtGui import QFont, QPixmap, QPainter
 from PySide6.QtCore import Qt
-from PySide6.QtCharts import QChart, QChartView, QPieSeries, QPieSlice, QBarSet, QBarSeries, QBarCategoryAxis
+from PySide6.QtCharts import QChart, QChartView, QPieSeries, QBarSet, QBarSeries, QBarCategoryAxis
 from components.sidebar import Sidebar
 from views.patients import PatientManagement
 from views.doctors import DoctorManagement
+from views.appointments import ManageAppointments
+from views.medical_records import MedicalRecords
 import os
 import sys
-from views.pharmacy import Pharmacy
-from views.lab_test_management import LabTestManagement
-from views.radiology_management import RadiologyManagement
-from views.icu_management import ICUManagement
-from views.appointments import Appointments
-from views.medical_records import MedicalRecords
-from views.prescriptions import Prescriptions
-from views.billing import Billing
-from views.settings import Settings
-from views.user_management import UserManagement
 
 class Dashboard(QWidget):
     def __init__(self, role, user_id, auth_token):
@@ -29,136 +21,128 @@ class Dashboard(QWidget):
     def init_ui(self):
         self.setWindowTitle("Hospital Management System - Dashboard")
         self.setGeometry(100, 100, 1200, 800)
-        self.setStyleSheet("background-color: #F5F5F5;")  # Light background
+        self.setStyleSheet("""
+            background: qlineargradient(spread: pad, x1: 0, y1: 0, x2: 1, y2: 1, stop: 0 #D9E4F5, stop: 1 #FFFFFF);
+            font-family: Arial;
+        """)
 
         main_layout = QHBoxLayout()
-        
-        # Sidebar Navigation
+
+        # Sidebar
         self.sidebar = Sidebar(self, self.role)
         main_layout.addWidget(self.sidebar)
 
         # Main content area
-        content_layout = QVBoxLayout()
-
-        # Header Section with Sign Out Button
-        header_layout = QHBoxLayout()
+        self.main_content = QStackedWidget()
+        
+        # Dashboard View (Index 0)
+        self.dashboard_view = QWidget()
+        dashboard_layout = QVBoxLayout()
 
         # Header Section
-        header = QLabel("Hospital Management System Dashboard")
-        #header.setIcon(QIcon("assets/icons/hospital.png"))
+        header_layout = QHBoxLayout()
+        header = QLabel("🏥 Hospital Management Dashboard")
         header.setFont(QFont("Arial", 16, QFont.Bold))
         header.setAlignment(Qt.AlignCenter)
-        header.setStyleSheet("color: #333; padding: 10px; background-color: #EAEAEA; border-radius: 5px;")
-
+        header.setStyleSheet("""
+            background-color: #007BFF;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 6px;
+        """)
         header_layout.addWidget(header)
-        
-         # Sign Out Button
-        self.sign_out_button = QPushButton("Sign Out")
+
+        # Sign Out Button
+        self.sign_out_button = QPushButton("Logout")
         self.sign_out_button.setStyleSheet("""
             background-color: #FF4C4C; 
             color: white; 
             font-size: 14px; 
-            padding: 5px 15px; 
+            padding: 8px 20px; 
             border-radius: 5px;
+            font-weight: bold;
         """)
         self.sign_out_button.clicked.connect(self.logout_user)
         header_layout.addWidget(self.sign_out_button)
-        content_layout.addLayout(header_layout)
+        dashboard_layout.addLayout(header_layout)
 
         # Metrics Section
         metrics_layout = QHBoxLayout()
-        self.add_metric(metrics_layout, "Total Patients", "1200")
-        self.add_metric(metrics_layout, "Appointments Today", "45")
-        self.add_metric(metrics_layout, "Pending Lab Tests", "30")
-        self.add_metric(metrics_layout, "Billing Transactions", "75")
-        content_layout.addLayout(metrics_layout)
+        self.add_metric(metrics_layout, "Total Patients", "1200", "assets/icons/patient.png")
+        self.add_metric(metrics_layout, "Appointments", "45", "assets/icons/date.png")
+        self.add_metric(metrics_layout, "Pending Lab Tests", "30", "assets/icons/result.png")
+        self.add_metric(metrics_layout, "Billing Transactions", "75", "assets/icons/payment.png")
+        dashboard_layout.addLayout(metrics_layout)
 
         # Charts Section
         charts_layout = QHBoxLayout()
         charts_layout.addWidget(self.create_pie_chart())
         charts_layout.addWidget(self.create_bar_chart())
-        content_layout.addLayout(charts_layout)
+        dashboard_layout.addLayout(charts_layout)
 
-        # Main Stacked Content Area (Hidden Modules)
-        self.main_content = QStackedWidget()
-        self.patient_management = PatientManagement()
-        self.doctor_management = DoctorManagement()
-        
-        #self.pharmacy_management = Pharmacy(self.role, self.user_id, self.auth_token)
-        # self.lab_management = LabTestManagement(self.role, self.user_id, self.auth_token)
-        # self.radiology_management = RadiologyManagement(self.role, self.user_id, self.auth_token)
-        # self.icu_management = ICUManagement(self.role, self.user_id, self.auth_token)
-        # self.appointments = Appointments(self.role, self.user_id)
-        # self.medical_records = MedicalRecords(self.role, self.user_id)
-        # self.prescriptions = Prescriptions(self.role, self.user_id)
-        # self.billing = Billing(self.auth_token, self.role)
-        # self.settings = Settings(self.auth_token, self.role)
-        # self.user_management = UserManagement(self.auth_token, self.role)
-        
-        if self.role == "admin" or self.role == "nurse":
-            self.main_content.addWidget(self.patient_management)
-        if self.role == "doctor" or self.role == "admin":
-            self.main_content.addWidget(self.doctor_management)
-        # self.main_content.addWidget(self.pharmacy_management)
-        # self.main_content.addWidget(self.lab_management)
-        # self.main_content.addWidget(self.radiology_management)
-        # self.main_content.addWidget(self.icu_management)
-        # self.main_content.addWidget(self.appointments)
-        # self.main_content.addWidget(self.medical_records)
-        # self.main_content.addWidget(self.prescriptions)
-        # self.main_content.addWidget(self.billing)
-        # self.main_content.addWidget(self.settings)
-        # self.main_content.addWidget(self.user_management)
+        self.dashboard_view.setLayout(dashboard_layout)
+        self.main_content.addWidget(self.dashboard_view)  # Dashboard at index 0
+        self.views = {"dashboard": self.dashboard_view}  # Add dashboard view to self.views
 
-        content_layout.addWidget(self.main_content)
+        # Dictionary to store dynamically loaded views
+        self.views = {}
 
-        # Add content layout to main layout
-        main_layout.addLayout(content_layout)
+        main_layout.addWidget(self.main_content)
         self.setLayout(main_layout)
 
-    def add_metric(self, layout, title, value):
-        """Creates a simple metric display with a title and value."""
+    def add_metric(self, layout, title, value, icon_path):
+        """Creates a modern metric display with an icon, title, and value."""
         metric_box = QFrame()
         metric_box.setFrameShape(QFrame.Box)
-        metric_box.setStyleSheet("background-color: white; border-radius: 5px; padding: 10px;")
+        metric_box.setStyleSheet("""
+            background-color: white;
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid #E0E0E0;
+            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.05);
+        """)
         metric_box.setFixedWidth(200)
 
         vbox = QVBoxLayout()
+        icon_label = QLabel()
+        icon_label.setPixmap(QPixmap(icon_path).scaled(40, 40, Qt.KeepAspectRatio))
+        icon_label.setAlignment(Qt.AlignCenter)
+
         title_label = QLabel(title)
         title_label.setFont(QFont("Arial", 12, QFont.Bold))
         title_label.setAlignment(Qt.AlignCenter)
+        title_label.setWordWrap(True)  # Allow word wrapping
+        title_label.setStyleSheet("color: #333333; padding: 5px;")
+        
         value_label = QLabel(value)
         value_label.setFont(QFont("Arial", 14, QFont.Bold))
         value_label.setAlignment(Qt.AlignCenter)
-        value_label.setStyleSheet("color: #007BFF;")  # Blue color for emphasis
+        value_label.setStyleSheet("color: #007BFF; font-size: 16px;")
 
+        vbox.addWidget(icon_label)
         vbox.addWidget(title_label)
         vbox.addWidget(value_label)
         metric_box.setLayout(vbox)
         layout.addWidget(metric_box)
-    
+
     def logout_user(self):
         """Logs out the user and restarts the application to show the login screen."""
         print("Logging out user...")
-
-        # Clear authentication details
         self.auth_token = None
         self.user_id = None
-
-        # Restart the application
         python = sys.executable
         os.execl(python, python, "main.py")  # Restart main.py
 
     def create_pie_chart(self):
-        """Creates a pie chart for patient distribution by department."""
+        """Creates a modern pie chart for patient distribution."""
         series = QPieSeries()
-        series.append("Outpatients", 500)
-        series.append("Inpatients", 350)
-        series.append("ICU", 100)
-        series.append("Emergency", 250)
+        series.append("Outpatients", 500).setBrush(Qt.GlobalColor.cyan)
+        series.append("Inpatients", 350).setBrush(Qt.GlobalColor.green)
+        series.append("ICU", 100).setBrush(Qt.GlobalColor.red)
+        series.append("Emergency", 250).setBrush(Qt.GlobalColor.yellow)
 
         for slice in series.slices():
-            slice.setLabel(f"{slice.label()} - {slice.value()}")
+            slice.setLabel(f"{slice.label()} - {int(slice.value())}")
 
         chart = QChart()
         chart.addSeries(series)
@@ -171,7 +155,7 @@ class Dashboard(QWidget):
         return chart_view
 
     def create_bar_chart(self):
-        """Creates a bar chart for daily appointments."""
+        """Creates an animated bar chart for daily appointments."""
         set0 = QBarSet("Completed")
         set1 = QBarSet("Pending")
         set0.append([20, 25, 30, 22, 28])
@@ -186,7 +170,7 @@ class Dashboard(QWidget):
         chart.setTitle("Daily Appointments")
         chart.setAnimationOptions(QChart.SeriesAnimations)
 
-        categories = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]
+        categories = ["Mon", "Tue", "Wed", "Thu", "Fri"]
         axisX = QBarCategoryAxis()
         axisX.append(categories)
         chart.createDefaultAxes()
@@ -197,6 +181,26 @@ class Dashboard(QWidget):
         chart_view.setFixedHeight(250)
         return chart_view
 
-    def switch_module(self, index):
-        """Switches between different modules in the dashboard."""
-        self.main_content.setCurrentIndex(index)
+    def switch_module(self, module):
+        """Switches between different modules and hides the dashboard when another module is selected."""
+        if module == "dashboard":
+            # Ensure the dashboard view is in self.views
+            if "dashboard" not in self.views:
+                self.views["dashboard"] = self.dashboard_view
+            self.main_content.setCurrentWidget(self.views["dashboard"])  # Switch to dashboard view
+        else:
+            # If module isn't in views, create and add it
+            if module not in self.views:
+                if module == "patients":
+                    self.views[module] = PatientManagement()
+                elif module == "doctors":
+                    self.views[module] = DoctorManagement()
+                elif module == "appointments":
+                    self.views[module] = ManageAppointments(self.role, self.user_id, self.auth_token)
+                elif module == "medical_records":
+                    self.views[module] = MedicalRecords(self.role, self.user_id, self.auth_token)
+                # Add more views here...
+
+                self.main_content.addWidget(self.views[module])
+
+            self.main_content.setCurrentWidget(self.views[module])  # Show selected module
