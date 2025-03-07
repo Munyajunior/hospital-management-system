@@ -19,7 +19,7 @@ class RadiologyScan(Base):
     results = Column(Text, nullable=True)
     status = Column(Enum(RadiologyScanStatus, name="radiology_scan_status"), default=RadiologyScanStatus.PENDING)
     created_at = Column(DateTime, server_default=func.now(),default=func.now())
-    completed_date = Column(DateTime, default=func.now() ,nullable=True)  # Track completion time
+    completed_date = Column(DateTime, default=func.now(), onupdate=func.now(),nullable=True)  # Track completion time
 
     # Relationships
     patient = relationship("Patient", back_populates="radiology_scan")
