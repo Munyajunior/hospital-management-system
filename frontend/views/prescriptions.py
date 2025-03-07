@@ -1,5 +1,4 @@
 import os
-import requests
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
     QMessageBox, QComboBox, QTextEdit, QHBoxLayout, QHeaderView, QScrollArea
@@ -20,10 +19,11 @@ class Prescriptions(QWidget):
         self.user_role = user_role
         self.user_id = user_id
         self.token = token
+        self.inventory = {}  # Store drug inventory
         self.init_ui()
 
     def init_ui(self):
-        self.setWindowTitle("Prescription Management")
+        self.setWindowTitle("Prescribe Medication")
         self.setStyleSheet("""
             QWidget {
                 background-color: #f4f6f9;
@@ -87,10 +87,9 @@ class Prescriptions(QWidget):
         self.scroll_area.setWidgetResizable(True)
 
         self.prescription_table = QTableWidget()
-        self.prescription_table.setColumnCount(5)
-        self.prescription_table.setHorizontalHeaderLabels(["Patient", "Doctor", "Medication", "Dosage", "Instructions"])
+        self.prescription_table.setColumnCount(6)
+        self.prescription_table.setHorizontalHeaderLabels(["Patient", "Doctor", "Medication", "Dosage", "Instructions", "Status"])
         self.prescription_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.prescription_table.setAlternatingRowColors(True)
         self.scroll_area.setWidget(self.prescription_table)
         layout.addWidget(self.scroll_area)
 
@@ -100,13 +99,13 @@ class Prescriptions(QWidget):
         self.load_patients()
         layout.addWidget(self.patient_dropdown)
 
-        # Input Fields
+        # Medication Input Fields
         self.medication_input = QTextEdit()
-        self.medication_input.setPlaceholderText("Enter medication name(s)...")
+        self.medication_input.setPlaceholderText("Enter medication name(s), comma-separated...")
         layout.addWidget(self.medication_input)
 
         self.dosage_input = QTextEdit()
-        self.dosage_input.setPlaceholderText("Enter dosage...")
+        self.dosage_input.setPlaceholderText("Enter dosage(s) (corresponding to medications, comma-separated)...")
         layout.addWidget(self.dosage_input)
 
         self.instructions_input = QTextEdit()
@@ -115,36 +114,46 @@ class Prescriptions(QWidget):
 
         # Button Layout
         button_layout = QHBoxLayout()
+
         self.prescribe_button = QPushButton("Prescribe Medication")
         self.prescribe_button.clicked.connect(self.prescribe_medication)
         button_layout.addWidget(self.prescribe_button)
-
         layout.addLayout(button_layout)
 
-        # Load existing prescriptions
+        self.load_inventory()  # Load available drugs
         self.load_prescriptions()
 
         self.setLayout(layout)
 
     def load_patients(self):
-        """Fetches and populates the dropdown with assigned patients."""
-        base_url = os.getenv("ASSIGNED_PATIENTS_URL")
-        api_url = f"{base_url}/{self.user_id}/patients"
+        """Fetch and populate the dropdown with assigned patients."""
+        api_url = os.getenv("ASSIGNED_PATIENTS_URL")
         patients = fetch_data(self, api_url, self.token)
-        
+
         if not patients:
-            QMessageBox.information(self, "No Patients", "No patients have been assigned yet.")
+            QMessageBox.information(self, "No Patients", "No patients assigned yet.")
             return
-        
+
         for patient in patients:
             self.patient_dropdown.addItem(patient["full_name"], patient["id"])
 
+    def load_inventory(self):
+        """Fetches available drugs from inventory."""
+        api_url = os.getenv("PHARMACY_INVENTORY_URL")
+        inventory_data = fetch_data(self, api_url, self.token)
+
+        if not inventory_data:
+            QMessageBox.critical(self, "Error", "Failed to load inventory.")
+            return
+
+        self.inventory = {drug["drug_name"]: drug["quantity"] for drug in inventory_data}
+
     def load_prescriptions(self):
-        """Fetches and displays prescriptions."""
+        """Fetch and display prescriptions."""
         api_url = os.getenv("PRESCRIPTIONS_URL")
         prescriptions = fetch_data(self, api_url, self.token)
         if not prescriptions:
-            QMessageBox.information(self, "No Prescriptions", "No prescriptions available yet.")
+            QMessageBox.information(self, "No Prescriptions", "No prescriptions available.")
             return
         self.populate_table(prescriptions)
 
@@ -157,33 +166,44 @@ class Prescriptions(QWidget):
             self.prescription_table.setItem(row, 2, QTableWidgetItem(prescription["drug_name"]))
             self.prescription_table.setItem(row, 3, QTableWidgetItem(prescription["dosage"]))
             self.prescription_table.setItem(row, 4, QTableWidgetItem(prescription["instructions"]))
+            self.prescription_table.setItem(row, 5, QTableWidgetItem(prescription["status"]))
 
     def prescribe_medication(self):
-        """Prescribes new medication to a patient."""
+        """Validates and prescribes medication."""
         patient_id = self.patient_dropdown.currentData()
-        medication = self.medication_input.toPlainText().strip()
+        medications = self.medication_input.toPlainText().strip().split(",")
+        dosages = self.dosage_input.toPlainText().strip().split(",")
         instructions = self.instructions_input.toPlainText().strip()
-        dosage = self.dosage_input.toPlainText().strip()
 
-        if not patient_id or not medication or not instructions or not dosage:
-            QMessageBox.warning(self, "Validation Error", "Please provide all required fields.")
+        if not patient_id or not medications or not dosages or len(medications) != len(dosages):
+            QMessageBox.warning(self, "Validation Error", "Ensure medication names and dosages are correctly entered.")
+            return
+
+        # Check if medications exist in inventory
+        unavailable_drugs = [drug.strip() for drug in medications if drug.strip() not in self.inventory]
+
+        if unavailable_drugs:
+            QMessageBox.warning(self, "Out of Stock", f"The following drugs are not available: {', '.join(unavailable_drugs)}")
             return
 
         api_url = os.getenv("PRESCRIPTIONS_URL")
-        data = {
-            "prescribed_by": self.user_id,
-            "patient_id": patient_id,
-            "drug_name": medication,
-            "dosage": dosage,
-            "instructions": instructions,
-        }
+        for med, dose in zip(medications, dosages):
+            data = {
+                "prescribed_by": self.user_id,
+                "patient_id": patient_id,
+                "drug_name": med.strip(),
+                "dosage": dose.strip(),
+                "instructions": instructions
+            }
+            response = post_data(self, api_url, data, self.token)
 
-        response = post_data(self, api_url, data, self.token)
         if response:
-            QMessageBox.information(self, "Success", "Medication prescribed successfully!")
-            self.load_prescriptions()  # Refresh the table
+            QMessageBox.information(self, "Success", "Medications prescribed successfully!")
+            self.load_prescriptions()
             self.medication_input.clear()
-            self.instructions_input.clear()
             self.dosage_input.clear()
+            self.instructions_input.clear()
         else:
             QMessageBox.critical(self, "Error", "Failed to prescribe medication.")
+
+
