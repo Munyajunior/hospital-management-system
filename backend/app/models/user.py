@@ -16,3 +16,4 @@ class User(Base):
     # Relationships
     appointments = relationship("Appointment", back_populates="doctor", foreign_keys="[Appointment.doctor_id]")  
     patients = relationship("Patient", back_populates="assigned_doctor", foreign_keys="[Patient.assigned_doctor_id]")
+    #inventory = relationship("Inventory", back_populates="added_by", foreign_keys="[Inventory.added_by]")
