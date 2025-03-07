@@ -16,12 +16,13 @@ class Sidebar(QWidget):
 
         # Define menu items with required roles
         menu_items = [
-            ("Dashboard", "dashboard", ["admin", "nurse", "doctor", "pharmacist", "lab_technician", "radiologist", "icu_staff", "billing_staff"]),
+            ("Dashboard", "dashboard", ["admin", "nurse", "doctor", "pharmacy", "lab_technician", "radiologist", "icu_staff", "billing_staff"]),
             ("Patients", "patients", ["admin", "nurse"]),
             ("Doctors", "doctors", ["admin","doctor"]),
-            ("Pharmacy", "pharmacy", ["admin", "pharmacist"]),
+            ("Pharmacy", "pharmacy", ["admin", "pharmacy"]),
             ("Lab", "lab", ["admin", "lab_technician"]),
             ("Radiology", "radiology", ["admin", "radiologist"]),
+            ("Radiography Request", "radiography_request", ["admin", "doctor"]),
             ("ICU", "icu", ["admin", "icu_staff"]),
             ("Appointments", "appointments", ["nurse", "doctor"]),
             ("Medical Records", "medical_records", ["admin", "doctor", "nurse"]),
