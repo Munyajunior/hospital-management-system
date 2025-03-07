@@ -33,8 +33,6 @@ class DoctorManagement(QWidget):
         self.doctor_table = QTableWidget()
         self.doctor_table.setColumnCount(4)
         self.doctor_table.setHorizontalHeaderLabels(["ID", "Name", "Specialization", "Actions"])
-        
-        # Enhance Table Appearance
         self.doctor_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.doctor_table.setAlternatingRowColors(True)
         self.doctor_table.setStyleSheet("""
