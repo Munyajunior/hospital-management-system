@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.sql import func
 from typing import List
 from datetime import datetime
 from models.radiology import RadiologyScan, RadiologyScanStatus
@@ -42,6 +43,17 @@ def create_radiology_scan(radiology_scan: RadiologyScanCreate, db: Session = Dep
 def get_radiology_scans(db: Session = Depends(get_db)):
     return db.query(RadiologyScan).all()
 
+
+# Get all radiology scans requested by a doctor
+@router.get("/scan/{doctor_id}", response_model=List[RadiologyScanResponse])
+def get_all_radiology_scans(doctor_id:int, db: Session = Depends(get_db), user: User = Depends(doctor_only)):
+    radiology_scan = db.query(RadiologyScan).filter(RadiologyScan.requested_by == doctor_id).all()
+    if not radiology_scan:
+        return []
+    
+    return radiology_scan
+
+
 # Get a single radiology scan by ID
 @router.get("/{scan_id}", response_model=RadiologyScanResponse)
 def get_radiology_scan(scan_id: int, db: Session = Depends(get_db),user: User = Depends(staff_only)):
@@ -49,6 +61,21 @@ def get_radiology_scan(scan_id: int, db: Session = Depends(get_db),user: User = 
     if not radiology_scan:
         raise HTTPException(status_code=404, detail="Radiology scan not found")
     return radiology_scan
+
+# Update radiology scan status to in progress when received
+
+@router.put("/{scan_id}/in-progress", response_model=RadiologyScanResponse)
+def update_radiology_scan(scan_id: int, status: RadiologyScanStatus, report: str, db: Session = Depends(get_db),):
+    radiology_scan = db.query(RadiologyScan).filter(RadiologyScan.id == scan_id).first()
+    if not radiology_scan:
+        raise HTTPException(status_code=404, detail="Radiology scan not found")
+
+    radiology_scan.status = status
+    db.commit()
+    db.refresh(radiology_scan)
+    return radiology_scan
+
+    
 
 # Update radiology scan status and report
 @router.put("/{scan_id}/update", response_model=RadiologyScanResponse)
@@ -59,7 +86,7 @@ def update_radiology_scan(scan_id: int, status: RadiologyScanStatus, report: str
 
     radiology_scan.status = status
     if status == RadiologyScanStatus.COMPLETED:
-        radiology_scan.report = report
+        radiology_scan.result = status.result
         radiology_scan.completed_date = datetime.utcnow()
 
     db.commit()
