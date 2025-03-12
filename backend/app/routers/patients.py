@@ -6,6 +6,7 @@ from models.patient import Patient
 from models.user import User
 from models.doctor import Doctor
 from core.database import get_db
+from utils.security import hash_password
 from core.dependencies import RoleChecker
 
 router = APIRouter(prefix="/patients", tags=["Patients"])
@@ -19,21 +20,38 @@ doctor_only = RoleChecker(["doctor","nurse"])
 @router.post("/", response_model=PatientResponse)
 def create_patient(patient: PatientCreate, db: Session = Depends(get_db), 
                    current_user: User = Depends(staff_only)):
+
     # Validate doctor if provided
     if patient.assigned_doctor_id:
         doctor = db.query(Doctor).filter(Doctor.id == patient.assigned_doctor_id).first()
         if not doctor:
             raise HTTPException(status_code=400, detail="Invalid doctor ID")
+        
+    # Check if user already exists
+    existing_user = db.query(Patient).filter(Patient.email == patient.email).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    # Convert password into hashed_password
+    hashed_password = hash_password(patient.password)  # Hash the password
 
-    # setting the registered_by to the ID of the current user (nurse, receptionist, etc.)
+    # Prepare patient data dictionary
     patient_data = patient.model_dump()
     patient_data["registered_by"] = current_user.id
+    patient_data["hashed_password"] = hashed_password  #Convert password
 
-    new_patient = Patient(**patient_data)
+    del patient_data["password"]  # Remove plain text password
+
+    # Create Patient instance with unpacked dictionary
+    new_patient = Patient(**patient_data)  
+
     db.add(new_patient)
     db.commit()
     db.refresh(new_patient)
+    
     return new_patient
+
+
 
 
 @router.get("/", response_model=List[PatientResponse])
