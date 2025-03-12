@@ -14,6 +14,8 @@ router = APIRouter(prefix="/lab", tags=["Lab"])
 doctor_only = RoleChecker(["doctor"])
 lab_staff_only = RoleChecker(["lab"])
 
+
+# create lab Test
 @router.post("/", response_model=LabTestResponse)
 def request_lab_test(
     lab_test: LabTestCreate, 
@@ -35,10 +37,21 @@ def request_lab_test(
     db.refresh(new_lab_test)
     return new_lab_test
 
+# Get all lab test
 @router.get("/", response_model=List[LabTestResponse])
 def get_lab_tests(db: Session = Depends(get_db), user: User = Depends(lab_staff_only)):
     return db.query(LabTest).all()
 
+
+# Get all lab test requested by a doctor
+@router.get("/test/{doctor_id}", response_model=List[LabTestResponse])
+async def get_lab_test_requested(doctor_id:int, db: Session = Depends(get_db), user: User = Depends(doctor_only)):
+    lab_test = db.query(LabTest).filter(LabTest.requested_by == doctor_id).all()
+    if not lab_test:
+        return []
+    return lab_test
+
+# Get a specific lab test by id
 @router.get("/{test_id}", response_model=LabTestResponse)
 def get_lab_test(test_id: int, db: Session = Depends(get_db), user: User = Depends(lab_staff_only)):
     lab_test = db.query(LabTest).filter(LabTest.id == test_id).first()
@@ -46,6 +59,8 @@ def get_lab_test(test_id: int, db: Session = Depends(get_db), user: User = Depen
         raise HTTPException(status_code=404, detail="Lab test not found")
     return lab_test
 
+
+# update a specific lab test
 @router.put("/{test_id}/update", response_model=LabTestResponse)
 def update_lab_test(
     test_id: int, 
