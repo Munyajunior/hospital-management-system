@@ -276,6 +276,16 @@ class PatientRegistrationForm(QWidget):
         self.contact_number.setPlaceholderText("Enter Contact Number")
         layout.addWidget(self.contact_number)
         
+        self.email_input = QLineEdit()
+        self.email_input.setPlaceholderText("Enter Email")
+        layout.addWidget(self.email_input)
+        
+        self.password_input = QLineEdit()
+        self.password_input.setPlaceholderText("Enter Password")
+        self.password_input.setEchoMode(QLineEdit.Password)
+        layout.addWidget(self.password_input)
+        
+        
         self.address = QLineEdit()
         self.address.setPlaceholderText("Enter Address")
         layout.addWidget(self.address)
@@ -316,11 +326,16 @@ class PatientRegistrationForm(QWidget):
         gender = self.gender_input.currentText()
         contact_number = self.contact_number.text().strip()
         address = self.address.text().strip()
+        email = self.email_input.text().strip()
+        password = self.password_input.text().strip()
         medical_history = self.medical_history.toPlainText().strip()
         assigned_doctor_id = self.doctor_input.currentData()
 
-        if not name or not dob or not contact_number or not address:
+        if not name or not dob or not contact_number or not address or not password:
             QMessageBox.warning(self, "Validation Error", "All fields except medical history are required!")
+            return
+        if "@" not in email:
+            QMessageBox.warning(self, "Validation Error", "Enter a valid email address")
             return
 
         
@@ -332,11 +347,13 @@ class PatientRegistrationForm(QWidget):
             "contact_number": contact_number,
             "address": address,
             "medical_history": medical_history,
+            "password": password,
+            "email": email,
             "assigned_doctor_id": assigned_doctor_id
         }
         register = post_data(self, api_url,data,self.token)
         if register: 
-            QMessageBox.information(self, "Success", "Patient registered successfully!")
+            QMessageBox.information(self, "Success", f"Patient registered successfully!, Write down this password: '{password}' and give it to the patient, use to login to the mobile app")
             self.parent.load_doctor_list()
             self.parent.load_patients()
             self.close()
