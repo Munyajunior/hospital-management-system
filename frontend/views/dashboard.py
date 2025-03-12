@@ -10,6 +10,8 @@ from views.medical_records import MedicalRecords
 from views.prescriptions import Prescriptions
 from views.pharmacy import Pharmacy
 from views.scans import Scans
+from views.radiology_management import RadiologyManagement
+from views.lab_test import LabTests
 import os
 import sys
 
@@ -208,6 +210,10 @@ class Dashboard(QWidget):
                     self.views[module] = Pharmacy(self.role, self.user_id, self.auth_token)
                 elif module == "radiography_request":
                     self.views[module] = Scans(self.role, self.user_id, self.auth_token)
+                elif module == "radiology":
+                    self.views[module] = RadiologyManagement(self.role, self.user_id, self.auth_token)
+                elif module == "lab":
+                    self.views[module] = LabTests(self.role, self.user_id, self.auth_token)
                 # Add more views here...
 
                 self.main_content.addWidget(self.views[module])
