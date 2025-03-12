@@ -10,6 +10,9 @@ class Patient(Base):
     date_of_birth = Column(Date, nullable=False)  # Changed to Date
     gender = Column(String, nullable=False)
     contact_number = Column(String, nullable=False)
+    role = Column(String, default="patient",nullable=False)
+    email = Column(String, unique=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
     address = Column(Text, nullable=False)
     medical_history = Column(Text, nullable=True)
     diagnosis = Column(Text, nullable=True)
