@@ -167,7 +167,7 @@ class Scans(QWidget):
     def request_scan(self):
         """Submits a scan request for a patient."""
         patient_id = int(self.patient_dropdown.currentData())
-        scan_type = self.scan_input.toPlainText().strip()
+        scan_type = self.scan_input.text().strip()
         requested_by = int(self.user_id)
         
         
