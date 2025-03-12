@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from jose import JWTError, jwt
 from core.database import get_db
 from models.user import User
-from models.doctor import Doctor
+from models.patient import Patient
 from core.security import SECRET_KEY, ALGORITHM
 
 async def get_current_user(authorization: str = Header(...), db: Session = Depends(get_db)) -> User:
@@ -27,9 +27,12 @@ async def get_current_user(authorization: str = Header(...), db: Session = Depen
         if not id or not role:
             raise credentials_exception
     except (JWTError, IndexError) as e:
-        print(f"Error decoding token: {str(e)}")
         raise credentials_exception
-    user = db.query(User).filter(User.id == id).first()
+    if role == "patient":
+        user = db.query(Patient).filter(Patient.id == id).first()
+        return user
+    else:
+        user = db.query(User).filter(User.id == id).first()
         
     if user is None:
         raise credentials_exception
@@ -41,6 +44,8 @@ def get_current_active_user(current_user: User = Depends(get_current_user)):
     """
     Ensures the user is active.
     """
+    if current_user.role == "patient":
+        return current_user
     
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
