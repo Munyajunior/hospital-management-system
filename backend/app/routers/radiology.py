@@ -3,11 +3,11 @@ from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 from typing import List
 from datetime import datetime
-from models.radiology import RadiologyScan, RadiologyScanStatus
+from models.radiology import RadiologyScan
 from models.patient import Patient
 from models.doctor import Doctor
 from models.user import User
-from schemas.radiology import RadiologyScanCreate, RadiologyScanResponse
+from schemas.radiology import RadiologyScanCreate, RadiologyScanResponse,RadiologyScanUpdate,RadiologyScanStatus
 from core.database import get_db
 from core.dependencies import RoleChecker
 
@@ -63,35 +63,37 @@ def get_radiology_scan(scan_id: int, db: Session = Depends(get_db),user: User = 
     return radiology_scan
 
 # Update radiology scan status to in progress when received
-
 @router.put("/{scan_id}/in-progress", response_model=RadiologyScanResponse)
-def update_radiology_scan(scan_id: int, status: RadiologyScanStatus, report: str, db: Session = Depends(get_db),):
+def update_radiology_scan(scan_id: int, update: RadiologyScanUpdate, db: Session = Depends(get_db), user: User = Depends(staff_only)):
+    """
+    Update radiology scan status to "In Progress"
+    """
     radiology_scan = db.query(RadiologyScan).filter(RadiologyScan.id == scan_id).first()
     if not radiology_scan:
         raise HTTPException(status_code=404, detail="Radiology scan not found")
 
-    radiology_scan.status = status
+    radiology_scan.status = update.status
+    radiology_scan.results = update.report
     db.commit()
     db.refresh(radiology_scan)
+
     return radiology_scan
 
-    
 
 # Update radiology scan status and report
-@router.put("/{scan_id}/update", response_model=RadiologyScanResponse)
-def update_radiology_scan(scan_id: int, status: RadiologyScanStatus, report: str, db: Session = Depends(get_db),):
+@router.put("/{scan_id}/update")
+def update_radiology_scan(scan_id: int, update:RadiologyScanUpdate,  db: Session = Depends(get_db), user: User = Depends(staff_only)):
     radiology_scan = db.query(RadiologyScan).filter(RadiologyScan.id == scan_id).first()
     if not radiology_scan:
         raise HTTPException(status_code=404, detail="Radiology scan not found")
 
-    radiology_scan.status = status
-    if status == RadiologyScanStatus.COMPLETED:
-        radiology_scan.result = status.result
-        radiology_scan.completed_date = datetime.utcnow()
-
+    radiology_scan.status = update.status
+    radiology_scan.results = update.report
+    
     db.commit()
     db.refresh(radiology_scan)
     return radiology_scan
+
 
 # Delete a radiology scan
 @router.delete("/{test_id}", status_code=status.HTTP_204_NO_CONTENT)
