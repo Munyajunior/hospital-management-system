@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr,Field
 from datetime import date
 from typing import Optional
 
@@ -9,10 +9,11 @@ class PatientBase(BaseModel):
     contact_number: str = Field(..., pattern="^\+?[0-9\s-]{8,}$")
     address: str = Field(..., min_length=5)  # Required (matches model)
     medical_history: str | None = None
+    email: EmailStr
 
 class PatientCreate(PatientBase):
+    password: str = Field(..., min_length=8)
     assigned_doctor_id: int | None = None  # Allow assigning a doctor during registration
-    pass
 
 class PatientUpdate(BaseModel):
     medical_history: Optional[str] = None
