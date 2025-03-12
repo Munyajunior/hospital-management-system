@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import timedelta
 from schemas.auth import UserCreate, UserResponse, Token, LoginRequest
 from models.user import User
+from models.patient import Patient
 from utils.security import hash_password, verify_password, create_access_token
 from core.database import get_db
 from core.dependencies import RoleChecker
@@ -38,6 +39,17 @@ def login_user(login_cred: LoginRequest, db: Session = Depends(get_db)):
     Logs in a user and returns a JWT token.
     """
     user = db.query(User).filter(User.email == login_cred.email).first()
+    if not user or not verify_password(login_cred.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    access_token = create_access_token({"sub": user.id, "role":user.role}, expires_delta=timedelta(minutes=30))
+    return {"access_token": access_token, "token_type": "bearer", "role": user.role, "sub":user.id}
+
+@router.post("/login/patient", response_model=Token)
+def login_user(login_cred: LoginRequest, db: Session = Depends(get_db)):
+    """
+    Logs in a user and returns a JWT token.
+    """
+    user = db.query(Patient).filter(Patient.email == login_cred.email).first()
     if not user or not verify_password(login_cred.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     access_token = create_access_token({"sub": user.id, "role":user.role}, expires_delta=timedelta(minutes=30))
