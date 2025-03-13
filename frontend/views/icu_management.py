@@ -2,10 +2,10 @@ import os
 import requests
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
-    QMessageBox, QComboBox, QTextEdit, QHBoxLayout
+    QMessageBox, QComboBox, QTextEdit
 )
 from PySide6.QtCore import Qt
-
+from utils.api_utils import fetch_data, post_data
 
 class ICUManagement(QWidget):
     def __init__(self, user_role, user_id, auth_token):
@@ -17,9 +17,9 @@ class ICUManagement(QWidget):
         :param auth_token: Authentication token for API authorization
         """
         super().__init__()
-        self.user_role = user_role
+        self.role = user_role
         self.user_id = user_id
-        self.auth_token = auth_token
+        self.token = auth_token
         self.init_ui()
 
     def init_ui(self):
@@ -81,20 +81,15 @@ class ICUManagement(QWidget):
         if self.user_role not in ["admin", "nurse"]:
             return
 
-        try:
-            api_url = os.getenv("GET_PATIENTS_URL")
-            headers = {"Authorization": f"Bearer {self.auth_token}"}
-            response = requests.get(api_url, headers=headers)
 
-            if response.status_code == 200:
-                patients = response.json()
-                for patient in patients:
-                    self.patient_dropdown.addItem(patient["name"], patient["id"])
-            else:
-                QMessageBox.critical(self, "Error", "Failed to fetch patient list.")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred: {e}")
+        api_url = os.getenv("PATIENT_LIST_URL")
+        patients = fetch_data(self, api_url, self.token)
 
+        if patients:
+            for patient in patients:
+                self.patient_dropdown.addItem(patient["full_name"], patient["id"])
+        else:
+            QMessageBox.critical(self, "Error", "Failed to fetch patient list.")
     def load_icu_patients(self):
         """Fetches and displays ICU patients."""
         try:

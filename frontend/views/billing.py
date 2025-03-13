@@ -8,10 +8,11 @@ import requests
 import os
 
 class Billing(QWidget):
-    def __init__(self, auth_token, user_role):
+    def __init__(self, user_role, user_id, auth_token):
         super().__init__()
-        self.auth_token = auth_token
-        self.user_role = user_role
+        self.token = auth_token
+        self.role = user_role
+        self.user_id = user_id
 
         # Only specific roles should access billing
         if not auth_token:

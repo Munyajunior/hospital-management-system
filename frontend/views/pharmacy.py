@@ -1,8 +1,7 @@
 import os
-import requests
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
-    QMessageBox, QLineEdit, QHBoxLayout
+    QMessageBox, QLineEdit, QHBoxLayout, QHeaderView
 )
 from utils.api_utils import fetch_data, post_data, update_data
 from PySide6.QtCore import Qt
@@ -40,6 +39,7 @@ class Pharmacy(QWidget):
         self.prescription_table = QTableWidget()
         self.prescription_table.setColumnCount(7)
         self.prescription_table.setHorizontalHeaderLabels(["Patient", "Doctor", "Medication", "Dosage", "Instructions", "Status", "Action"])
+        self.prescription_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.prescription_table.setStyleSheet("QTableWidget { font-size: 14px; }")
         layout.addWidget(self.prescription_table)
 

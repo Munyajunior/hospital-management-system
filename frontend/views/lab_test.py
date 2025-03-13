@@ -2,7 +2,7 @@ import os
 import requests
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
-    QMessageBox, QComboBox, QLineEdit, QTextEdit
+    QMessageBox, QComboBox, QLineEdit, QTextEdit, QHeaderView
 )
 from PySide6.QtCore import Qt
 from utils.api_utils import fetch_data, post_data
@@ -33,8 +33,9 @@ class LabTests(QWidget):
 
         # Lab Test Requests Table
         self.lab_test_table = QTableWidget()
-        self.lab_test_table.setColumnCount(5)
+        self.lab_test_table.setColumnCount(6)
         self.lab_test_table.setHorizontalHeaderLabels(["Patient", "Doctor", "Test Type", "Status", "Additional Notes"])
+        self.tabletEvent.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         layout.addWidget(self.lab_test_table)
 
         # Dropdown to select a patient
@@ -89,7 +90,9 @@ class LabTests(QWidget):
             self.lab_test_table.setItem(row, 1, QTableWidgetItem(str(lab_test["requested_by"])))
             self.lab_test_table.setItem(row, 2, QTableWidgetItem(lab_test["test_type"]))
             self.lab_test_table.setItem(row, 3, QTableWidgetItem(lab_test["status"]))
-            #self.lab_test_table.setItem(row, 4, QTableWidgetItem(lab_test["additional_notes"]))
+            if lab_test["status"] == "Completed":
+                self.lab_test_table.setItem(row, 4, QTableWidgetItem(lab_test.get("results","")))
+                self.lab_test_table.setItem(row, 5, QTableWidgetItem(lab_test.get("additional_notes","")))
 
     def request_lab_test(self):
         """Submits a lab test request for a patient."""

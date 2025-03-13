@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, ForeignKey, DateTime, Enum
+from sqlalchemy import Column, Integer, ForeignKey, DateTime, Enum, String
 from sqlalchemy.sql import func
 from enum import Enum as PyEnum
 from sqlalchemy.orm import relationship
@@ -15,9 +15,12 @@ class ICUPatient(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False)
-    admitted_by = Column(Integer, ForeignKey("nurses.id", ondelete="SET NULL"))  # Nurse who admitted
+    admitted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))  # Nurse who admitted
+    department = Column(String, nullable = False)
+    ward = Column(String, nullable=False)
+    bed_number = Column(Integer, nullable=False)
     admission_date = Column(DateTime, default=func.now())
-    discharge_date = Column(DateTime, nullable=True)
+    discharge_date = Column(DateTime, onupdate=func.now() ,nullable=True)
     status = Column(Enum(ICUStatus,name="icu_status",), default=ICUStatus.ADMITTED)
 
     # Relationships

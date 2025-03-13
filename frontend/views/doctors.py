@@ -1,5 +1,4 @@
 import os
-import requests
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget,QGroupBox,
                                QHeaderView,QTableWidgetItem, QMessageBox, QLineEdit, QComboBox, 
                                QFormLayout, QHBoxLayout, QTextEdit)
@@ -9,11 +8,11 @@ from utils.api_utils import fetch_data, post_data, update_data
 from utils.load_auth_cred import LoadAuthCred
 
 class DoctorManagement(QWidget):
-    def __init__(self):
+    def __init__(self, role, user_id, token):
         super().__init__()
-        self.token = LoadAuthCred.load_auth_token(self)
-        self.user_id = LoadAuthCred.load_user_id(self)
-        self.user_role = LoadAuthCred.load_user_role(self)
+        self.token = token
+        self.user_id = user_id
+        self.user_role = role
         
         self.setWindowTitle("Patient Management")
         self.setGeometry(300, 200, 800, 500)
@@ -58,7 +57,7 @@ class DoctorManagement(QWidget):
         main_layout.addWidget(self.doctor_table)
 
         # Buttons for Admin
-        if self.user_role == "admin":
+        if self.user_role in ["admin", "nurse", "receptionist"]:
             button_layout = QHBoxLayout()
             
             self.refresh_button = QPushButton("Refresh Doctors")
