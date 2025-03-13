@@ -14,7 +14,9 @@ class ICUBase(BaseModel):
     admitted_by: int  # Nurse ID (matches model's `admitted_by` field)
 
 class ICUCreate(ICUBase):
-    pass
+    department: str
+    ward: str
+    bed_number: int
 
 class ICUPatientResponse(ICUBase):
     id: int
