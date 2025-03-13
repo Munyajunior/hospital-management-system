@@ -12,6 +12,9 @@ from views.pharmacy import Pharmacy
 from views.scans import Scans
 from views.radiology_management import RadiologyManagement
 from views.lab_test import LabTests
+from views.lab_test_management import LabTestManagement
+from views.user_management import UserManagement
+from views.billing import Billing
 import os
 import sys
 
@@ -199,7 +202,7 @@ class Dashboard(QWidget):
                 if module == "patients":
                     self.views[module] = PatientManagement()
                 elif module == "doctors":
-                    self.views[module] = DoctorManagement()
+                    self.views[module] = DoctorManagement(self.role, self.user_id, self.auth_token)
                 elif module == "appointments":
                     self.views[module] = ManageAppointments(self.role, self.user_id, self.auth_token)
                 elif module == "medical_records":
@@ -214,6 +217,12 @@ class Dashboard(QWidget):
                     self.views[module] = RadiologyManagement(self.role, self.user_id, self.auth_token)
                 elif module == "lab":
                     self.views[module] = LabTests(self.role, self.user_id, self.auth_token)
+                elif module == "laboratory":
+                    self.views[module] = LabTestManagement(self.role, self.user_id, self.auth_token)
+                elif module == "user_management":
+                    self.views[module] = UserManagement(self.role, self.user_id, self.auth_token)
+                elif module == "billing":
+                    self.views[module] = Billing(self.role, self.user_id, self.auth_token)
                 # Add more views here...
 
                 self.main_content.addWidget(self.views[module])
