@@ -18,7 +18,7 @@ class RadiologyScanCreate(RadiologyScanBase):
 
 class RadiologyScanUpdate(BaseModel):
     status: RadiologyScanStatus
-    report : Optional[str] = None
+    results : Optional[str] = None
     
     
 class RadiologyScanResponse(RadiologyScanBase):
