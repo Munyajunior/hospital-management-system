@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
-from datetime import datetime
+from typing import List
+from sqlalchemy.sql import func
 from models.lab import LabTest, LabTestStatus
 from models.patient import Patient
 from schemas.lab import LabTestCreate, LabTestResponse, LabTestUpdate
@@ -61,6 +61,26 @@ def get_lab_test(test_id: int, db: Session = Depends(get_db), user: User = Depen
 
 
 # update a specific lab test
+@router.put("/{test_id}/in_progress", response_model=LabTestResponse)
+def update_lab_test(
+    test_id: int, 
+    update_data: LabTestUpdate, 
+    db: Session = Depends(get_db), 
+    user: User = Depends(lab_staff_only)
+):
+    lab_test = db.query(LabTest).filter(LabTest.id == test_id).first()
+    if not lab_test:
+        raise HTTPException(status_code=404, detail="Lab test not found")
+
+    lab_test.status = update_data.status
+    if update_data.status == LabTestStatus.IN_PROGRESS and update_data.results:
+        lab_test.results = update_data.results
+    
+    db.commit()
+    db.refresh(lab_test)
+    return lab_test
+
+# update a specific lab test
 @router.put("/{test_id}/update", response_model=LabTestResponse)
 def update_lab_test(
     test_id: int, 
@@ -75,7 +95,7 @@ def update_lab_test(
     lab_test.status = update_data.status
     if update_data.status == LabTestStatus.COMPLETED and update_data.results:
         lab_test.results = update_data.results
-        lab_test.completed_date = datetime.utcnow()
+        lab_test.completed_date = func.now()
 
     db.commit()
     db.refresh(lab_test)
