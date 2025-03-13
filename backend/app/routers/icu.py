@@ -1,23 +1,22 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
-from datetime import datetime
+from sqlalchemy.sql import func
 from models.icu import ICUPatient, ICUStatus
 from models.patient import Patient
 from models.user import User
-from models.nurse import Nurse
 from schemas.icu import ICUCreate, ICUPatientResponse
 from core.database import get_db
 from core.dependencies import RoleChecker
 
 router = APIRouter(prefix="/icu", tags=["ICU Management"])
 
-staff_only  = RoleChecker(["nurse", "receptionists", "icu"])
+staff_only  = RoleChecker(["nurse", "admin", "icu"])
 doctor_only = RoleChecker(["doctor"])
 @router.post("/", response_model=ICUPatientResponse)
 def admit_patient_to_icu(icu_data: ICUCreate, db: Session = Depends(get_db), user: User = Depends(staff_only)):
     patient = db.query(Patient).filter(Patient.id == icu_data.patient_id).first()
-    nurse = db.query(Nurse).filter(Nurse.id == icu_data.assigned_nurse_id).first()
+    nurse = db.query(User).filter(User.id == icu_data.admitted_by).first()
 
     if not patient or not nurse:
         raise HTTPException(status_code=400, detail="Invalid patient ID or nurse ID")
@@ -47,7 +46,7 @@ def update_icu_patient(icu_id: int, status: ICUStatus, db: Session = Depends(get
 
     icu_patient.status = status
     if status == ICUStatus.DISCHARGED:
-        icu_patient.discharge_date = datetime.now()
+        icu_patient.discharge_date = func.now()
 
     db.commit()
     db.refresh(icu_patient)
