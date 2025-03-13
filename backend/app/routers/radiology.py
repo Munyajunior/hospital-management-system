@@ -73,7 +73,9 @@ def update_radiology_scan(scan_id: int, update: RadiologyScanUpdate, db: Session
         raise HTTPException(status_code=404, detail="Radiology scan not found")
 
     radiology_scan.status = update.status
-    radiology_scan.results = update.report
+    if update.status == RadiologyScanStatus.IN_PROGRESS and update.results:
+        radiology_scan.results = update.results
+        
     db.commit()
     db.refresh(radiology_scan)
 
@@ -88,7 +90,9 @@ def update_radiology_scan(scan_id: int, update:RadiologyScanUpdate,  db: Session
         raise HTTPException(status_code=404, detail="Radiology scan not found")
 
     radiology_scan.status = update.status
-    radiology_scan.results = update.report
+    if update.status == RadiologyScanStatus.COMPLETED and update.results:
+        radiology_scan.results = update.results
+        radiology_scan.completed_date = func.now()
     
     db.commit()
     db.refresh(radiology_scan)
