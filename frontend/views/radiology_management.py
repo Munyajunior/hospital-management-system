@@ -153,7 +153,7 @@ class RadiologyManagement(QWidget):
 
         data = {
             "status": "In Progress",
-            "report": "Processing scan, please be patient..."
+            "results": "Processing scan, please be patient..."
         }
 
         status = update_data(self, api_url, data, self.token)
@@ -211,10 +211,8 @@ class UpdateRequestedScan(QWidget):
         api_url = f"{os.getenv('SCANS_URL')}{self.scan_id}/update"
         data = {
             "status": "Completed",  
-            "report": results 
+            "results": results 
         }
-
-        print("Sending data:", data)  # Debugging print
 
         response = update_data(self, api_url, data, self.token)
 
