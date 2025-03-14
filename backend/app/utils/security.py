@@ -4,6 +4,8 @@ from jose import JWTError, jwt
 from typing import Optional
 import os
 from dotenv import load_dotenv
+import random
+import string
 
 # Load environment variables
 load_dotenv()
@@ -24,6 +26,12 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
+
+def generate_password(length=8):
+    """Generate a random password for the patient."""
+    characters = string.ascii_letters + string.digits
+    return ''.join(random.choice(characters) for _ in range(length))
+
 # Generate JWT token
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """
@@ -32,9 +40,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     to_encode = data.copy()
     to_encode['sub'] = str(to_encode['sub'])
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = datetime.now() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE)
+        expire = datetime.now() + timedelta(minutes=ACCESS_TOKEN_EXPIRE)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -45,4 +53,17 @@ def verify_token(token: str):
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
     except JWTError:
+        return None
+
+
+def create_reset_token(user_id: int, expires_delta: timedelta = timedelta(hours=1)):
+    expire = datetime.now() + expires_delta
+    to_encode = {"sub": str(user_id), "exp": expire}
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+def verify_reset_token(token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return int(payload.get("sub"))
+    except:
         return None

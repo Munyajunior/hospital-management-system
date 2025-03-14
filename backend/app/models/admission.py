@@ -21,6 +21,7 @@ class PatientAdmission(Base):
     id = Column(Integer, primary_key=True, index=True)
     patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False)
     admitted_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=False)
+    assigned_doctor_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)  # Added this field
     category = Column(Enum(AdmissionCategory, name="admission_category"), nullable=False)
     department_id = Column(Integer, ForeignKey("departments.id", ondelete="SET NULL"))
     ward_id = Column(Integer, ForeignKey("wards.id", ondelete="SET NULL"))
@@ -31,10 +32,11 @@ class PatientAdmission(Base):
 
     # Relationships
     patient = relationship("Patient", back_populates="admissions")
-    assigned_doctor = relationship("User", back_populates="admissions")
+    admitted_by_user = relationship("User", foreign_keys=[admitted_by])  # Renamed for clarity
+    assigned_doctor = relationship("User", foreign_keys=[assigned_doctor_id])  # Corrected relationship
     department = relationship("Department")
     ward = relationship("Ward")
-    bed = relationship("Bed", back_populates="patient_admission", uselist=False)  # Each bed has one active admission
+    bed = relationship("Bed", back_populates="patient_admission", uselist=False)  
 
 class Department(Base):
     __tablename__ = "departments"
@@ -54,6 +56,7 @@ class Ward(Base):
 
     department = relationship("Department", back_populates="wards")
     beds = relationship("Bed", back_populates="ward")
+
 
 class Bed(Base):
     __tablename__ = "beds"

@@ -1,38 +1,38 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime, Date
+from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime, Date, Enum, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from core.database import Base
 
+ 
 class Patient(Base):
     __tablename__ = "patients"
+
     id = Column(Integer, primary_key=True, index=True)
     full_name = Column(String, nullable=False)
-    date_of_birth = Column(Date, nullable=False)  # Changed to Date
-    gender = Column(String, nullable=False)
+    date_of_birth = Column(Date, nullable=False)
+    gender = Column(Enum("Male", "Female", "Other", name="gender_enum"), nullable=False)
     contact_number = Column(String, nullable=False)
-    role = Column(String, default="patient",nullable=False)
     email = Column(String, unique=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
+    hashed_password = Column(String, nullable=False)  # Authentication for mobile app
     address = Column(Text, nullable=False)
-    medical_history = Column(Text, nullable=True)
-    diagnosis = Column(Text, nullable=True)
-    treatment_plan = Column(Text, nullable=True)
-    prescription = Column(Text, nullable=True)
-    lab_tests_requested = Column(Text, nullable=True)
-    scans_requested = Column(Text, nullable=True)
-    lab_tests_results= Column(Text, nullable=True)
-    scan_results = Column(Text, nullable=True)
-    notes = Column(Text, nullable=True)
+
+    # Patient categorization
+    category = Column(Enum("outpatient", "inpatient", "ICU", name="patient_category"), default="outpatient", nullable=False)
+    emergency = Column(Boolean, default=False)  # Emergency flag
+
     assigned_doctor_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
     registered_by = Column(Integer, ForeignKey("users.id"), nullable=False)  # Nurse who registered the patient
-    created_at = Column(DateTime, server_default=func.now())
-    
+    created_at = Column(Date, server_default=func.now())
+
     # Relationships
     assigned_doctor = relationship("User", back_populates="patients", foreign_keys=[assigned_doctor_id])
     registered_by_user = relationship("User", foreign_keys=[registered_by])
-    icu_records = relationship("ICUPatient", back_populates="patient", cascade="all, delete-orphan")
+    medical_records = relationship("MedicalRecord", back_populates="patient", cascade="all, delete-orphan")
+    admissions = relationship("PatientAdmission", back_populates="patient")
+
+
+    #icu_records = relationship("ICUPatient", back_populates="patient", cascade="all, delete-orphan")
     lab_tests = relationship("LabTest", back_populates="patient", cascade="all, delete-orphan")
     prescriptions = relationship("Prescription", back_populates="patient", cascade="all, delete-orphan")
     radiology_scan = relationship("RadiologyScan", back_populates="patient", cascade="all, delete-orphan")
     appointments = relationship("Appointment", back_populates="patient", cascade="all, delete-orphan")
-   

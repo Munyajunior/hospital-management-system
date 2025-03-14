@@ -87,8 +87,8 @@ class MedicalRecords(QWidget):
 
             # Patient Table
             self.medical_record_table = QTableWidget()
-            self.medical_record_table.setColumnCount(4)
-            self.medical_record_table.setHorizontalHeaderLabels(["ID", "Name", "Age", "Actions"])
+            self.medical_record_table.setColumnCount(7)
+            self.medical_record_table.setHorizontalHeaderLabels(["ID", "Name", "DOB", "Contact", "Emergency", "Category","Actions"])
             self.medical_record_table.horizontalHeader().setStretchLastSection(True)
             self.medical_record_table.setAlternatingRowColors(True)
             main_layout.addWidget(self.medical_record_table, stretch=1)
@@ -103,12 +103,11 @@ class MedicalRecords(QWidget):
 
             # Patient Table
             self.patient_table = QTableWidget()
-            self.patient_table.setColumnCount(14)
+            self.patient_table.setColumnCount(9)
             self.patient_table.setHorizontalHeaderLabels([
-                "ID", "Name", "Date of Birth", "Gender", "Contact Number",
-                "Address", "Medical History", "Diagnosis", "Treatment Plan",
-                "Prescription", "Lab Tests", "Radiography", "Notes", "Actions"
-            ])
+            "ID","Medical History", "Diagnosis", "Treatment Plan",
+            "Prescription", "Lab Tests", "Radiography", "Notes", "Actions"
+        ])
 
             # Enable word wrap for header labels
             self.patient_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)  # Stretch all columns
@@ -154,9 +153,12 @@ class MedicalRecords(QWidget):
                 self.medical_record_table.setItem(row, 0, QTableWidgetItem(str(patient["id"])))
                 self.medical_record_table.setItem(row, 1, QTableWidgetItem(patient["full_name"]))
                 self.medical_record_table.setItem(row, 2, QTableWidgetItem(patient["date_of_birth"]))
+                self.medical_record_table.setItem(row, 3, QTableWidgetItem(patient["contact_number"]))
+                self.medical_record_table.setItem(row, 4, QTableWidgetItem(str(patient["emergency"])))
+                self.medical_record_table.setItem(row, 5, QTableWidgetItem(patient["category"]))
 
                 # Button to View Patient Record
-                self.medical_record_table.setCellWidget(row, 3, self.create_view_button(patient["id"]))
+                self.medical_record_table.setCellWidget(row, 6, self.create_view_button(patient["id"]))
 
         else:
             base_url = os.getenv("MEDICAL_RECORD_URL")
@@ -169,20 +171,15 @@ class MedicalRecords(QWidget):
             self.patient_table.setRowCount(len(patients))
             for row, patient in enumerate(patients):
                 self.patient_table.setItem(row, 0, QTableWidgetItem(str(patient["id"])))
-                self.patient_table.setItem(row, 1, QTableWidgetItem(patient["full_name"]))
-                self.patient_table.setItem(row, 2, QTableWidgetItem(patient["date_of_birth"]))
-                self.patient_table.setItem(row, 3, QTableWidgetItem(patient["gender"]))
-                self.patient_table.setItem(row, 4, QTableWidgetItem(patient["contact_number"]))
-                self.patient_table.setItem(row, 5, QTableWidgetItem(patient["address"]))
-                self.patient_table.setItem(row, 6, QTableWidgetItem(patient["medical_history"]))
-                self.patient_table.setItem(row, 7, QTableWidgetItem(patient["diagnosis"]))
-                self.patient_table.setItem(row, 8, QTableWidgetItem(patient["treatment_plan"]))
-                self.patient_table.setItem(row, 9, QTableWidgetItem(patient["prescription"]))
-                self.patient_table.setItem(row, 10, QTableWidgetItem(patient["lab_tests_results"]))
-                self.patient_table.setItem(row, 11, QTableWidgetItem(patient["scan_results"]))
-                self.patient_table.setItem(row, 12, QTableWidgetItem(patient["notes"]))
+                self.patient_table.setItem(row, 1, QTableWidgetItem(patient["medical_history"]))
+                self.patient_table.setItem(row, 2, QTableWidgetItem(patient["diagnosis"]))
+                self.patient_table.setItem(row, 3, QTableWidgetItem(patient["treatment_plan"]))
+                self.patient_table.setItem(row, 4, QTableWidgetItem(patient["prescription"]))
+                self.patient_table.setItem(row, 5, QTableWidgetItem(patient["lab_tests_results"]))
+                self.patient_table.setItem(row, 6, QTableWidgetItem(patient["scan_results"]))
+                self.patient_table.setItem(row, 7, QTableWidgetItem(patient["notes"]))
                 # Button to View Patient Record
-                self.patient_table.setCellWidget(row, 13, self.update_view_button(patient["id"]))
+                self.patient_table.setCellWidget(row, 8, self.update_view_button(patient["id"]))
             
             
     def update_view_button(self, patient_id):
@@ -334,10 +331,9 @@ class PatientRecordWindow(QWidget):
 
         # Patient Table
         self.patient_table = QTableWidget()
-        self.patient_table.setColumnCount(14)
+        self.patient_table.setColumnCount(9)
         self.patient_table.setHorizontalHeaderLabels([
-            "ID", "Name", "Date of Birth", "Gender", "Contact Number",
-            "Address", "Medical History", "Diagnosis", "Treatment Plan",
+            "ID","Medical History", "Diagnosis", "Treatment Plan",
             "Prescription", "Lab Tests", "Radiography", "Notes", "Actions"
         ])
 
@@ -376,7 +372,7 @@ class PatientRecordWindow(QWidget):
         patient = fetch_data(self, api_url, self.token)
 
         if not patient:
-            QMessageBox.information(self, "No Patients", "No patients have been assigned yet.")
+            QMessageBox.warning(self, "No Medical Record", "No patients Medical Record has been created.")
             return
 
         # Set row count to 1 since it's a single patient
@@ -384,21 +380,16 @@ class PatientRecordWindow(QWidget):
 
         # Fill in patient details
         self.patient_table.setItem(0, 0, QTableWidgetItem(str(patient.get("id", ""))))
-        self.patient_table.setItem(0, 1, QTableWidgetItem(patient.get("full_name", "")))
-        self.patient_table.setItem(0, 2, QTableWidgetItem(patient.get("date_of_birth", "")))
-        self.patient_table.setItem(0, 3, QTableWidgetItem(patient.get("gender", "")))
-        self.patient_table.setItem(0, 4, QTableWidgetItem(patient.get("contact_number", "")))
-        self.patient_table.setItem(0, 5, QTableWidgetItem(patient.get("address", "")))
-        self.patient_table.setItem(0, 6, QTableWidgetItem(patient.get("medical_history", "")))
-        self.patient_table.setItem(0, 7, QTableWidgetItem(patient.get("diagnosis", "")))
-        self.patient_table.setItem(0, 8, QTableWidgetItem(patient.get("treatment_plan", "")))
-        self.patient_table.setItem(0, 9, QTableWidgetItem(patient.get("prescription", "")))
-        self.patient_table.setItem(0, 10, QTableWidgetItem(patient.get("lab_tests_results", "")))
-        self.patient_table.setItem(0, 11, QTableWidgetItem(patient.get("scan_results", "")))
-        self.patient_table.setItem(0, 12, QTableWidgetItem(patient.get("notes", "")))
+        self.patient_table.setItem(0, 1, QTableWidgetItem(patient.get("medical_history", "")))
+        self.patient_table.setItem(0, 2, QTableWidgetItem(patient.get("diagnosis", "")))
+        self.patient_table.setItem(0, 3, QTableWidgetItem(patient.get("treatment_plan", "")))
+        self.patient_table.setItem(0, 4, QTableWidgetItem(patient.get("prescription", "")))
+        self.patient_table.setItem(0, 5, QTableWidgetItem(patient.get("lab_tests_results", "")))
+        self.patient_table.setItem(0, 6, QTableWidgetItem(patient.get("scan_results", "")))
+        self.patient_table.setItem(0, 7, QTableWidgetItem(patient.get("notes", "")))
 
         # Button to View Patient Record
-        self.patient_table.setCellWidget(0, 13, self.create_view_button(patient.get("id", "")))
+        self.patient_table.setCellWidget(0, 8, self.create_view_button(patient.get("id", "")))
 
 
     def create_view_button(self, patient_id):

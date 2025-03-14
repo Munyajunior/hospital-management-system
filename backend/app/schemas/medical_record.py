@@ -1,20 +1,29 @@
 from pydantic import BaseModel
 from datetime import datetime
+from typing import Optional
 
 class MedicalRecordBase(BaseModel):
-    notes: str | None = None
-    diagnoses: str | None = None
-    prescriptions: str | None = None
-    lab_results: str | None = None
-    scans: str | None = None
+    diagnosis: Optional[str] = None
+    treatment_plan: Optional[str] = None
+    prescription: Optional[str] = None
+    lab_tests_requested: Optional[str] = None
+    scans_requested: Optional[str] = None
+    lab_tests_results: Optional[str] = None
+    scan_results: Optional[str] = None
+    notes: Optional[str] = None
+    medical_history: Optional[str] = None
 
 class MedicalRecordCreate(MedicalRecordBase):
+    patient_id: int
+
+class MedicalRecordUpdate(MedicalRecordCreate):
     pass
 
 class MedicalRecordResponse(MedicalRecordBase):
     id: int
     patient_id: int
-    created_at: datetime
+    created_by: int
+    visit_date: datetime
 
     class Config:
         from_attributes = True

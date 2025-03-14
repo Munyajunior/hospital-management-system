@@ -18,7 +18,7 @@ class Sidebar(QWidget):
         menu_items = [
             ("Dashboard", "dashboard", ["admin", "nurse", "doctor", "pharmacist", "lab_technician", "radiologist", "icu_staff", "billing_staff"]),
             ("Patients", "patients", ["admin", "nurse"]),
-            ("Doctors", "doctors", ["admin","doctor", "nurse", "receptionist"]),
+            ("My Patients", "doctors", ["admin","doctor", "nurse", "receptionist"]),
             ("Pharmacy", "pharmacy", ["pharmacist"]),
             ("Lab Test Request", "lab", ["doctor"]),
             ("Laboratory", "laboratory", ["lab_technician"]),

@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QFont, QPixmap
 from PySide6.QtCore import Qt, QTimer
 from core.auth import AuthHandler
+from .forgot_password import ForgotPasswordPage
 
 class LoginScreen(QWidget):
     def __init__(self, on_login_success):
@@ -82,6 +83,11 @@ class LoginScreen(QWidget):
         self.login_button = QPushButton("Login")
         self.login_button.clicked.connect(self.handle_login)
         layout.addWidget(self.login_button)
+        
+        # Forgot Password Button
+        self.forgot_password_button = QPushButton("Forgot Password?")
+        self.forgot_password_button.clicked.connect(self.open_forgot_password)
+        layout.addWidget(self.forgot_password_button)
 
         # Footer
         footer_label = QLabel("© 2025 Hospital System - All Rights Reserved")
@@ -122,3 +128,7 @@ class LoginScreen(QWidget):
 
         self.login_button.setText("Login")
         self.login_button.setEnabled(True)
+
+    def open_forgot_password(self):
+        self.forgot_password_window = ForgotPasswordPage()
+        self.forgot_password_window.show()

@@ -24,5 +24,5 @@ class ICUPatient(Base):
     status = Column(Enum(ICUStatus,name="icu_status",), default=ICUStatus.ADMITTED)
 
     # Relationships
-    assigned_nurse = relationship("Nurse", back_populates="icu_patients")
-    patient = relationship("Patient", back_populates="icu_records")
+    #assigned_nurse = relationship("Nurse", back_populates="icu_patients")
+    #patient = relationship("Patient", back_populates="icu_records")

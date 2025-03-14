@@ -1,15 +1,16 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QLineEdit, 
-    QComboBox, QMessageBox
+    QComboBox, QMessageBox,QMainWindow
 )
-from PySide6.QtCore import Qt
 import requests
+from PySide6.QtCore import Qt
+from utils.api_utils import fetch_data, post_data, update_data
 import os
 
 class Settings(QWidget):
     def __init__(self, auth_token, user_role):
         super().__init__()
-        self.auth_token = auth_token
+        self.token = auth_token
         self.user_role = user_role
 
         # Ensure only authorized users can access settings
@@ -104,11 +105,9 @@ class Settings(QWidget):
             return
 
         api_url = os.getenv("UPDATE_PASSWORD_URL")
-        headers = {"Authorization": f"Bearer {self.auth_token}", "Content-Type": "application/json"}
         data = {"old_password": old_password, "new_password": new_password}
 
-        response = requests.post(api_url, json=data, headers=headers)
-
+        response = post_data(self, api_url, data, self.token)
         if response.status_code == 200:
             QMessageBox.information(self, "Success", "Password updated successfully.")
         else:

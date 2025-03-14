@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from schemas.patients import PatientCreate, PatientResponse, PatientUpdate
@@ -6,8 +6,9 @@ from models.patient import Patient
 from models.user import User
 from models.doctor import Doctor
 from core.database import get_db
-from utils.security import hash_password
+from utils.security import hash_password, generate_password
 from core.dependencies import RoleChecker
+
 
 router = APIRouter(prefix="/patients", tags=["Patients"])
 
@@ -17,69 +18,41 @@ router = APIRouter(prefix="/patients", tags=["Patients"])
 staff_only = RoleChecker(["admin", "nurse", "receptionist"])
 doctor_only = RoleChecker(["doctor","nurse"])
 
+
 @router.post("/", response_model=PatientResponse)
 def create_patient(patient: PatientCreate, db: Session = Depends(get_db), 
                    current_user: User = Depends(staff_only)):
 
-    # Validate doctor if provided
-    if patient.assigned_doctor_id:
-        doctor = db.query(Doctor).filter(Doctor.id == patient.assigned_doctor_id).first()
-        if not doctor:
-            raise HTTPException(status_code=400, detail="Invalid doctor ID")
-        
-    # Check if user already exists
     existing_user = db.query(Patient).filter(Patient.email == patient.email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
-    
-    # Convert password into hashed_password
-    hashed_password = hash_password(patient.password)  # Hash the password
 
-    # Prepare patient data dictionary
+    password_hash = hash_password(generate_password())
     patient_data = patient.model_dump()
+    patient_data["hashed_password"] =  password_hash
     patient_data["registered_by"] = current_user.id
-    patient_data["hashed_password"] = hashed_password  #Convert password
+    patient_data["category"] = "outpatient" if not patient.emergency else "inpatient"
+  
 
-    del patient_data["password"]  # Remove plain text password
-
-    # Create Patient instance with unpacked dictionary
-    new_patient = Patient(**patient_data)  
-
+    new_patient = Patient(**patient_data)
     db.add(new_patient)
     db.commit()
     db.refresh(new_patient)
     
     return new_patient
 
-
-
-
 @router.get("/", response_model=List[PatientResponse])
-def get_patients(db: Session = Depends(get_db),
-                 user: User = Depends(staff_only)):
+def get_patients(db: Session = Depends(get_db), user: User = Depends(staff_only)):
     return db.query(Patient).all()
 
-@router.get("/{patient_id}", response_model=dict)
-def get_patient(patient_id: int, db: Session = Depends(get_db),
-                user: User = Depends(doctor_only)):
+
+@router.get("/{patient_id}", response_model=PatientResponse)
+def get_patient(patient_id: int, db: Session = Depends(get_db), user: User = Depends(doctor_only)):
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
-    return {
-        "id": patient.id,
-        "full_name": patient.full_name,
-        "date_of_birth": patient.date_of_birth,
-        "gender": patient.gender,
-        "contact_number": patient.contact_number,
-        "address": patient.address,
-        "medical_history": patient.medical_history,
-        "diagnosis": patient.diagnosis,
-        "treatment_plan": patient.treatment_plan,
-        "prescription": patient.prescription,
-        "lab_tests_results": patient.lab_tests_results,
-        "scan_results": patient.scan_results,
-        "notes": patient.notes,
-    }
+    return patient
+
 
 @router.put("/{patient_id}", response_model=PatientResponse)
 def update_patient(patient_id: int, patient_data: PatientUpdate, db: Session = Depends(get_db),
@@ -87,24 +60,29 @@ def update_patient(patient_id: int, patient_data: PatientUpdate, db: Session = D
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
-    
-    for key, value in patient_data.model_dump().items():
+
+    for key, value in patient_data.model_dump(exclude_unset=True).items():
         setattr(patient, key, value)
-    
+
     db.commit()
     db.refresh(patient)
     return patient
 
-@router.delete("/{patient_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_patient(patient_id: int, db: Session = Depends(get_db),
-                   user: User = Depends(staff_only)): #TODO: implement who can delete patient
+
+@router.put("/{patient_id}/assign-category/{category}", response_model=PatientResponse)
+def update_patient_category(patient_id: int, category: str, db: Session = Depends(get_db),
+                            user: User = Depends(doctor_only)):
+    if category not in ["outpatient", "inpatient", "ICU"]:
+        raise HTTPException(status_code=400, detail="Invalid category")
+
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
-    db.delete(patient)
+    patient.category = category
     db.commit()
-    return
+    db.refresh(patient)
+    return patient 
 
 @router.put("/{patient_id}/assign/{doctor_id}", response_model=PatientResponse)
 def assign_patient_to_doctor(patient_id: int, doctor_id: int, db: Session = Depends(get_db),
@@ -119,7 +97,7 @@ def assign_patient_to_doctor(patient_id: int, doctor_id: int, db: Session = Depe
 
     patient.assigned_doctor_id = doctor_id
     db.commit()
-    db.refresh(patient)
+    db.refresh(patient) 
     return patient
 
 
@@ -135,3 +113,9 @@ def update_medical_records(patient_id: int, updates: PatientUpdate, db: Session 
     db.commit()
     db.refresh(patient)
     return patient
+
+
+
+
+
+

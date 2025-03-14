@@ -200,7 +200,7 @@ class Dashboard(QWidget):
             # If module isn't in views, create and add it
             if module not in self.views:
                 if module == "patients":
-                    self.views[module] = PatientManagement()
+                    self.views[module] = PatientManagement(self.role, self.user_id, self.auth_token)
                 elif module == "doctors":
                     self.views[module] = DoctorManagement(self.role, self.user_id, self.auth_token)
                 elif module == "appointments":

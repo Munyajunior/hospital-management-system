@@ -12,4 +12,4 @@ class Nurse(Base):
     department = Column(String, nullable=False)
 
     # Relationships
-    icu_patients = relationship("ICUPatient", back_populates="assigned_nurse")
+    #icu_patients = relationship("ICUPatient", back_populates="assigned_nurse")

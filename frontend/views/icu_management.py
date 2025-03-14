@@ -1,5 +1,4 @@
 import os
-import requests
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
     QMessageBox, QComboBox, QTextEdit
@@ -92,18 +91,14 @@ class ICUManagement(QWidget):
             QMessageBox.critical(self, "Error", "Failed to fetch patient list.")
     def load_icu_patients(self):
         """Fetches and displays ICU patients."""
-        try:
-            api_url = os.getenv("GET_ICU_PATIENTS_URL")
-            headers = {"Authorization": f"Bearer {self.auth_token}"}
-            response = requests.get(api_url, headers=headers)
 
-            if response.status_code == 200:
-                icu_patients = response.json()
-                self.populate_table(icu_patients)
-            else:
+        api_url = os.getenv("GET_ICU_PATIENTS_URL")
+        icu_patients = fetch_data(self, api_url, self.token)
+
+        if icu_patients:
+            self.populate_table(icu_patients)
+        else:
                 QMessageBox.critical(self, "Error", "Failed to fetch ICU patient list.")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred: {e}")
 
     def populate_table(self, icu_patients):
         """Fills the ICU patient table with data."""
@@ -128,23 +123,19 @@ class ICUManagement(QWidget):
             QMessageBox.warning(self, "Validation Error", "Please select a patient and enter a valid bed number.")
             return
 
-        try:
-            api_url = os.getenv("ASSIGN_ICU_BED_URL")
-            headers = {"Authorization": f"Bearer {self.auth_token}"}
-            data = {
-                "patient_id": patient_id,
-                "bed_number": bed_number,
-                "assigned_by": self.user_id
-            }
-            response = requests.post(api_url, json=data, headers=headers)
+        api_url = os.getenv("ASSIGN_ICU_BED_URL")
+        data = {
+            "patient_id": patient_id,
+            "bed_number": bed_number,
+            "assigned_by": self.user_id
+        }
+        response = post_data(self, api_url, data, self.token)
 
-            if response.status_code == 201:
-                QMessageBox.information(self, "Success", "ICU bed assigned successfully.")
-                self.load_icu_patients()
-            else:
-                QMessageBox.critical(self, "Error", "Failed to assign ICU bed.")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred: {e}")
+        if response:
+            QMessageBox.information(self, "Success", "ICU bed assigned successfully.")
+            self.load_icu_patients()
+        else:
+            QMessageBox.critical(self, "Error", "Failed to assign ICU bed.")
 
     def view_icu_monitoring(self):
         """Fetches and displays ICU monitoring data (for doctors)."""
@@ -152,18 +143,13 @@ class ICUManagement(QWidget):
             QMessageBox.warning(self, "Unauthorized", "Only doctors can view ICU monitoring.")
             return
 
-        try:
-            api_url = os.getenv("ICU_MONITORING_URL")
-            headers = {"Authorization": f"Bearer {self.auth_token}"}
-            response = requests.get(api_url, headers=headers)
+        api_url = os.getenv("ICU_MONITORING_URL")
+        monitoring_data = fetch_data(self, api_url, self.token)
 
-            if response.status_code == 200:
-                monitoring_data = response.json()
-                self.show_monitoring_popup(monitoring_data)
-            else:
-                QMessageBox.critical(self, "Error", "Failed to fetch ICU monitoring data.")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred: {e}")
+        if monitoring_data:
+            self.show_monitoring_popup(monitoring_data)
+        else:
+            QMessageBox.critical(self, "Error", "Failed to fetch ICU monitoring data.")
 
     def show_monitoring_popup(self, monitoring_data):
         """Displays ICU monitoring data in a popup window."""

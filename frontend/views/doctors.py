@@ -356,8 +356,8 @@ class PatientListWindow(QWidget):
 
         # Patient Table
         self.patient_table = QTableWidget()
-        self.patient_table.setColumnCount(4)
-        self.patient_table.setHorizontalHeaderLabels(["ID", "Name", "Date of Birth", "Actions"])
+        self.patient_table.setColumnCount(7)
+        self.patient_table.setHorizontalHeaderLabels(["ID", "Name", "DOB", "Contact", "Emergency", "Category","Actions"])
         self.patient_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.patient_table.setAlternatingRowColors(True)
         self.patient_table.setStyleSheet("QTableWidget::item { padding: 10px; }")
@@ -381,9 +381,12 @@ class PatientListWindow(QWidget):
             self.patient_table.setItem(row, 0, QTableWidgetItem(str(patient["id"])))
             self.patient_table.setItem(row, 1, QTableWidgetItem(patient["full_name"]))
             self.patient_table.setItem(row, 2, QTableWidgetItem(patient["date_of_birth"]))
-
+            self.patient_table.setItem(row, 3, QTableWidgetItem(patient["contact_number"]))
+            self.patient_table.setItem(row, 4, QTableWidgetItem(str(patient["emergency"])))
+            self.patient_table.setItem(row, 5, QTableWidgetItem(patient["category"]))
+            
             # Button to View Patient Record
-            self.patient_table.setCellWidget(row, 3, self.create_view_button(patient["id"]))
+            self.patient_table.setCellWidget(row, 6, self.create_view_button(patient["id"]))
 
     def create_view_button(self, patient_id):
         """Create 'View Record' button for each patient."""
@@ -395,6 +398,7 @@ class PatientListWindow(QWidget):
         """Open the patient record management window."""
         self.patient_record_window = PatientRecordUpdateWindow(patient_id)
         self.patient_record_window.show()
+        self.close()
 
 
 class PatientRecordUpdateWindow(QWidget):
@@ -529,22 +533,29 @@ class PatientRecordUpdateWindow(QWidget):
         if patient:
             self.patient_name_label.setText(patient["full_name"])
             self.patient_dob_label.setText(patient["date_of_birth"])
-            self.medical_history_text.setPlainText(patient.get("medical_history", ""))
-            self.diagnosis_text.setPlainText(patient.get("diagnosis", ""))
-            self.treatment_plan_text.setPlainText(patient.get("treatment_plan", ""))
-            self.prescription_text.setPlainText(patient.get("prescription", ""))
-            self.lab_tests_text.setPlainText(patient.get("lab_tests_requested", ""))
-            self.lab_tests_results_text.setPlainText(patient.get("lab_tests_results", ""))
-            self.scan_requested_text.setPlainText(patient.get("scans_requested", ""))
-            self.scan_results_text.setPlainText(patient.get("scan_results", ""))
-            self.notes_text.setPlainText(patient.get("notes", ""))
         else:
-            QMessageBox.critical(self, "Error", "Failed to load patient details.")
+            QMessageBox.warning(self, "Error", "Failed to load patient details.")
+
+        base_url = os.getenv("MEDICAL_RECORD_URL")
+        api_url = f"{base_url}/{self.patient_id}"
+        records = fetch_data(self, api_url, self.token)
+        if records:
+            self.medical_history_text.setPlainText(records.get("medical_history", ""))
+            self.diagnosis_text.setPlainText(records.get("diagnosis", ""))
+            self.treatment_plan_text.setPlainText(records.get("treatment_plan", ""))
+            self.prescription_text.setPlainText(records.get("prescription", ""))
+            self.lab_tests_text.setPlainText(records.get("lab_tests_requested", ""))
+            self.lab_tests_results_text.setPlainText(records.get("lab_tests_results", ""))
+            self.scan_requested_text.setPlainText(records.get("scans_requested", ""))
+            self.scan_results_text.setPlainText(records.get("scan_results", ""))
+            self.notes_text.setPlainText(records.get("notes", ""))
+        else:
+            QMessageBox.warning(self, "Medical Record Unavailable", "This patients medical record has not been updated yet.")
 
     def update_medical_record(self):
         """Send updated medical record data to API."""
-        base_url = os.getenv("PATIENT_LIST_URL")
-        api_url = f"{base_url}{self.patient_id}"
+        base_url = os.getenv("MEDICAL_RECORD_URL")
+        api_url = f"{base_url}/{self.patient_id}"
         
         updated_data = {
             "medical_history": self.medical_history_text.toPlainText().strip(),
@@ -557,13 +568,63 @@ class PatientRecordUpdateWindow(QWidget):
             "scans_requested": self.scan_requested_text.toPlainText().strip(),
             "lab_tests_results": self.lab_tests_results_text.toPlainText().strip(),
         }
-
-        success = update_data(self, api_url, updated_data, self.token)
+    
+        success = post_data(self, api_url, updated_data, self.token)
         if success:
             self.load_patient_data()
             QMessageBox.information(self, "Success", "Medical record updated successfully.")
+             
+            if not self.lab_tests_text:
+                return
+            else:
+                self.submit_lab_test_request()
+                
+            if not self.scan_requested_text:
+                return
+            else:
+                self.submit_scan_request()
         else:
             QMessageBox.critical(self, "Error", "Failed to update medical record.")
+    
+    
+    def submit_lab_test_request(self):
+        """Send the lab test request to the backend."""
+        api_url = os.getenv("LAB_TEST_REQUEST_URL")
+        
+        request_data = {
+            "requested_by": self.user_id,
+            "patient_id": self.patient_id,
+            "test_type": self.lab_tests_text.toPlainText().strip(),
+            "additional_notes": self.notes_text.toPlainText().strip(),
+        }
+
+        success = post_data(self, api_url, request_data, self.token)
+
+        if success:
+            QMessageBox.information(self, "Success", "Lab test request submitted successfully.")
+            self.close()
+        else:
+            QMessageBox.critical(self, "Error", "Failed to submit lab test request.")
+            
+            
+    def submit_scan_request(self):
+        """Send radiology scan request to the API"""
+        scan_type = self.scan_type_dropdown.currentText().strip()
+        api_url = os.getenv("RADIOLOGY_SCAN_URL")
+       
+
+        data = {
+            "patient_id": self.patient_id,
+            "requested_by": self.doctor_id,
+            "scan_type": self.scan_requested_text.toPlainText().strip()
+        }
+
+        response = post_data(self, api_url, data, self.token)
+        if response:
+            QMessageBox.information(self, "Success", "Radiology scan requested successfully.")
+        else:
+            QMessageBox.critical(self, "Error", "Failed to request radiology scan.")
+
 
     def request_lab_test(self):
         self.lab_test = LabTests(self.patient_id, self.token)
