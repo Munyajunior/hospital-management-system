@@ -64,6 +64,10 @@ def update_appointment(appointment_id: int, update_data: AppointmentUpdate, db: 
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
 
+    # Validate status
+    if update_data.status not in AppointmentStatus.__members__.values():
+        raise HTTPException(status_code=400, detail="Invalid status value")
+    
     appointment.status = update_data.status
     db.commit()
     db.refresh(appointment)
@@ -71,16 +75,24 @@ def update_appointment(appointment_id: int, update_data: AppointmentUpdate, db: 
 
 # Reschedule appointment 
 @router.put("/{appointment_id}/reschedule", response_model=AppointmentResponse)
-def reschedule_appointment(appointment_id: int, update_data: AppointmentReschedule, db: Session = Depends(get_db), user: User =Depends(staff_only)):
+def reschedule_appointment(appointment_id: int, update_data: AppointmentReschedule, db: Session = Depends(get_db), 
+                           user: User = Depends(staff_only)
+):
     appointment = db.query(Appointment).filter(Appointment.id == appointment_id).first()
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
 
+    # Validate status
+    if update_data.status not in AppointmentStatus.__members__.values():
+        raise HTTPException(status_code=400, detail="Invalid status value")
+    
     appointment.status = update_data.status
     appointment.datetime = update_data.datetime
+    
     db.commit()
     db.refresh(appointment)
     return appointment
+
 
 # Delete an appointment
 @router.delete("/{appointment_id}", status_code=status.HTTP_204_NO_CONTENT)

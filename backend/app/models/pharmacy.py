@@ -26,17 +26,26 @@ class Prescription(Base):
     inventory = relationship("Inventory", back_populates="prescriptions")
 
 
+class DrugCategory(Base):
+    __tablename__ = "drug_categories"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)  # e.g., Analgesics, NSAIDs, Antibiotics
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, onupdate=func.now(), server_default=func.now())
+
+    # Relationship with Inventory
+    drugs = relationship("Inventory", back_populates="category")
+
 class Inventory(Base):
-
     __tablename__ = "inventory"
-
     id = Column(Integer, primary_key=True, index=True)
     added_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     drug_name = Column(String, nullable=False, unique=True)
     quantity = Column(Integer, nullable=False)
+    category_id = Column(Integer, ForeignKey("drug_categories.id"), nullable=False)  # Link to DrugCategory
     added_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, onupdate=func.now(), server_default=func.now())
 
-    # Relationship with prescriptions
+    # Relationships
+    category = relationship("DrugCategory", back_populates="drugs")
     prescriptions = relationship("Prescription", back_populates="inventory")
-    #pharmacist = relationship("User", foreign_keys=[added_by])

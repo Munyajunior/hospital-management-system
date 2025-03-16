@@ -25,6 +25,8 @@ class Patient(Base):
     created_at = Column(Date, server_default=func.now())
 
     # Relationships
+    icu_records = relationship("ICUPatient", back_populates="patient", cascade="all, delete-orphan")
+    inpatient_records = relationship("Inpatient", back_populates="patient", cascade="all, delete-orphan")
     assigned_doctor = relationship("User", back_populates="patients", foreign_keys=[assigned_doctor_id])
     registered_by_user = relationship("User", foreign_keys=[registered_by])
     medical_records = relationship("MedicalRecord", back_populates="patient", cascade="all, delete-orphan")

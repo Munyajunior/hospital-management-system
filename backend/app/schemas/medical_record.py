@@ -14,7 +14,7 @@ class MedicalRecordBase(BaseModel):
     medical_history: Optional[str] = None
 
 class MedicalRecordCreate(MedicalRecordBase):
-    patient_id: int
+    pass
 
 class MedicalRecordUpdate(MedicalRecordCreate):
     pass

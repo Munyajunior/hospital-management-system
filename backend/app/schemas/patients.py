@@ -11,7 +11,6 @@ class PatientBase(BaseModel):
     email: EmailStr
 
 class PatientCreate(PatientBase):
-    #password: str = Field(..., min_length=8)
     assigned_doctor_id: Optional[int] = None
     emergency: bool = False  # Default is false, true for emergency cases
     
@@ -24,6 +23,13 @@ class PatientResponse(PatientBase):
     registered_by: int
     category: str
     emergency: bool
-
+    
+class PatientCreateResponse(PatientBase):
+    id: int
+    assigned_doctor_id: Optional[int] = None
+    registered_by: int
+    category: str
+    emergency: bool
+    password: str
     class Config:
         from_attributes = True

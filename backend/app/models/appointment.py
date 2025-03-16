@@ -9,7 +9,7 @@ class AppointmentStatus(str, PyEnum):
     CONFIRMED = "Confirmed"
     COMPLETED = "Completed"
     CANCELED = "Canceled"
-    RESCHEDULED = "Rescheduled Pending"
+    RESCHEDULED = "Rescheduled"
 
 class Appointment(Base):
     __tablename__ = "appointments"

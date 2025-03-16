@@ -1,7 +1,6 @@
-import os
-import requests
+import re
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QFrame, QHBoxLayout
+    QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QHBoxLayout
 )
 from PySide6.QtGui import QFont, QPixmap
 from PySide6.QtCore import Qt, QTimer
@@ -83,9 +82,25 @@ class LoginScreen(QWidget):
         self.login_button = QPushButton("Login")
         self.login_button.clicked.connect(self.handle_login)
         layout.addWidget(self.login_button)
-        
+
         # Forgot Password Button
         self.forgot_password_button = QPushButton("Forgot Password?")
+        self.forgot_password_button.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: #007BFF;
+                border: none;
+                font-size: 14px;
+                text-decoration: underline;
+                padding: 5px;
+            }
+            QPushButton:hover {
+                color: #0056b3;
+            }
+            QPushButton:pressed {
+                color: #004080;
+            }
+        """)
         self.forgot_password_button.clicked.connect(self.open_forgot_password)
         layout.addWidget(self.forgot_password_button)
 
@@ -102,33 +117,50 @@ class LoginScreen(QWidget):
         email = self.email_input.text().strip()
         password = self.password_input.text().strip()
 
-        if not email or not password:
-            QMessageBox.warning(self, "Validation Error", "Email and password cannot be empty!")
-            return
-
-        if "@" not in email or "." not in email:
+        # Validate email format
+        if not self.validate_email(email):
             QMessageBox.warning(self, "Validation Error", "Please enter a valid email address!")
             return
 
+        if not password:
+            QMessageBox.warning(self, "Validation Error", "Password cannot be empty!")
+            return
+
+        # Disable the login button during processing
         self.login_button.setText("Logging in...")
         self.login_button.setEnabled(False)
 
+        # Simulate a delay for the login process
         QTimer.singleShot(1500, lambda: self.authenticate(email, password))
+
+    def validate_email(self, email):
+        """Validate email format using regex."""
+        email_regex = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+        return re.match(email_regex, email) is not None
 
     def authenticate(self, email, password):
         """Authenticate user with backend API."""
-        success, message, role = self.auth_handler.authenticate(email, password)
+        try:
+            success, message, role, user_id, token = self.auth_handler.authenticate(email, password)
+            print(f"Success: {success}, Message: {message}, Role: {role}, Token: {token}, User ID: {user_id}")
+            if success:
+                QMessageBox.information(self, "Login Success", f"Welcome, {role}!")
+                self.on_login_success(role, user_id, token)  # Pass role, token, and user ID
+                self.close()
+            else:
+                QMessageBox.critical(self, "Login Failed", message)
+        except Exception as e:
+            print(f"Error during login success: {e}")
+            QMessageBox.critical(self, "Error", f"An error occurred during login: {e}")
 
-        if success:
-            QMessageBox.information(self, "Login Success", f"Welcome, {role}!")
-            self.close()
-            self.on_login_success(role)
-        else:
-            QMessageBox.critical(self, "Login Failed", message)
-
+        # Re-enable the login button
         self.login_button.setText("Login")
         self.login_button.setEnabled(True)
 
     def open_forgot_password(self):
+        """Open the Forgot Password window."""
         self.forgot_password_window = ForgotPasswordPage()
         self.forgot_password_window.show()
+    
+    
+    

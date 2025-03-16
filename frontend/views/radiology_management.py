@@ -1,9 +1,9 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem,
-    QPushButton, QTextEdit, QMessageBox
+    QPushButton, QTextEdit, QMessageBox, QHBoxLayout, QLineEdit, QHeaderView
 )
 from PySide6.QtCore import Qt
-from utils.api_utils import fetch_data,update_data
+from utils.api_utils import fetch_data, update_data
 import os
 
 
@@ -27,17 +27,36 @@ class RadiologyManagement(QWidget):
         """)
 
         layout = QVBoxLayout()
+        layout.setSpacing(15)
+        layout.setContentsMargins(20, 20, 20, 20)
 
         # Title
         self.title_label = QLabel("📡 Radiology & Scan Management")
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.title_label.setStyleSheet("""
-            font-size: 20px;
+            font-size: 24px;
             font-weight: bold;
             color: #2C3E50;
             padding: 15px;
         """)
         layout.addWidget(self.title_label)
+
+        # Search Bar
+        search_layout = QHBoxLayout()
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("🔍 Search by Patient ID, Scan Type, or Status...")
+        self.search_input.setStyleSheet("""
+            QLineEdit {
+                background-color: white;
+                border: 1px solid #D5DBDB;
+                border-radius: 5px;
+                padding: 8px;
+                font-size: 14px;
+            }
+        """)
+        self.search_input.textChanged.connect(self.filter_scan_requests)
+        search_layout.addWidget(self.search_input)
+        layout.addLayout(search_layout)
 
         # Scan Requests Table
         self.scan_table = QTableWidget()
@@ -51,15 +70,20 @@ class RadiologyManagement(QWidget):
                 border: 1px solid #D5DBDB;
                 font-size: 14px;
                 alternate-background-color: #F8F9F9;
+                border-radius: 5px;
             }
             QHeaderView::section {
                 background-color: #007BFF;
                 color: white;
                 font-weight: bold;
-                padding: 5px;
+                padding: 10px;
                 border: none;
             }
+            QTableWidget::item {
+                padding: 8px;
+            }
         """)
+        self.scan_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         layout.addWidget(self.scan_table)
 
         # Load Scan Requests Button
@@ -78,6 +102,7 @@ class RadiologyManagement(QWidget):
         if not scan_requests:
             QMessageBox.information(self, "No Requests", "No scan requests have been made.")
             return
+        self.scan_requests = scan_requests  # Store scan requests for filtering
         self.populate_table(scan_requests)
 
     def populate_table(self, scan_requests):
@@ -127,6 +152,21 @@ class RadiologyManagement(QWidget):
             self.update_scan_request(request_id)
         elif msg.clickedButton() == in_progress_btn:
             self.status_in_progress(request_id)
+
+    def filter_scan_requests(self):
+        """Filters scan requests based on the search query."""
+        query = self.search_input.text().strip().lower()
+        if not query:
+            self.populate_table(self.scan_requests)
+            return
+
+        filtered_requests = [
+            req for req in self.scan_requests
+            if (query in str(req["patient_id"]).lower() or
+                query in req["scan_type"].lower() or
+                query in req["status"].lower())
+        ]
+        self.populate_table(filtered_requests)
 
     def button_style(self, small=False):
         """Return a modern button style with hover effects."""

@@ -1,45 +1,65 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
-from schemas.patients import PatientCreate, PatientResponse, PatientUpdate
+from schemas.patients import PatientCreate, PatientCreateResponse, PatientResponse, PatientUpdate
 from models.patient import Patient
 from models.user import User
-from models.doctor import Doctor
+from models.admission import PatientAdmission, Bed
 from core.database import get_db
 from utils.security import hash_password, generate_password
 from core.dependencies import RoleChecker
 
-
 router = APIRouter(prefix="/patients", tags=["Patients"])
 
-
-
-# Allow nurses and receptionists
 staff_only = RoleChecker(["admin", "nurse", "receptionist"])
-doctor_only = RoleChecker(["doctor","nurse"])
+doctor_only = RoleChecker(["doctor", "nurse"])
 
-
-@router.post("/", response_model=PatientResponse)
-def create_patient(patient: PatientCreate, db: Session = Depends(get_db), 
-                   current_user: User = Depends(staff_only)):
-
+@router.post("/", response_model=PatientCreateResponse)
+def create_patient(patient: PatientCreate, db: Session = Depends(get_db), current_user: User = Depends(staff_only)):
+    # Check if the email is already registered
     existing_user = db.query(Patient).filter(Patient.email == patient.email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Email already registered")
 
-    password_hash = hash_password(generate_password())
-    patient_data = patient.model_dump()
-    patient_data["hashed_password"] =  password_hash
-    patient_data["registered_by"] = current_user.id
-    patient_data["category"] = "outpatient" if not patient.emergency else "inpatient"
-  
+    # Generate password and hash it
+    password = generate_password()
+    password_hash = hash_password(password)
 
+    # Prepare patient data
+    patient_data = patient.model_dump()
+    patient_data["hashed_password"] = password_hash
+    patient_data["registered_by"] = current_user.id
+    patient_data["category"] = "inpatient" if patient.emergency else "outpatient"
+
+    # Create the patient
     new_patient = Patient(**patient_data)
     db.add(new_patient)
     db.commit()
     db.refresh(new_patient)
-    
-    return new_patient
+
+    # Automatically admit the patient if it's an emergency
+    if patient.emergency:
+        # Find an available bed
+        bed = db.query(Bed).filter(Bed.is_occupied == False).first()
+        if not bed:
+            raise HTTPException(status_code=400, detail="No available beds for emergency admission")
+
+        # Create an admission record
+        admission_data = {
+            "patient_id": new_patient.id,
+            "category": "inpatient",
+            "bed_id": bed.id,
+            "assigned_doctor_id": patient.assigned_doctor_id,
+            "admitted_by": current_user.id
+        }
+        new_admission = PatientAdmission(**admission_data)
+        db.add(new_admission)
+
+        # Mark the bed as occupied
+        bed.is_occupied = True
+        db.commit()
+
+    return {**new_patient.__dict__, "password": password}
 
 @router.get("/", response_model=List[PatientResponse])
 def get_patients(db: Session = Depends(get_db), user: User = Depends(staff_only)):

@@ -3,7 +3,6 @@ from sqlalchemy.orm import Session
 from typing import List
 from models.medical_records import MedicalRecord
 from models.patient import Patient
-
 from models.user import User
 from schemas.medical_record import MedicalRecordCreate, MedicalRecordUpdate, MedicalRecordResponse
 from core.database import get_db
@@ -25,8 +24,6 @@ def create_medical_record(patient_id: int, record_data: MedicalRecordCreate, db:
 
     if db.query(MedicalRecord).filter(MedicalRecord.patient_id == patient_id).first():
         raise HTTPException(status_code=400, detail="Medical record already exists")
-
-    print("Received data: ", record_data.model_dump())
     
     new_record = MedicalRecord(**record_data.model_dump(), patient_id=patient_id, created_by=user.id)
     db.add(new_record)
@@ -38,9 +35,8 @@ def create_medical_record(patient_id: int, record_data: MedicalRecordCreate, db:
 def get_medical_record(patient_id: int, db: Session = Depends(get_db), user: User = Depends(staff_access)):
     """Get a patient's medical record. Accessible by doctors, nurses, and admins."""
     
-    record = db.query(MedicalRecord).filter(MedicalRecord.patient_id == patient_id).first()
+    record = db.query(MedicalRecord).filter(MedicalRecord.patient_id == patient_id).all()
     if not record:
-        #raise HTTPException(status_code=404, detail="Medical record not found")
         return []
 
     return record

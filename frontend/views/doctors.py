@@ -1,7 +1,8 @@
 import os
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget,QGroupBox,
-                               QHeaderView,QTableWidgetItem, QMessageBox, QLineEdit, QComboBox, 
-                               QFormLayout, QHBoxLayout, QTextEdit)
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QGroupBox,
+    QHeaderView, QTableWidgetItem, QMessageBox, QLineEdit, QComboBox,
+    QFormLayout, QHBoxLayout, QTextEdit)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
 from utils.api_utils import fetch_data, post_data, update_data
@@ -21,12 +22,32 @@ class DoctorManagement(QWidget):
     def init_ui(self):
         """Initialize UI elements with enhanced styling."""
         main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(20)
         
         # Title Label
         self.title_label = QLabel("Doctor Management")
         self.title_label.setAlignment(Qt.AlignCenter)
-        self.title_label.setStyleSheet("font-size: 18px; font-weight: bold; padding: 10px;")
+        self.title_label.setStyleSheet("""
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+            padding: 15px;
+            border-bottom: 2px solid #3498db;
+        """)
         main_layout.addWidget(self.title_label)
+
+        # Search Bar
+        self.search_bar = QLineEdit()
+        self.search_bar.setPlaceholderText("Search doctors...")
+        self.search_bar.setStyleSheet("""
+            padding: 10px;
+            border: 1px solid #dcdcdc;
+            border-radius: 5px;
+            font-size: 14px;
+        """)
+        self.search_bar.textChanged.connect(self.filter_doctors)
+        main_layout.addWidget(self.search_bar)
 
         # Doctor Table
         self.doctor_table = QTableWidget()
@@ -39,9 +60,10 @@ class DoctorManagement(QWidget):
                 background-color: #f8f9fa;
                 gridline-color: #ddd;
                 font-size: 14px;
+                border-radius: 10px;
             }
             QTableWidget::item {
-                padding: 5px;
+                padding: 10px;
             }
             QTableWidget::item:selected {
                 background-color: #007BFF;
@@ -51,7 +73,8 @@ class DoctorManagement(QWidget):
                 background-color: #007BFF;
                 color: white;
                 font-weight: bold;
-                padding: 5px;
+                padding: 10px;
+                border-radius: 5px;
             }
         """)
         main_layout.addWidget(self.doctor_table)
@@ -73,18 +96,34 @@ class DoctorManagement(QWidget):
             button_layout.addWidget(self.register_doctor_button)
 
             main_layout.addLayout(button_layout)
-
+            self.load_doctors()
+        elif self.user_role == "doctor":
+            self.load_logged_doctors(self.user_id)
+        else:
+            QMessageBox.critical(self, "Unauthorized", "You are not authorized to access this page")
+            return
         self.setLayout(main_layout)
-        self.load_doctors()
+        
+    
+    def load_logged_doctors(self, user_id):
+        """Fetch doctor data from API."""
+        base_url = os.getenv("DOCTOR_LIST_URL")
+        api_url = f"{base_url}{user_id}"
+        doctor = fetch_data(self, api_url, self.token)
+        self.populate_table(doctor)
+        
 
     def load_doctors(self):
         """Fetch doctor data from API."""
         api_url = os.getenv("DOCTOR_LIST_URL")
-        doctors = fetch_data(self,api_url, self.token)
+        doctors = fetch_data(self, api_url, self.token)
         self.populate_table(doctors)
 
     def populate_table(self, doctors):
         """Populate table with doctor data."""
+        if isinstance(doctors, dict):  # If a single doctor object is returned
+            doctors = [doctors]  # Convert it into a list
+            
         self.doctor_table.setRowCount(len(doctors))
         for row, doctor in enumerate(doctors):
             self.doctor_table.setItem(row, 0, QTableWidgetItem(str(doctor["id"])))
@@ -92,7 +131,7 @@ class DoctorManagement(QWidget):
             self.doctor_table.setItem(row, 2, QTableWidgetItem(doctor["specialization"]))
             
             if self.user_role == "doctor":
-                view_patient_button = QPushButton(f"All Doctor {doctor["full_name"]} patients")
+                view_patient_button = QPushButton(f"All Doctor {doctor['full_name']} patients")
                 view_patient_button.setStyleSheet(self.button_style(small=True))
                 view_patient_button.clicked.connect(lambda checked, d_id=doctor["id"], d_name=doctor["full_name"]: 
                                                 self.view_assigned_patients(d_id, d_name))
@@ -127,28 +166,23 @@ class DoctorManagement(QWidget):
             }}
         """
 
-    # def view_assigned_patients(self, doctor_id):
-    #     """View patients assigned to a doctor"""
-    #     base_url = os.getenv("ASSIGNED_PATIENTS_URL")
-    #     api_url = f"{base_url}/{doctor_id}/patients"
-    #     patients = fetch_data(api_url,self.token)
-    #     if patients:
-    #         QMessageBox.information(self, "Assigned Patients", "patients you have been assigned")
-    #         self.show_assigned_patients(patients)
-    #     else:
-    #         QMessageBox.warning(self, "Error", "Failed to fetch assigned patients")
-            
-
-    # def show_assigned_patients(self, patients):
-    #     """Display assigned patients in a message box"""
-    #     patient_list = "\n".join([f"{p['id']} - {p['full_name']} ({p['date_of_birth']})" for p in patients])
-    #     QMessageBox.information(self, "Assigned Patients", f"Patients assigned to doctor:\n\n{patient_list}")
+    def filter_doctors(self):
+        """Filter doctors based on search text."""
+        search_text = self.search_bar.text().lower()
+        for row in range(self.doctor_table.rowCount()):
+            match = False
+            for col in range(self.doctor_table.columnCount()):
+                item = self.doctor_table.item(row, col)
+                if item and search_text in item.text().lower():
+                    match = True
+                    break
+            self.doctor_table.setRowHidden(row, not match)
 
     def show_registration_form(self):
         """Show doctor registration form"""
         self.registration_window = DoctorRegistrationForm(self)
         self.registration_window.show()
-
+      
 
 class DoctorRegistrationForm(QWidget):
     def __init__(self, parent):
@@ -161,16 +195,27 @@ class DoctorRegistrationForm(QWidget):
     def init_ui(self):
         """Initialize UI components with enhanced styling."""
         self.setWindowTitle("Register New Doctor")
-        self.setFixedSize(400, 450)  # Set fixed window size
+        self.setFixedSize(450, 500)  # Set fixed window size
 
         layout = QVBoxLayout()
-        form_layout = QFormLayout()  # Structured layout
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(20)
 
         # Title Label
         title_label = QLabel("Doctor Registration")
-        title_label.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 10px;")
-        title_label.setAlignment(Qt.AlignCenter)
+        title_label.setStyleSheet("""
+            font-size: 20px;
+            font-weight: bold;
+            color: #2c3e50;
+            padding: 10px;
+            border-bottom: 2px solid #3498db;
+            text-align: center;
+        """)
         layout.addWidget(title_label)
+
+        # Form Layout
+        form_layout = QFormLayout()
+        form_layout.setSpacing(15)
 
         # Name Input
         self.name_input = QLineEdit()
@@ -203,19 +248,32 @@ class DoctorRegistrationForm(QWidget):
         self.password_input.setStyleSheet(self.input_style())
         form_layout.addRow("Password:", self.password_input)
 
+        layout.addLayout(form_layout)
+
         # Display User ID
         self.user_id_label = QLabel(f"Linked User ID: {self.user_id}")
         self.user_id_label.setStyleSheet("font-size: 14px; color: gray; margin-top: 5px;")
         layout.addWidget(self.user_id_label)
 
-        layout.addLayout(form_layout)
+        # Button Layout
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(10)
+
+        # Cancel Button
+        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button.setIcon(QIcon("assets/icons/cancel.png"))
+        self.cancel_button.setStyleSheet(self.button_style(cancel=True))
+        self.cancel_button.clicked.connect(self.close)
+        button_layout.addWidget(self.cancel_button)
 
         # Register Button
         self.submit_button = QPushButton("Register Doctor")
-        self.submit_button.setIcon(QIcon("assets/icons/add.png"))  # Add an icon 
+        self.submit_button.setIcon(QIcon("assets/icons/add.png"))
         self.submit_button.setStyleSheet(self.button_style())
         self.submit_button.clicked.connect(self.register_doctor)
-        layout.addWidget(self.submit_button)
+        button_layout.addWidget(self.submit_button)
+
+        layout.addLayout(button_layout)
 
         self.setLayout(layout)
 
@@ -261,10 +319,10 @@ class DoctorRegistrationForm(QWidget):
         """Return CSS for input fields."""
         return """
             QLineEdit {
-                padding: 6px;
+                padding: 8px;
                 font-size: 14px;
                 border: 1px solid #ccc;
-                border-radius: 4px;
+                border-radius: 5px;
                 background-color: #f9f9f9;
             }
             QLineEdit:focus {
@@ -278,10 +336,10 @@ class DoctorRegistrationForm(QWidget):
         """Return CSS for combo box fields."""
         return """
             QComboBox {
-                padding: 6px;
+                padding: 8px;
                 font-size: 14px;
                 border: 1px solid #ccc;
-                border-radius: 4px;
+                border-radius: 5px;
                 background-color: #f9f9f9;
             }
             QComboBox:focus {
@@ -291,21 +349,36 @@ class DoctorRegistrationForm(QWidget):
         """
 
     @staticmethod
-    def button_style():
-        """Return CSS for the submit button."""
-        return """
-            QPushButton {
-                padding: 8px;
-                font-size: 14px;
-                font-weight: bold;
-                color: white;
-                background-color: #007BFF;
-                border-radius: 4px;
-            }
-            QPushButton:hover {
-                background-color: #0056b3;
-            }
-        """
+    def button_style(cancel=False):
+        """Return CSS for the buttons."""
+        if cancel:
+            return """
+                QPushButton {
+                    padding: 8px;
+                    font-size: 14px;
+                    font-weight: bold;
+                    color: white;
+                    background-color: #dc3545;
+                    border-radius: 5px;
+                }
+                QPushButton:hover {
+                    background-color: #c82333;
+                }
+            """
+        else:
+            return """
+                QPushButton {
+                    padding: 8px;
+                    font-size: 14px;
+                    font-weight: bold;
+                    color: white;
+                    background-color: #007BFF;
+                    border-radius: 5px;
+                }
+                QPushButton:hover {
+                    background-color: #0056b3;
+                }
+            """
 
 class PatientListWindow(QWidget):
     def __init__(self, doctor_id, doctor_name):
@@ -315,7 +388,7 @@ class PatientListWindow(QWidget):
         self.token = LoadAuthCred.load_auth_token(self)
 
         self.setWindowTitle("Assigned Patients")
-        self.setGeometry(200, 200, 700, 500)
+        self.setGeometry(200, 200, 800, 600)  # Slightly larger window for better spacing
         self.setStyleSheet("""
             QWidget {
                 background-color: #f8f9fa;
@@ -330,38 +403,69 @@ class PatientListWindow(QWidget):
                 background-color: white;
                 border: 1px solid #dcdcdc;
                 gridline-color: #dcdcdc;
+                border-radius: 10px;
             }
             QPushButton {
-            background-color: #007bff; 
-            color: white;
-            border: none;
-            font-size: 14px;
-            border-radius: 4px;
-            
-        }
-        QPushButton:hover {
-            background-color: #0056b3;
-        }
+                background-color: #007bff; 
+                color: white;
+                border: none;
+                font-size: 14px;
+                border-radius: 4px;
+                padding: 8px;
+            }
+            QPushButton:hover {
+                background-color: #0056b3;
+            }
+            QLineEdit {
+                padding: 8px;
+                border: 1px solid #dcdcdc;
+                border-radius: 4px;
+                font-size: 14px;
+            }
+            QLineEdit:focus {
+                border: 1px solid #007bff;
+            }
         """)
 
         self.init_ui()
 
     def init_ui(self):
         layout = QVBoxLayout()
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(20)
 
         # Title Label
         self.title_label = QLabel(f"Patients Assigned to Dr. {self.doctor_name}")
         self.title_label.setAlignment(Qt.AlignCenter)
+        self.title_label.setStyleSheet("""
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+            padding: 15px;
+            border-bottom: 2px solid #3498db;
+        """)
         layout.addWidget(self.title_label)
+
+        # Search Bar
+        self.search_bar = QLineEdit()
+        self.search_bar.setPlaceholderText("Search patients...")
+        self.search_bar.textChanged.connect(self.filter_patients)
+        layout.addWidget(self.search_bar)
 
         # Patient Table
         self.patient_table = QTableWidget()
         self.patient_table.setColumnCount(7)
-        self.patient_table.setHorizontalHeaderLabels(["ID", "Name", "DOB", "Contact", "Emergency", "Category","Actions"])
+        self.patient_table.setHorizontalHeaderLabels(["ID", "Name", "DOB", "Contact", "Emergency", "Category", "Actions"])
         self.patient_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.patient_table.setAlternatingRowColors(True)
         self.patient_table.setStyleSheet("QTableWidget::item { padding: 10px; }")
         layout.addWidget(self.patient_table)
+
+        # Back Button
+        back_button = QPushButton("Back")
+        back_button.setIcon(QIcon("assets/icons/back.png"))
+        back_button.clicked.connect(self.close)
+        layout.addWidget(back_button, alignment=Qt.AlignLeft)
 
         self.load_assigned_patients()
         self.setLayout(layout)
@@ -391,6 +495,7 @@ class PatientListWindow(QWidget):
     def create_view_button(self, patient_id):
         """Create 'View Record' button for each patient."""
         button = QPushButton("View Record")
+        button.setIcon(QIcon("assets/icons/view.png"))
         button.clicked.connect(lambda: self.open_patient_record(patient_id))
         return button
 
@@ -400,6 +505,18 @@ class PatientListWindow(QWidget):
         self.patient_record_window.show()
         self.close()
 
+    def filter_patients(self):
+        """Filter patients based on search text."""
+        search_text = self.search_bar.text().lower()
+        for row in range(self.patient_table.rowCount()):
+            match = False
+            for col in range(self.patient_table.columnCount()):
+                item = self.patient_table.item(row, col)
+                if item and search_text in item.text().lower():
+                    match = True
+                    break
+            self.patient_table.setRowHidden(row, not match)
+
 
 class PatientRecordUpdateWindow(QWidget):
     def __init__(self, patient_id):
@@ -408,7 +525,7 @@ class PatientRecordUpdateWindow(QWidget):
         self.token = LoadAuthCred.load_auth_token(self)
         self.doctor_id = LoadAuthCred.load_user_id(self)
         self.setWindowTitle(f"Patient Record - {patient_id}")
-        self.setGeometry(250, 250, 750, 650)
+        self.setGeometry(250, 250, 800, 700)  # Slightly larger window for better spacing
         self.init_ui()
 
     def init_ui(self):
@@ -439,15 +556,25 @@ class PatientRecordUpdateWindow(QWidget):
             QPushButton:hover {
                 background-color: #0056b3;
             }
+            QGroupBox {
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                margin-top: 10px;
+                padding: 10px;
+                font-weight: bold;
+            }
         """)
 
         main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(20)
 
+        # Title Label
         self.title_label = QLabel(f"Patient Record - ID: {self.patient_id}")
         self.title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #0056b3;")
         main_layout.addWidget(self.title_label)
 
-       # Group Box for Patient Info
+        # Group Box for Patient Info
         info_group = QGroupBox("Patient Information")
         info_layout = QFormLayout()
         
@@ -456,7 +583,6 @@ class PatientRecordUpdateWindow(QWidget):
         info_layout.addRow("Name:", self.patient_name_label)
         info_layout.addRow("Date of Birth:", self.patient_dob_label)
         info_group.setLayout(info_layout)
-        
         
         # Group Box for Medical Records
         records_group = QGroupBox("Medical Records")
@@ -468,7 +594,7 @@ class PatientRecordUpdateWindow(QWidget):
         self.treatment_plan_text = QTextEdit()
         self.prescription_text = QTextEdit()
         self.lab_tests_text = QTextEdit()
-        self.lab_tests_results_text =QTextEdit()
+        self.lab_tests_results_text = QTextEdit()
         self.scan_requested_text = QTextEdit()
         self.scan_results_text = QTextEdit()
         self.notes_text = QTextEdit()
@@ -501,22 +627,19 @@ class PatientRecordUpdateWindow(QWidget):
         # Buttons Section
         button_layout = QHBoxLayout()
         
+        self.create_record_button = QPushButton("Create Medical Record")
         self.update_record_button = QPushButton("Update Medical Record")
-        self.request_lab_test_button = QPushButton("Request Lab Test")
-        self.request_scan_button = QPushButton("Request Radiology Scan")
-        self.manage_appointments_button = QPushButton("Manage Appointments")
+        self.cancel_button = QPushButton("Cancel")
 
         # Connecting Buttons
+        self.create_record_button.clicked.connect(self.create_medical_record)
         self.update_record_button.clicked.connect(self.update_medical_record)
-        self.request_lab_test_button.clicked.connect(self.request_lab_test)
-        self.request_scan_button.clicked.connect(self.request_radiology_scan)
-       
+        self.cancel_button.clicked.connect(self.close)
 
         # Adding buttons to layout
+        button_layout.addWidget(self.create_record_button)
         button_layout.addWidget(self.update_record_button)
-        button_layout.addWidget(self.request_lab_test_button)
-        button_layout.addWidget(self.request_scan_button)
-        
+        button_layout.addWidget(self.cancel_button)
 
         main_layout.addLayout(button_layout)
         self.setLayout(main_layout)
@@ -539,25 +662,32 @@ class PatientRecordUpdateWindow(QWidget):
         base_url = os.getenv("MEDICAL_RECORD_URL")
         api_url = f"{base_url}/{self.patient_id}"
         records = fetch_data(self, api_url, self.token)
-        if records:
-            self.medical_history_text.setPlainText(records.get("medical_history", ""))
-            self.diagnosis_text.setPlainText(records.get("diagnosis", ""))
-            self.treatment_plan_text.setPlainText(records.get("treatment_plan", ""))
-            self.prescription_text.setPlainText(records.get("prescription", ""))
-            self.lab_tests_text.setPlainText(records.get("lab_tests_requested", ""))
-            self.lab_tests_results_text.setPlainText(records.get("lab_tests_results", ""))
-            self.scan_requested_text.setPlainText(records.get("scans_requested", ""))
-            self.scan_results_text.setPlainText(records.get("scan_results", ""))
-            self.notes_text.setPlainText(records.get("notes", ""))
-        else:
-            QMessageBox.warning(self, "Medical Record Unavailable", "This patients medical record has not been updated yet.")
 
-    def update_medical_record(self):
+        # Ensure `records` is not an empty list
+        if records and isinstance(records, list):
+            record = records[0]  # Get the first record
+        elif isinstance(records, dict):  # If API returned a dictionary instead
+            record = records
+        else:
+            QMessageBox.warning(self, "Medical Record Unavailable", "This patient's medical record has not been created yet.")
+            return
+
+        self.medical_history_text.setPlainText(record.get("medical_history", ""))
+        self.diagnosis_text.setPlainText(record.get("diagnosis", ""))
+        self.treatment_plan_text.setPlainText(record.get("treatment_plan", ""))
+        self.prescription_text.setPlainText(record.get("prescription", ""))
+        self.lab_tests_text.setPlainText(record.get("lab_tests_requested", ""))
+        self.lab_tests_results_text.setPlainText(record.get("lab_tests_results", ""))
+        self.scan_requested_text.setPlainText(record.get("scans_requested", ""))
+        self.scan_results_text.setPlainText(record.get("scan_results", ""))
+        self.notes_text.setPlainText(record.get("notes", ""))
+
+    def create_medical_record(self):
         """Send updated medical record data to API."""
         base_url = os.getenv("MEDICAL_RECORD_URL")
         api_url = f"{base_url}/{self.patient_id}"
         
-        updated_data = {
+        data = {
             "medical_history": self.medical_history_text.toPlainText().strip(),
             "diagnosis": self.diagnosis_text.toPlainText().strip(),
             "treatment_plan": self.treatment_plan_text.toPlainText().strip(),
@@ -566,10 +696,44 @@ class PatientRecordUpdateWindow(QWidget):
             "scan_results": self.scan_results_text.toPlainText().strip(),
             "notes": self.notes_text.toPlainText().strip(),
             "scans_requested": self.scan_requested_text.toPlainText().strip(),
-            "lab_tests_results": self.lab_tests_results_text.toPlainText().strip(),
+            "lab_tests_results": self.lab_tests_results_text.toPlainText().strip()
         }
+
+        success = post_data(self, api_url, data, self.token)
+        if success:
+            self.load_patient_data()
+            QMessageBox.information(self, "Success", "Medical record Created successfully.")
+             
+            if not self.lab_tests_text:
+                return
+            else:
+                self.submit_lab_test_request()
+                
+            if not self.scan_requested_text:
+                return
+            else:
+                self.submit_scan_request()
+        else:
+            QMessageBox.critical(self, "Error", "Failed to Create medical record.")
     
-        success = post_data(self, api_url, updated_data, self.token)
+    def update_medical_record(self):
+        """Send updated medical record data to API."""
+        base_url = os.getenv("MEDICAL_RECORD_URL")
+        api_url = f"{base_url}/{self.patient_id}"
+        
+        _data = {
+            "medical_history": self.medical_history_text.toPlainText().strip(),
+            "diagnosis": self.diagnosis_text.toPlainText().strip(),
+            "treatment_plan": self.treatment_plan_text.toPlainText().strip(),
+            "prescription": self.prescription_text.toPlainText().strip(),
+            "lab_tests_requested": self.lab_tests_text.toPlainText().strip(),
+            "scan_results": self.scan_results_text.toPlainText().strip(),
+            "notes": self.notes_text.toPlainText().strip(),
+            "scans_requested": self.scan_requested_text.toPlainText().strip(),
+            "lab_tests_results": self.lab_tests_results_text.toPlainText().strip()
+        }
+
+        success = update_data(self, api_url, _data, self.token)
         if success:
             self.load_patient_data()
             QMessageBox.information(self, "Success", "Medical record updated successfully.")
@@ -584,15 +748,14 @@ class PatientRecordUpdateWindow(QWidget):
             else:
                 self.submit_scan_request()
         else:
-            QMessageBox.critical(self, "Error", "Failed to update medical record.")
-    
+            QMessageBox.critical(self, "Error", "Failed to Update medical record.")
     
     def submit_lab_test_request(self):
         """Send the lab test request to the backend."""
         api_url = os.getenv("LAB_TEST_REQUEST_URL")
         
         request_data = {
-            "requested_by": self.user_id,
+            "requested_by": self.doctor_id,
             "patient_id": self.patient_id,
             "test_type": self.lab_tests_text.toPlainText().strip(),
             "additional_notes": self.notes_text.toPlainText().strip(),
@@ -609,14 +772,14 @@ class PatientRecordUpdateWindow(QWidget):
             
     def submit_scan_request(self):
         """Send radiology scan request to the API"""
-        scan_type = self.scan_type_dropdown.currentText().strip()
+        scan_type = self.scan_requested_text.toPlainText().strip()
         api_url = os.getenv("RADIOLOGY_SCAN_URL")
        
 
         data = {
             "patient_id": self.patient_id,
             "requested_by": self.doctor_id,
-            "scan_type": self.scan_requested_text.toPlainText().strip()
+            "scan_type": scan_type
         }
 
         response = post_data(self, api_url, data, self.token)
@@ -626,15 +789,6 @@ class PatientRecordUpdateWindow(QWidget):
             QMessageBox.critical(self, "Error", "Failed to request radiology scan.")
 
 
-    def request_lab_test(self):
-        self.lab_test = LabTests(self.patient_id, self.token)
-        self.lab_test.show()
-
-    def request_radiology_scan(self):
-        self.radiology_request = RequestRadiologyScan(self.patient_id, self.doctor_id,self.token)
-        self.radiology_request.show()
-
-    
 
 
 class LabTests(QWidget):

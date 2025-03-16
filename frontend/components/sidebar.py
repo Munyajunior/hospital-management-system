@@ -19,6 +19,7 @@ class Sidebar(QWidget):
             ("Dashboard", "dashboard", ["admin", "nurse", "doctor", "pharmacist", "lab_technician", "radiologist", "icu_staff", "billing_staff"]),
             ("Patients", "patients", ["admin", "nurse"]),
             ("My Patients", "doctors", ["admin","doctor", "nurse", "receptionist"]),
+            ("Admissions", "admission", ["admin","doctor", "nurse"]),
             ("Pharmacy", "pharmacy", ["pharmacist"]),
             ("Lab Test Request", "lab", ["doctor"]),
             ("Laboratory", "laboratory", ["lab_technician"]),
@@ -29,6 +30,7 @@ class Sidebar(QWidget):
             ("Medical Records", "medical_records", ["admin", "doctor", "nurse"]),
             ("Prescriptions", "prescriptions", ["nurse", "doctor"]),
             ("Billing", "billing", ["admin", "billing_staff"]),
+            ("Profile", "profile", ["admin", "nurse", "doctor", "pharmacist", "lab_technician", "radiologist", "icu_staff", "billing_staff"]),
             ("Settings", "settings", ["admin"]),
             ("User Management", "user_management", ["admin"]),
         ]

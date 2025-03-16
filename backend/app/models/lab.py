@@ -19,7 +19,7 @@ class LabTest(Base):
     additional_notes = Column(String, nullable=True)
     results = Column(Text, nullable=True)
     status = Column(Enum(LabTestStatus), default=LabTestStatus.PENDING)
-    created_at = Column(DateTime, server_default=func.now())
+    created_at = Column(DateTime, default=func.now(),server_default=func.now(), nullable=False)
     completed_date = Column(DateTime, server_default=func.now(),onupdate=func.now())  # Track completion time
 
     # Relationships

@@ -15,6 +15,8 @@ from views.lab_test import LabTests
 from views.lab_test_management import LabTestManagement
 from views.user_management import UserManagement
 from views.billing import Billing
+from views.profile import ProfileWindow
+from views.admission import AdmissionManagement
 import os
 import sys
 
@@ -223,6 +225,10 @@ class Dashboard(QWidget):
                     self.views[module] = UserManagement(self.role, self.user_id, self.auth_token)
                 elif module == "billing":
                     self.views[module] = Billing(self.role, self.user_id, self.auth_token)
+                elif module == "profile":
+                    self.views[module] = ProfileWindow(self.user_id, self.auth_token)
+                elif module == "admission":
+                    self.views[module] = AdmissionManagement(self.role, self.user_id, self.auth_token )
                 # Add more views here...
 
                 self.main_content.addWidget(self.views[module])

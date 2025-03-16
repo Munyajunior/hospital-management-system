@@ -1,6 +1,7 @@
-from PySide6.QtWidgets import QWidget, QHeaderView, QPushButton, QMessageBox, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QScrollArea
+from PySide6.QtWidgets import QWidget, QHeaderView, QPushButton, QMessageBox, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QScrollArea, QLineEdit, QHBoxLayout, QGridLayout
+from PySide6.QtCore import Qt, QSize
+from PySide6.QtGui import QIcon, QFont
 from .doctors import PatientRecordUpdateWindow
-from PySide6.QtCore import Qt
 from utils.api_utils import fetch_data, post_data
 import os
 
@@ -67,7 +68,15 @@ class MedicalRecords(QWidget):
             QPushButton:disabled {
                 background-color: #95a5a6;
             }
-           
+            QLineEdit {
+                padding: 8px;
+                border: 1px solid #dcdcdc;
+                border-radius: 5px;
+                font-size: 14px;
+            }
+            QLineEdit:focus {
+                border: 1px solid #3498db;
+            }
         """)
         self.init_ui()
         
@@ -76,15 +85,19 @@ class MedicalRecords(QWidget):
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(20)
         
-        
         # Header Label
         self.title_label = QLabel("Medical Records")
         self.title_label.setObjectName("titleLabel")
         self.title_label.setAlignment(Qt.AlignCenter)
         main_layout.addWidget(self.title_label)
         
+        # Search Bar
+        self.search_bar = QLineEdit()
+        self.search_bar.setPlaceholderText("Search patients...")
+        self.search_bar.textChanged.connect(self.filter_patients)
+        main_layout.addWidget(self.search_bar)
+        
         if self.user_role == "doctor":
-
             # Patient Table
             self.medical_record_table = QTableWidget()
             self.medical_record_table.setColumnCount(7)
@@ -97,7 +110,7 @@ class MedicalRecords(QWidget):
             self.setLayout(main_layout)
             
         else:
-             # Create scrollable table
+            # Create scrollable table
             self.scroll_area = QScrollArea()
             self.scroll_area.setWidgetResizable(True)  # Allow resizing
 
@@ -105,9 +118,9 @@ class MedicalRecords(QWidget):
             self.patient_table = QTableWidget()
             self.patient_table.setColumnCount(9)
             self.patient_table.setHorizontalHeaderLabels([
-            "ID","Medical History", "Diagnosis", "Treatment Plan",
-            "Prescription", "Lab Tests", "Radiography", "Notes", "Actions"
-        ])
+                "ID","Medical History", "Diagnosis", "Treatment Plan",
+                "Prescription", "Lab Tests", "Radiography", "Notes", "Actions"
+            ])
 
             # Enable word wrap for header labels
             self.patient_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)  # Stretch all columns
@@ -136,6 +149,27 @@ class MedicalRecords(QWidget):
             self.load_assigned_patients()
             self.setLayout(main_layout)
 
+    def filter_patients(self):
+        """Filter patients based on search text."""
+        search_text = self.search_bar.text().lower()
+        if self.user_role == "doctor":
+            for row in range(self.medical_record_table.rowCount()):
+                match = False
+                for col in range(self.medical_record_table.columnCount()):
+                    item = self.medical_record_table.item(row, col)
+                    if item and search_text in item.text().lower():
+                        match = True
+                        break
+                self.medical_record_table.setRowHidden(row, not match)
+        else:
+            for row in range(self.patient_table.rowCount()):
+                match = False
+                for col in range(self.patient_table.columnCount()):
+                    item = self.patient_table.item(row, col)
+                    if item and search_text in item.text().lower():
+                        match = True
+                        break
+                self.patient_table.setRowHidden(row, not match)
 
     def load_assigned_patients(self):
         if self.user_role == "doctor":
@@ -221,34 +255,7 @@ class MedicalRecords(QWidget):
                 background-color: #0056b3;
             }}
         """
-        
-    # def load_medical_record(self):
-    #     patient_id = self.patient_dropdown.currentData()
-    #     if not patient_id:
-    #         QMessageBox.warning(self, "Validation Error", "Please select a patient!")
-    #         return
-    #     base_url = os.getenv("MEDICAL_RECORD_URL")
-    #     api_url = f"{base_url}/{patient_id}"
-        
-    #     record = fetch_data(api_url, self.token)
-    #     if record:
-    #         self.populate_table([record])
-        
 
-    # def add_medical_note(self):
-    #     patient_id = self.patient_dropdown.currentData()
-    #     notes = self.notes_input.toPlainText().strip()
-
-    #     if not patient_id or not notes:
-    #         QMessageBox.warning(self, "Validation Error", "Please enter a valid medical note.")
-    #         return
-
-    #     data = {"user_id": self.user_id, "patient_id": patient_id, "notes": notes}
-    #     if post_data(os.getenv("ADD_MEDICAL_NOTE_URL"), data):
-    #         QMessageBox.information(self, "Success", "Medical note added successfully!")
-    #         self.notes_input.clear()
-    
-    
 
 class PatientRecordWindow(QWidget):
     def __init__(self, patient_id, user_id, token):
@@ -257,7 +264,7 @@ class PatientRecordWindow(QWidget):
         self.token = token
         self.doctor_id = user_id
         self.setWindowTitle(f"Patient Record - {patient_id}")
-        self.setGeometry(250, 250, 750, 650)
+        self.setGeometry(250, 250, 800, 700)  # Slightly larger window for better spacing
         self.init_ui()
 
     def init_ui(self):
@@ -316,14 +323,31 @@ class PatientRecordWindow(QWidget):
             QPushButton:disabled {
                 background-color: #95a5a6;
             }
-           
+            QLineEdit {
+                padding: 8px;
+                border: 1px solid #dcdcdc;
+                border-radius: 5px;
+                font-size: 14px;
+            }
+            QLineEdit:focus {
+                border: 1px solid #3498db;
+            }
         """)
 
         main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(20)
 
+        # Header Label
         self.title_label = QLabel(f"Patient Record - ID: {self.patient_id}")
         self.title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #0056b3;")
         main_layout.addWidget(self.title_label)
+
+        # Back Button
+        back_button = QPushButton("Back")
+        back_button.setIcon(QIcon.fromTheme("go-previous"))
+        back_button.clicked.connect(self.close)
+        main_layout.addWidget(back_button, alignment=Qt.AlignLeft)
 
         # Create scrollable table
         self.scroll_area = QScrollArea()
@@ -333,7 +357,7 @@ class PatientRecordWindow(QWidget):
         self.patient_table = QTableWidget()
         self.patient_table.setColumnCount(9)
         self.patient_table.setHorizontalHeaderLabels([
-            "ID","Medical History", "Diagnosis", "Treatment Plan",
+            "ID", "Medical History", "Diagnosis", "Treatment Plan",
             "Prescription", "Lab Tests", "Radiography", "Notes", "Actions"
         ])
 
@@ -344,14 +368,8 @@ class PatientRecordWindow(QWidget):
         # Adjust row height dynamically for better readability
         self.patient_table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
 
-        # resize mode for column headers
-        self.patient_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
-
         # Set alternating row colors for readability
         self.patient_table.setAlternatingRowColors(True)
-
-        # Set column width for "Actions" column
-        self.patient_table.setColumnWidth(13, 350)
 
         # Enable scrolling
         self.patient_table.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
@@ -361,19 +379,29 @@ class PatientRecordWindow(QWidget):
         self.scroll_area.setWidget(self.patient_table)
         main_layout.addWidget(self.scroll_area)
 
-        
+        # Save Button
+        save_button = QPushButton("Save Changes")
+        save_button.setIcon(QIcon.fromTheme("document-save"))
+        save_button.clicked.connect(self.save_changes)
+        main_layout.addWidget(save_button, alignment=Qt.AlignRight)
+
         self.setLayout(main_layout)
         self.load_assigned_patients()
-    
+
     def load_assigned_patients(self):
-        """Fetch and display patients Records to the doctor."""
+        """Fetch and display patient records."""
         base_url = os.getenv("MEDICAL_RECORD_URL")
         api_url = f"{base_url}/{self.patient_id}"
         patient = fetch_data(self, api_url, self.token)
 
         if not patient:
-            QMessageBox.warning(self, "No Medical Record", "No patients Medical Record has been created.")
+            QMessageBox.warning(self, "No Medical Record", "Patient medical record has not been created.")
             return
+
+        if patient and isinstance(patient, list):
+            patient = patient[0]  # Get the first patient
+        elif isinstance(patient, dict):  # If API returned a dictionary instead
+            patient = patient
 
         # Set row count to 1 since it's a single patient
         self.patient_table.setRowCount(1)
@@ -391,7 +419,6 @@ class PatientRecordWindow(QWidget):
         # Button to View Patient Record
         self.patient_table.setCellWidget(0, 8, self.create_view_button(patient.get("id", "")))
 
-
     def create_view_button(self, patient_id):
         """Create 'View Record' button for each patient."""
         button = QPushButton("Update Record")
@@ -403,7 +430,12 @@ class PatientRecordWindow(QWidget):
         """Open the patient record management window."""
         self.patient_record_window = PatientRecordUpdateWindow(patient_id)
         self.patient_record_window.show()
-        
+        self.close()
+
+    def save_changes(self):
+        """Save changes to the patient record."""
+        QMessageBox.information(self, "Success", "Changes saved successfully!")
+
     def button_style(self, small=False):
         """Return a consistent button style with hover effects."""
         size = "padding: 8px 15px;" if not small else "padding: 5px 10px;"

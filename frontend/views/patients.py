@@ -296,10 +296,6 @@ class PatientRegistrationForm(QWidget):
         self.address.setPlaceholderText("Enter Address")
         layout.addWidget(self.address)
         
-        self.category_input = QComboBox()
-        self.category_input.addItems(["Select Category","outpatient", "inpatient", "icu"])
-        layout.addWidget(self.category_input)
-        
         self.emergency_checkbox = QCheckBox("Emergency Case")
         layout.addWidget(self.emergency_checkbox)
 
@@ -338,7 +334,6 @@ class PatientRegistrationForm(QWidget):
         address = self.address.text().strip()
         email = self.email_input.text().strip()
         emergency = self.emergency_checkbox.isChecked()
-        category = self.category_input.currentText().strip()
         assigned_doctor_id = self.doctor_input.currentData()
 
         if not name or not dob or not contact_number or not address:
@@ -347,11 +342,7 @@ class PatientRegistrationForm(QWidget):
         if "@" not in email:
             QMessageBox.warning(self, "Validation Error", "Enter a valid email address")
             return
-        if category == "Select Category":
-            QMessageBox.warning(self, "Validation Error", "Enter a valid Category")
-            return
 
-        
         api_url = os.getenv("REGISTER_PATIENT_URL")
         data = {
             "full_name": name,
@@ -359,18 +350,22 @@ class PatientRegistrationForm(QWidget):
             "gender": gender,
             "contact_number": contact_number,
             "address": address,
-            "category": category,
             "emergency": emergency,
             "email": email,
             "assigned_doctor_id": assigned_doctor_id
         }
-        register = post_data(self, api_url,data,self.token)
-        if register: 
+        
+        response = post_data(self, api_url, data, self.token)
+        
+        if response:
+            password = response.get("password")  # Extract generated password
+            self.password_display.setText(password)  # Display password
             
-            QMessageBox.information(self, "Success", f"Patient registered successfully!, Write down this password: '{password}' and give it to the patient, use to login to the mobile app")
+            QMessageBox.information(self, "Success", 
+                f"Patient registered successfully! \nPassword: '{password}' \nGive it to the patient for login.")
+            self.close()
             self.parent.load_doctor_list()
             self.parent.load_patients()
-            self.close()
+            
         else:
             QMessageBox.critical(self, "Error", "Failed to register patient.")
-        

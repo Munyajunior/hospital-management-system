@@ -233,7 +233,7 @@ class ManageAppointments(QWidget):
             "Select an action below:"
         )
         
-        update_btn = msg.addButton("📝 Update", QMessageBox.ActionRole)
+        update_btn = msg.addButton("📝 Completed", QMessageBox.ActionRole)
         reschedule_btn = msg.addButton("⏳ Reschedule", QMessageBox.ActionRole)
         cancel_btn = msg.addButton("❌ Cancel", QMessageBox.ActionRole)
         delete_btn = msg.addButton("❌ Delete", QMessageBox.ActionRole)
@@ -405,7 +405,7 @@ class ManageAppointments(QWidget):
             api_url = f"{os.getenv('APPOINTMENTS_URL')}/{appointment['id']}/reschedule"
             data = {
                 "datetime": new_datetime,
-                "status": "Rescheduled Pending"  # Change status
+                "status": "Rescheduled" 
             }
 
             if update_data(self, api_url, data, self.token):

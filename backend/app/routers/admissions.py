@@ -1,14 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from models.user import User
-from models.admission import PatientAdmission, AdmissionCategory, AdmissionStatus, Bed
+from models.admission import PatientAdmission, AdmissionCategory, AdmissionStatus, Bed, ICUPatient, Inpatient
+from models.patient import Patient
 from schemas.admission import AdmissionCreate, AdmissionResponse
 from core.database import get_db
 from core.dependencies import RoleChecker
 from sqlalchemy.sql import func
 from typing import List, Optional
 
-router = APIRouter(prefix="/admissions", tags=["Admissions"])
+router = APIRouter(prefix="/admissions", tags=["Admissions"]) 
 
 nurse_or_doctor = RoleChecker(["nurse", "doctor"])
 
@@ -31,13 +32,12 @@ def admit_patient(admission_data: AdmissionCreate, db: Session = Depends(get_db)
             raise HTTPException(status_code=400, detail="Selected bed is occupied or does not exist")
     
     bed.is_occupied = True  # Mark bed as occupied
-
-    # Check if a doctor is assigned (only nurses can assign)
-    if admission_data.assigned_doctor_id:
-        doctor = db.query(User).filter(User.id == admission_data.assigned_doctor_id, User.role == "doctor").first()
-        if not doctor:
-            raise HTTPException(status_code=400, detail="Assigned doctor is invalid")
     
+    # Check if admitted patient is already assigned a doctor
+    doctor_id = db.query(Patient).filter(Patient.id == admission_data.patient_id).first()
+    if doctor_id.assigned_doctor_id:
+        admission_data.assigned_doctor_id = doctor_id.assigned_doctor_id
+        
     # Auto-assign a doctor for inpatients and ICU cases
     elif admission_data.category in [AdmissionCategory.INPATIENT, AdmissionCategory.ICU]:
         doctor = db.query(User).filter(User.role == "doctor").first()
@@ -46,10 +46,36 @@ def admit_patient(admission_data: AdmissionCreate, db: Session = Depends(get_db)
         admission_data.assigned_doctor_id = doctor.id
 
     try:
+        # Create the admission record
         new_admission = PatientAdmission(**admission_data.model_dump(), admitted_by=user.id)
         db.add(new_admission)
         db.commit()
         db.refresh(new_admission)
+
+        # If the category is ICU, create an ICU patient record
+        if admission_data.category == AdmissionCategory.ICU:
+            icu_patient = ICUPatient(
+                patient_id=admission_data.patient_id,
+                admission_id=new_admission.id,
+                status="Stable",  # Default status
+                updated_by=user.id
+            )
+            db.add(icu_patient)
+            db.commit()
+            db.refresh(icu_patient)
+
+        # If the category is Inpatient, create an Inpatient record
+        elif admission_data.category == AdmissionCategory.INPATIENT:
+            inpatient = Inpatient(
+                patient_id=admission_data.patient_id,
+                admission_id=new_admission.id,
+                status="Stable",  # Default status
+                updated_by=user.id
+            )
+            db.add(inpatient)
+            db.commit()
+            db.refresh(inpatient)
+
         return new_admission
     except Exception as e:
         db.rollback()
@@ -85,7 +111,7 @@ def discharge_patient(admission_id: int, db: Session = Depends(get_db), user: Us
 @router.get("/", response_model=List[AdmissionResponse])
 def list_admissions(
     db: Session = Depends(get_db),
-    user=Depends(nurse_or_doctor),
+    user: User = Depends(nurse_or_doctor),
     status: Optional[AdmissionStatus] = Query(None),
     category: Optional[str] = Query(None),
     department_id: Optional[int] = Query(None),

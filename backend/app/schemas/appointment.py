@@ -8,7 +8,7 @@ class AppointmentStatus(str, Enum):
     CONFIRMED = "Confirmed"
     COMPLETED = "Completed"
     CANCELED = "Canceled"
-    RESCHEDULED = "Rescheduled Pending"
+    RESCHEDULED = "Rescheduled"
 
 class AppointmentBase(BaseModel):
     doctor_id: int

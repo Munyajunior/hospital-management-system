@@ -11,26 +11,19 @@ class MainApp:
         self.login_screen = LoginScreen(self.on_login_success)
         self.dashboard = None
 
-    def on_login_success(self, role):
+    def on_login_success(self, role, user_id, token):
         try:
-            with open("auth_token.txt", "r") as file:
-                auth_token = file.read().strip()
-            with open("role.txt", "r") as file:
-                role = file.read().strip()
-            with open("user_id.txt", "r") as file:
-                user_id = file.read().strip()
+            print(f"Success Debug: Role: {role}, Token: {token}, User ID: {user_id}")
+            if not role or not token or not user_id:  # Handle missing data
+                raise ValueError("Role, token, or user ID is missing!")
 
-            if not role or not auth_token:  # Handle missing data
-                raise ValueError("Role or token is missing!")
-
-            self.dashboard = Dashboard(role, user_id, auth_token)
+            self.dashboard = Dashboard(role, user_id, token)
             self.dashboard.show()
             self.login_screen.close()
-        
         except Exception as e:
             print(f"Error during login success: {e}")
             QMessageBox.critical(None, "Error", f"Login success failed: {e}")
-
+   
 
     def run(self):
         self.login_screen.show()

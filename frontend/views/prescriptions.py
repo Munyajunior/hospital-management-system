@@ -1,10 +1,10 @@
 import os
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
-    QMessageBox, QComboBox, QTextEdit, QHBoxLayout, QHeaderView, QScrollArea
+    QMessageBox, QComboBox, QTextEdit, QHBoxLayout, QHeaderView, QScrollArea, QFormLayout, QLineEdit, QListWidget
 )
 from utils.api_utils import fetch_data, post_data
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 
 
 class Prescriptions(QWidget):
@@ -66,12 +66,15 @@ class Prescriptions(QWidget):
             QPushButton:pressed {
                 background-color: #1e6fa7;
             }
-            QComboBox, QTextEdit {
+            QComboBox, QTextEdit, QLineEdit, QListWidget {
                 background-color: white;
                 border: 1px solid #dcdcdc;
                 font-size: 14px;
                 padding: 8px;
                 border-radius: 5px;
+            }
+            QListWidget::item {
+                padding: 5px;
             }
         """)
 
@@ -99,18 +102,34 @@ class Prescriptions(QWidget):
         self.load_patients()
         layout.addWidget(self.patient_dropdown)
 
-        # Medication Input Fields
-        self.medication_input = QTextEdit()
-        self.medication_input.setPlaceholderText("Enter medication name(s), comma-separated...")
-        layout.addWidget(self.medication_input)
+        # Search Bar for Drugs
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search for a drug...")
+        self.search_input.textChanged.connect(self.search_drugs)
+        layout.addWidget(self.search_input)
 
-        self.dosage_input = QTextEdit()
-        self.dosage_input.setPlaceholderText("Enter dosage(s) (corresponding to medications, comma-separated)...")
-        layout.addWidget(self.dosage_input)
+        # List to Display Available Drugs
+        self.drug_list = QListWidget()
+        self.drug_list.itemClicked.connect(self.select_drug)
+        layout.addWidget(self.drug_list)
+
+        # Medication Input Fields
+        form_layout = QFormLayout()
+
+        self.medication_input = QLineEdit()
+        self.medication_input.setPlaceholderText("Selected medications will appear here...")
+        self.medication_input.setReadOnly(True)
+        form_layout.addRow("Selected Medications:", self.medication_input)
+
+        self.dosage_input = QLineEdit()
+        self.dosage_input.setPlaceholderText("Enter dosage(s), comma-separated...")
+        form_layout.addRow("Dosages:", self.dosage_input)
 
         self.instructions_input = QTextEdit()
         self.instructions_input.setPlaceholderText("Enter instructions...")
-        layout.addWidget(self.instructions_input)
+        form_layout.addRow("Instructions:", self.instructions_input)
+
+        layout.addLayout(form_layout)
 
         # Button Layout
         button_layout = QHBoxLayout()
@@ -118,6 +137,11 @@ class Prescriptions(QWidget):
         self.prescribe_button = QPushButton("Prescribe Medication")
         self.prescribe_button.clicked.connect(self.prescribe_medication)
         button_layout.addWidget(self.prescribe_button)
+
+        self.clear_button = QPushButton("Clear Fields")
+        self.clear_button.clicked.connect(self.clear_fields)
+        button_layout.addWidget(self.clear_button)
+
         layout.addLayout(button_layout)
 
         self.load_inventory()  # Load available drugs
@@ -127,7 +151,8 @@ class Prescriptions(QWidget):
 
     def load_patients(self):
         """Fetch and populate the dropdown with assigned patients."""
-        api_url = os.getenv("ASSIGNED_PATIENTS_URL")
+        base_url = os.getenv("ASSIGNED_PATIENTS_URL")
+        api_url = f"{base_url}/{self.user_id}/patients"
         patients = fetch_data(self, api_url, self.token)
 
         if not patients:
@@ -147,6 +172,28 @@ class Prescriptions(QWidget):
             return
 
         self.inventory = {drug["drug_name"]: drug["quantity"] for drug in inventory_data}
+        self.update_drug_list()  # Populate the drug list with all available drugs
+
+    def update_drug_list(self, search_query=""):
+        """Updates the drug list based on the search query."""
+        self.drug_list.clear()
+        for drug_name, quantity in self.inventory.items():
+            if search_query.lower() in drug_name.lower():
+                self.drug_list.addItem(f"{drug_name} ({quantity} in stock)")
+
+    def search_drugs(self):
+        """Filters the drug list based on the search query."""
+        search_query = self.search_input.text().strip()
+        self.update_drug_list(search_query)
+
+    def select_drug(self, item):
+        """Adds the selected drug to the medication input."""
+        selected_drug = item.text().split(" (")[0]  # Extract drug name from the list item
+        current_medications = self.medication_input.text().strip()
+        if current_medications:
+            self.medication_input.setText(f"{current_medications}, {selected_drug}")
+        else:
+            self.medication_input.setText(selected_drug)
 
     def load_prescriptions(self):
         """Fetch and display prescriptions."""
@@ -161,8 +208,8 @@ class Prescriptions(QWidget):
         """Fills the table with prescription data."""
         self.prescription_table.setRowCount(len(prescriptions))
         for row, prescription in enumerate(prescriptions):
-            self.prescription_table.setItem(row, 0, QTableWidgetItem(prescription["patient_id"]))
-            self.prescription_table.setItem(row, 1, QTableWidgetItem(prescription["prescribed_by"]))
+            self.prescription_table.setItem(row, 0, QTableWidgetItem(str(prescription["patient_id"])))
+            self.prescription_table.setItem(row, 1, QTableWidgetItem(str(prescription["prescribed_by"])))
             self.prescription_table.setItem(row, 2, QTableWidgetItem(prescription["drug_name"]))
             self.prescription_table.setItem(row, 3, QTableWidgetItem(prescription["dosage"]))
             self.prescription_table.setItem(row, 4, QTableWidgetItem(prescription["instructions"]))
@@ -171,8 +218,8 @@ class Prescriptions(QWidget):
     def prescribe_medication(self):
         """Validates and prescribes medication."""
         patient_id = self.patient_dropdown.currentData()
-        medications = self.medication_input.toPlainText().strip().split(",")
-        dosages = self.dosage_input.toPlainText().strip().split(",")
+        medications = self.medication_input.text().strip().split(",")
+        dosages = self.dosage_input.text().strip().split(",")
         instructions = self.instructions_input.toPlainText().strip()
 
         if not patient_id or not medications or not dosages or len(medications) != len(dosages):
@@ -200,10 +247,14 @@ class Prescriptions(QWidget):
         if response:
             QMessageBox.information(self, "Success", "Medications prescribed successfully!")
             self.load_prescriptions()
-            self.medication_input.clear()
-            self.dosage_input.clear()
-            self.instructions_input.clear()
+            self.clear_fields()
         else:
             QMessageBox.critical(self, "Error", "Failed to prescribe medication.")
 
-
+    def clear_fields(self):
+        """Clears all input fields."""
+        self.medication_input.clear()
+        self.dosage_input.clear()
+        self.instructions_input.clear()
+        self.search_input.clear()
+        self.update_drug_list()  # Reset the drug list

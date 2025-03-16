@@ -160,3 +160,4 @@ cython_debug/
 #.idea/
 ./auth
 ./files
+./client_secret.json
