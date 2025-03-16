@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from models.admission import Department
 from schemas.admission import DepartmentCreate, DepartmentResponse
 from models.user import User
-from utils.security import RoleChecker
+from core.dependencies import RoleChecker 
 from core.database import get_db
 from typing import List
 
