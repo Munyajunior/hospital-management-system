@@ -1,10 +1,10 @@
 import os
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
+    QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,QApplication,
     QMessageBox, QComboBox, QTextEdit, QHBoxLayout, QHeaderView, QScrollArea, QFormLayout, QLineEdit, QListWidget
 )
 from utils.api_utils import fetch_data, post_data
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt
 
 
 class Prescriptions(QWidget):
@@ -24,6 +24,13 @@ class Prescriptions(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("Prescribe Medication")
+        screen = QApplication.primaryScreen()
+        screen_geometry = screen.availableGeometry()
+        max_width = screen_geometry.width() * 0.8  # 80% of screen width
+        max_height = screen_geometry.height() * 0.8  # 80% of screen height
+        
+        self.resize(int(max_width), int(max_height))  # Set window size
+        self.setMinimumSize(800, 600)  # Set a reasonable minimum size
         self.setStyleSheet("""
             QWidget {
                 background-color: #f4f6f9;

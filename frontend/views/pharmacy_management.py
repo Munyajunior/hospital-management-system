@@ -2,7 +2,7 @@ import os
 import requests
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
-    QMessageBox, QComboBox, QTextEdit, QHeaderView
+    QMessageBox, QComboBox, QTextEdit, QHeaderView, QApplication
 )
 from PySide6.QtCore import Qt
 
@@ -24,7 +24,13 @@ class PharmacyManagement(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("Pharmacy Management")
-        self.setMinimumSize(900, 600)
+        screen = QApplication.primaryScreen()
+        screen_geometry = screen.availableGeometry()
+        max_width = screen_geometry.width() * 0.8  # 80% of screen width
+        max_height = screen_geometry.height() * 0.8  # 80% of screen height
+        
+        self.resize(int(max_width), int(max_height))  # Set window size
+        self.setMinimumSize(900, 600)  # Set a reasonable minimum size
 
         layout = QVBoxLayout()
 

@@ -99,13 +99,12 @@ async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(
     user = db.query(User).filter(User.email == request.email).first()
     if not user:
         raise HTTPException(status_code=404, detail="Email not registered")
-    
 
     # Generate a reset token with an expiration time (e.g., 1 hour)
     reset_token = create_reset_token(user.id, expires_delta=timedelta(hours=1))
     # Create the reset link
     reset_link = f"{os.getenv('RESET_LINK')}?token={reset_token}"
-    # Send the reset email
+    # Send the reset email using Mailgun
     email_sent = await send_reset_email(request.email, reset_link)
     if not email_sent:
         raise HTTPException(status_code=500, detail="Failed to send reset email")

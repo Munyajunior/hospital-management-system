@@ -1,6 +1,6 @@
 import os
 import requests
-from PySide6.QtWidgets import (
+from PySide6.QtWidgets import (QApplication,
     QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
     QMessageBox, QTextEdit, QHeaderView
 )
@@ -25,7 +25,13 @@ class LabTestManagement(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("Laboratory Test Management")
-        self.setMinimumSize(900, 600)
+        screen = QApplication.primaryScreen()
+        screen_geometry = screen.availableGeometry()
+        max_width = screen_geometry.width() * 0.8  # 80% of screen width
+        max_height = screen_geometry.height() * 0.8  # 80% of screen height
+        
+        self.resize(int(max_width), int(max_height))  # Set window size
+        self.setMinimumSize(900, 600)  # Set a reasonable minimum size
         self.setStyleSheet("""
             QWidget {
                 background-color: #F4F6F7;

@@ -1,7 +1,8 @@
 from fastapi import FastAPI
 from routers import (auth, patients, doctors, pharmacy, 
                      lab, radiology, icu, appointment, admissions, 
-                     medical_record, admissions, beds, departments, wards, inpatient, patient_vitals)
+                     medical_record, admissions, beds, departments, wards, inpatient, patient_vitals,
+                     dashboard, billing)
 from core.database import Base, engine
 
 # Initialize the database tables
@@ -25,6 +26,8 @@ app.include_router(beds.router)
 app.include_router(wards.router)
 app.include_router(departments.router)
 app.include_router(patient_vitals.router)
+app.include_router(dashboard.router)
+app.include_router(billing.router)
 
 @app.get("/")
 def root():
