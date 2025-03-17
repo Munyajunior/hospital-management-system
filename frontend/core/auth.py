@@ -20,7 +20,7 @@ class AuthHandler:
                 user_id = str(result.get("sub"))
                 
                 self.save_token(token, role, user_id)
-                return True, "Login successful!", role, user_id,token
+                return True, "Login successful!", role, user_id, token
             return False, "Invalid credentials. Please try again.", None
         except requests.exceptions.RequestException:
             return False, "Unable to connect to the server.", None

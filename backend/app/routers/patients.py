@@ -7,12 +7,13 @@ from models.user import User
 from models.admission import PatientAdmission, Bed
 from core.database import get_db
 from utils.security import hash_password, generate_password
+from utils.email_util import send_password_email  
 from core.dependencies import RoleChecker
 
 router = APIRouter(prefix="/patients", tags=["Patients"])
 
 staff_only = RoleChecker(["admin", "nurse", "receptionist"])
-doctor_only = RoleChecker(["doctor", "nurse"])
+doctor_or_nurse = RoleChecker(["doctor", "nurse"])
 
 @router.post("/", response_model=PatientCreateResponse)
 def create_patient(patient: PatientCreate, db: Session = Depends(get_db), current_user: User = Depends(staff_only)):
@@ -59,15 +60,21 @@ def create_patient(patient: PatientCreate, db: Session = Depends(get_db), curren
         bed.is_occupied = True
         db.commit()
 
+    # Send the generated password to the patient's email
+    email_sent = send_password_email(new_patient.email, password)
+    if not email_sent:
+        # Log the error but do not fail the registration
+        print("Failed to send password email to patient.")
+
     return {**new_patient.__dict__, "password": password}
 
 @router.get("/", response_model=List[PatientResponse])
-def get_patients(db: Session = Depends(get_db), user: User = Depends(staff_only)):
+def get_patients(db: Session = Depends(get_db), user: User = Depends(doctor_or_nurse)):
     return db.query(Patient).all()
 
 
 @router.get("/{patient_id}", response_model=PatientResponse)
-def get_patient(patient_id: int, db: Session = Depends(get_db), user: User = Depends(doctor_only)):
+def get_patient(patient_id: int, db: Session = Depends(get_db), user: User = Depends(doctor_or_nurse)):
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
@@ -76,7 +83,7 @@ def get_patient(patient_id: int, db: Session = Depends(get_db), user: User = Dep
 
 @router.put("/{patient_id}", response_model=PatientResponse)
 def update_patient(patient_id: int, patient_data: PatientUpdate, db: Session = Depends(get_db),
-                   user: User = Depends(doctor_only)):
+                   user: User = Depends(doctor_or_nurse)):
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
@@ -91,7 +98,7 @@ def update_patient(patient_id: int, patient_data: PatientUpdate, db: Session = D
 
 @router.put("/{patient_id}/assign-category/{category}", response_model=PatientResponse)
 def update_patient_category(patient_id: int, category: str, db: Session = Depends(get_db),
-                            user: User = Depends(doctor_only)):
+                            user: User = Depends(doctor_or_nurse)):
     if category not in ["outpatient", "inpatient", "ICU"]:
         raise HTTPException(status_code=400, detail="Invalid category")
 

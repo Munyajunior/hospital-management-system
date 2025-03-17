@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem,
+    QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem,QApplication,
     QPushButton, QTextEdit, QMessageBox, QHBoxLayout, QLineEdit, QHeaderView
 )
 from PySide6.QtCore import Qt
@@ -18,7 +18,13 @@ class RadiologyManagement(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("Radiology & Scan Requests")
-        self.setMinimumSize(950, 600)
+        screen = QApplication.primaryScreen()
+        screen_geometry = screen.availableGeometry()
+        max_width = screen_geometry.width() * 0.8  # 80% of screen width
+        max_height = screen_geometry.height() * 0.8  # 80% of screen height
+        
+        self.resize(int(max_width), int(max_height))  # Set window size
+        self.setMinimumSize(950, 600)  # Set a reasonable minimum size
         self.setStyleSheet("""
             QWidget {
                 background-color: #F4F6F7;

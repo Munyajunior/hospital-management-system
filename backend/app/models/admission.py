@@ -16,7 +16,7 @@ class AdmissionStatus(str, enum.Enum):
     DISCHARGED = "Discharged"
 
 class PatientAdmission(Base):
-    __tablename__ = "patient_admissions"
+    __tablename__ = "patient_admissions" 
 
     id = Column(Integer, primary_key=True, index=True)
     patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False)

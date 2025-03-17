@@ -1,7 +1,7 @@
 import os
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
-    QMessageBox, QLineEdit, QDialog, QHeaderView, QTabWidget, QFormLayout, QComboBox
+    QMessageBox, QLineEdit, QDialog, QHeaderView, QTabWidget, QFormLayout, QComboBox, QApplication
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIntValidator, QFont
@@ -25,7 +25,13 @@ class Pharmacy(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("Pharmacy Management")
-        self.setMinimumSize(1000, 700)
+        screen = QApplication.primaryScreen()
+        screen_geometry = screen.availableGeometry()
+        max_width = screen_geometry.width() * 0.8  # 80% of screen width
+        max_height = screen_geometry.height() * 0.8  # 80% of screen height
+        
+        self.resize(int(max_width), int(max_height))  # Set window size
+        self.setMinimumSize(1000, 700)  # Set a reasonable minimum size
         self.setStyleSheet("""
             QWidget {
                 font-family: 'Segoe UI', sans-serif;

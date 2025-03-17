@@ -1,13 +1,42 @@
 import os
-from PySide6.QtWidgets import (
+from PySide6.QtWidgets import (QApplication,
     QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
-    QMessageBox, QComboBox, QTextEdit, QTabWidget, QFormLayout, QLineEdit, QFileDialog
+    QMessageBox, QComboBox, QTextEdit, QTabWidget, QFormLayout, QLineEdit,
+    QGridLayout, QGroupBox, QToolBar, QStatusBar, QMainWindow, QScrollArea, QSizePolicy, QSpacerItem
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QThread, Signal, QObject, QRunnable, QThreadPool
+from PySide6.QtGui import QIcon, QAction
 from utils.api_utils import fetch_data, post_data, update_data
 from utils.pdf_utils import generate_pdf
 
-class AdmissionManagement(QWidget):
+
+class WorkerSignals(QObject):
+    """Signals for worker threads."""
+    finished = Signal()
+    error = Signal(str)
+    result = Signal(object)
+
+
+class Worker(QRunnable):
+    """Worker thread for API calls."""
+    def __init__(self, fn, *args, **kwargs):
+        super().__init__()
+        self.fn = fn
+        self.args = args
+        self.kwargs = kwargs
+        self.signals = WorkerSignals()
+
+    def run(self):
+        try:
+            result = self.fn(*self.args, **self.kwargs)
+            self.signals.result.emit(result)
+        except Exception as e:
+            self.signals.error.emit(str(e))
+        finally:
+            self.signals.finished.emit()
+
+
+class AdmissionManagement(QMainWindow):
     def __init__(self, user_role, user_id, auth_token):
         """
         Initializes the Admission Management interface.
@@ -20,71 +49,183 @@ class AdmissionManagement(QWidget):
         self.role = user_role
         self.user_id = user_id
         self.token = auth_token
+        self.thread_pool = QThreadPool()  # Thread pool for concurrent tasks
         self.init_ui()
 
     def init_ui(self):
-        self.setWindowTitle("Admission Management")
-        self.setMinimumSize(1200, 800)
+        self.setWindowTitle("Admission Management System")
+        # Dynamically set window size based on screen resolution
+        screen = QApplication.primaryScreen()
+        screen_geometry = screen.availableGeometry()
+        max_width = screen_geometry.width() * 0.8  # 80% of screen width
+        max_height = screen_geometry.height() * 0.8  # 80% of screen height
+        
+        self.resize(int(max_width), int(max_height))  # Set window size
+        self.setMinimumSize(800, 600)  # Set a reasonable minimum size
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #f5f7fa;
+                font-family: 'Arial', sans-serif;
+            }
+            QLabel {
+                font-size: 16px;
+                color: #2c3e50;
+            }
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                padding: 10px;
+                font-size: 14px;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            }
+            QPushButton:pressed {
+                background-color: #1c5980;
+            }
+            QTableWidget {
+                background-color: white;
+                border: 1px solid #dcdcdc;
+                font-size: 14px;
+                alternate-background-color: #f9f9f9;
+            }
+            QTableWidget::item {
+                padding: 8px;
+            }
+            QTableWidget::horizontalHeader {
+                background-color: #3498db;
+                color: white;
+                font-weight: bold;
+                font-size: 14px;
+                padding: 5px;
+            }
+            QTabWidget::pane {
+                border: 1px solid #dcdcdc;
+                background-color: #f5f7fa;
+            }
+            QTabBar::tab {
+                background-color: #3498db;
+                color: white;
+                padding: 10px;
+                font-size: 14px;
+                border-radius: 5px;
+                margin: 2px;
+            }
+            QTabBar::tab:selected {
+                background-color: #2980b9;
+            }
+            QLineEdit, QTextEdit, QComboBox {
+                padding: 8px;
+                border: 1px solid #dcdcdc;
+                border-radius: 5px;
+                font-size: 14px;
+            }
+            QLineEdit:focus, QTextEdit:focus, QComboBox:focus {
+                border: 1px solid #3498db;
+            }
+            QGroupBox {
+                border: 1px solid #dcdcdc;
+                border-radius: 5px;
+                margin-top: 10px;
+                font-size: 16px;
+                font-weight: bold;
+                padding: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 3px;
+            }
+        """)
 
-        layout = QVBoxLayout()
+        # Main Layout
+        main_widget = QWidget()
+        self.setCentralWidget(main_widget)
+        layout = QVBoxLayout(main_widget)
+
+        # Toolbar
+        self.toolbar = QToolBar()
+        self.addToolBar(self.toolbar)
+
+        # Refresh Action
+        refresh_action = QAction(QIcon("assets/icons/refresh.png"), "Refresh", self)
+        refresh_action.triggered.connect(self.refresh_all)
+        self.toolbar.addAction(refresh_action)
+
+        # Status Bar
+        self.status_bar = QStatusBar()
+        self.setStatusBar(self.status_bar)
+        self.status_bar.showMessage("Ready")
 
         # Title
-        self.title_label = QLabel("Admission Management")
+        self.title_label = QLabel("Admission Management System")
         self.title_label.setAlignment(Qt.AlignCenter)
         self.title_label.setStyleSheet("font-size: 24px; font-weight: bold; padding: 20px; color: #2c3e50;")
         layout.addWidget(self.title_label)
 
-        # Tab Widget for different functionalities
+        # Tab Widget
         self.tabs = QTabWidget()
-        self.tabs.setStyleSheet("QTabBar::tab { padding: 10px; font-size: 16px; }")
+        layout.addWidget(self.tabs)
+
+        # Initialize dropdowns globally
+        self.patient_dropdown = QComboBox()
+        self.patient_dropdown_vitals = QComboBox()
+        self.bed_dropdown = QComboBox()
+        self.ward_dropdown = QComboBox()
+
 
         # Admission Tab
         self.admission_tab = QWidget()
         self.init_admission_tab()
-        self.tabs.addTab(self.admission_tab, "Admit Patient")
+        self.tabs.addTab(self.admission_tab, QIcon("assets/icons/admit.png"), "Admit Patient")
 
         # Discharge Tab
         self.discharge_tab = QWidget()
         self.init_discharge_tab()
-        self.tabs.addTab(self.discharge_tab, "Discharge Patient")
+        self.tabs.addTab(self.discharge_tab, QIcon("assets/icons/discharge.png"), "Discharge Patient")
 
         # ICU Management Tab
         self.icu_tab = QWidget()
         self.init_icu_tab()
-        self.tabs.addTab(self.icu_tab, "ICU Management")
-        
-        #IN Patient Management Tab
+        self.tabs.addTab(self.icu_tab, QIcon("assets/icons/icu.png"), "ICU Management")
+
+        # Inpatient Management Tab
         self.inpatient_tab = QWidget()
         self.init_inpatient_tab()
-        self.tabs.addTab(self.inpatient_tab, "Inpatient Management")
+        self.tabs.addTab(self.inpatient_tab, QIcon("assets/icons/inpatient.png"), "Inpatient Management")
 
-        # Patient Vitals Tab
+        # Vitals Tab
         self.vitals_tab = QWidget()
         self.init_vitals_tab()
-        self.tabs.addTab(self.vitals_tab, "Update Vitals")
-        
+        self.tabs.addTab(self.vitals_tab, QIcon("assets/icons/vitals.png"), "Update Vitals")
+
         # Department Management Tab
         self.department_tab = QWidget()
         self.init_department_tab()
-        self.tabs.addTab(self.department_tab, "Department Management")
+        self.tabs.addTab(self.department_tab, QIcon("assets/icons/department.png"), "Department Management")
 
         # Ward Management Tab
         self.ward_tab = QWidget()
         self.init_ward_tab()
-        self.tabs.addTab(self.ward_tab, "Ward Management")
+        self.tabs.addTab(self.ward_tab, QIcon("assets/icons/ward.png"), "Ward Management")
 
         # Bed Management Tab
         self.bed_tab = QWidget()
         self.init_bed_tab()
-        self.tabs.addTab(self.bed_tab, "Bed Management")
+        self.tabs.addTab(self.bed_tab, QIcon("assets/icons/bed.png"), "Bed Management")
 
-        layout.addWidget(self.tabs)
-        self.setLayout(layout)
-
+    # ==================== Admission Tab ====================
     def init_admission_tab(self):
-        layout = QVBoxLayout()
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_widget = QWidget()
+        scroll_area.setWidget(scroll_widget)
+        layout = QVBoxLayout(scroll_widget)
 
         # Admission Form
+        form_group = QGroupBox("Admit Patient")
         form_layout = QFormLayout()
 
         self.patient_dropdown = QComboBox()
@@ -102,38 +243,550 @@ class AdmissionManagement(QWidget):
 
         self.ward_dropdown = QComboBox()
         self.ward_dropdown.currentIndexChanged.connect(self.load_beds_for_ward)
+        self.load_wards()
         form_layout.addRow("Ward:", self.ward_dropdown)
 
         self.bed_dropdown = QComboBox()
+        self.load_beds()
         form_layout.addRow("Bed:", self.bed_dropdown)
 
         self.admit_button = QPushButton("Admit Patient")
-        self.admit_button.setStyleSheet("background-color: #27ae60; color: white; padding: 10px;")
+        self.admit_button.setIcon(QIcon("assets/icons/admit.png"))
+        self.admit_button.setStyleSheet("background-color: #27ae60;")
         self.admit_button.clicked.connect(self.admit_patient)
         form_layout.addRow(self.admit_button)
 
-        layout.addLayout(form_layout)
-        self.admission_tab.setLayout(layout)
-    
-    
-    def load_wards_for_department(self):
-        department_id = self.department_dropdown.currentData()
-        if department_id:
-            api_url = os.getenv("WARD_LIST_URL") + f"?department_id={department_id}"
-            wards = fetch_data(self, api_url, self.token)
-            self.ward_dropdown.clear()
-            for ward in wards:
-                self.ward_dropdown.addItem(ward["name"], ward["id"])
+        form_group.setLayout(form_layout)
+        layout.addWidget(form_group)
 
-    def load_beds_for_ward(self):
-        ward_id = self.ward_dropdown.currentData()
-        if ward_id:
-            api_url = os.getenv("BED_LIST_URL") + f"?ward_id={ward_id}&is_occupied=False"
-            beds = fetch_data(self, api_url, self.token)
-            self.bed_dropdown.clear()
-            for bed in beds:
-                self.bed_dropdown.addItem(bed["bed_number"], bed["id"])
-                
+        self.admission_tab.setLayout(QVBoxLayout())
+        self.admission_tab.layout().addWidget(scroll_area)
+
+    # ==================== Discharge Tab ====================
+    def init_discharge_tab(self):
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_widget = QWidget()
+        scroll_area.setWidget(scroll_widget)
+        layout = QVBoxLayout(scroll_widget)
+
+        # Discharge Form
+        form_group = QGroupBox("Discharge Patient")
+        form_layout = QFormLayout()
+
+        self.admission_dropdown = QComboBox()
+        self.load_admissions()
+        form_layout.addRow("Admission:", self.admission_dropdown)
+
+        self.discharge_button = QPushButton("Discharge Patient")
+        self.discharge_button.setIcon(QIcon("assets/icons/discharge.png"))
+        self.discharge_button.setStyleSheet("background-color: #e74c3c;")
+        self.discharge_button.clicked.connect(self.discharge_patient)
+        form_layout.addRow(self.discharge_button)
+
+        form_group.setLayout(form_layout)
+        layout.addWidget(form_group)
+
+        self.discharge_tab.setLayout(QVBoxLayout())
+        self.discharge_tab.layout().addWidget(scroll_area)
+
+    # ==================== ICU Management Tab ====================
+    def init_icu_tab(self):
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_widget = QWidget()
+        scroll_area.setWidget(scroll_widget)
+        layout = QVBoxLayout(scroll_widget)
+
+        # ICU Patient Table
+        table_group = QGroupBox("ICU Patients")
+        table_layout = QVBoxLayout()
+
+        self.icu_table = QTableWidget()
+        self.icu_table.setColumnCount(8)
+        self.icu_table.setHorizontalHeaderLabels([
+            "Patient", "Status", "Condition Evolution", "Medications", "Drips", "Treatment Plan", "Updated By", "Updated At"
+        ])
+        table_layout.addWidget(self.icu_table)
+
+        # Search Bar
+        self.icu_search_input = QLineEdit()
+        self.icu_search_input.setPlaceholderText("Search ICU Patients...")
+        self.icu_search_input.textChanged.connect(self.filter_icu_patients)
+        table_layout.addWidget(self.icu_search_input)
+
+        # Refresh Button
+        refresh_button = QPushButton("Refresh")
+        refresh_button.setIcon(QIcon("assets/icons/refresh.png"))
+        refresh_button.clicked.connect(self.load_icu_patients)
+        table_layout.addWidget(refresh_button)
+
+        table_group.setLayout(table_layout)
+        layout.addWidget(table_group)
+
+        # ICU Patient Form
+        form_group = QGroupBox("Update ICU Patient")
+        form_layout = QFormLayout()
+
+        self.patient_dropdown_icu = QComboBox()
+        self.load_admitted_icu()
+        form_layout.addRow("Patient:", self.patient_dropdown_icu)
+
+        self.status_input_icu = QComboBox()
+        self.status_input_icu.addItems(["Stable", "Critical", "Improving", "Deteriorating"])
+        form_layout.addRow("Status:", self.status_input_icu)
+
+        self.condition_evolution_input_icu = QTextEdit()
+        self.condition_evolution_input_icu.setPlaceholderText("Enter condition evolution...")
+        form_layout.addRow("Condition Evolution:", self.condition_evolution_input_icu)
+
+        self.medications_input_icu = QTextEdit()
+        self.medications_input_icu.setPlaceholderText("Enter medications...")
+        form_layout.addRow("Medications:", self.medications_input_icu)
+
+        self.drips_input_icu = QTextEdit()
+        self.drips_input_icu.setPlaceholderText("Enter drips...")
+        form_layout.addRow("Drips:", self.drips_input_icu)
+
+        self.treatment_plan_input_icu = QTextEdit()
+        self.treatment_plan_input_icu.setPlaceholderText("Enter treatment plan...")
+        form_layout.addRow("Treatment Plan:", self.treatment_plan_input_icu)
+
+        self.update_icu_button = QPushButton("Update ICU Patient")
+        self.update_icu_button.setIcon(QIcon("assets/icons/update.png"))
+        self.update_icu_button.setStyleSheet("background-color: #007bff;")
+        self.update_icu_button.clicked.connect(self.update_icu_patient)
+        form_layout.addRow(self.update_icu_button)
+
+        form_group.setLayout(form_layout)
+        layout.addWidget(form_group)
+
+        self.icu_tab.setLayout(QVBoxLayout())
+        self.icu_tab.layout().addWidget(scroll_area)
+
+    # ==================== Inpatient Management Tab ====================
+    def init_inpatient_tab(self):
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_widget = QWidget()
+        scroll_area.setWidget(scroll_widget)
+        layout = QVBoxLayout(scroll_widget)
+
+        # Inpatient Table
+        table_group = QGroupBox("Inpatients")
+        table_layout = QVBoxLayout()
+
+        self.inpatient_table = QTableWidget()
+        self.inpatient_table.setColumnCount(7)
+        self.inpatient_table.setHorizontalHeaderLabels([
+            "Patient", "Status", "Condition Evolution", "Medications", "Treatment Plan", "Updated By", "Updated At"
+        ])
+        table_layout.addWidget(self.inpatient_table)
+
+        # Search Bar
+        self.inpatient_search_input = QLineEdit()
+        self.inpatient_search_input.setPlaceholderText("Search Inpatients...")
+        self.inpatient_search_input.textChanged.connect(self.filter_inpatients)
+        table_layout.addWidget(self.inpatient_search_input)
+
+        # Refresh Button
+        refresh_button = QPushButton("Refresh")
+        refresh_button.setIcon(QIcon("assets/icons/refresh.png"))
+        refresh_button.clicked.connect(self.load_inpatients)
+        table_layout.addWidget(refresh_button)
+
+        table_group.setLayout(table_layout)
+        layout.addWidget(table_group)
+
+        # Inpatient Form
+        form_group = QGroupBox("Update Inpatient")
+        form_layout = QFormLayout()
+
+        self.patient_dropdown_inpatient = QComboBox()
+        self.load_admitted_inpatient()
+        form_layout.addRow("Patient:", self.patient_dropdown_inpatient)
+
+        self.status_input_inpatient = QComboBox()
+        self.status_input_inpatient.addItems(["Stable", "Recovering", "Discharged"])
+        form_layout.addRow("Status:", self.status_input_inpatient)
+
+        self.condition_evolution_input_inpatient = QTextEdit()
+        self.condition_evolution_input_inpatient.setPlaceholderText("Enter condition evolution...")
+        form_layout.addRow("Condition Evolution:", self.condition_evolution_input_inpatient)
+
+        self.medications_input_inpatient = QTextEdit()
+        self.medications_input_inpatient.setPlaceholderText("Enter medications...")
+        form_layout.addRow("Medications:", self.medications_input_inpatient)
+
+        self.treatment_plan_input_inpatient = QTextEdit()
+        self.treatment_plan_input_inpatient.setPlaceholderText("Enter treatment plan...")
+        form_layout.addRow("Treatment Plan:", self.treatment_plan_input_inpatient)
+
+        self.update_inpatient_button = QPushButton("Update Inpatient")
+        self.update_inpatient_button.setIcon(QIcon("assets/icons/update.png"))
+        self.update_inpatient_button.setStyleSheet("background-color: #007bff;")
+        self.update_inpatient_button.clicked.connect(self.update_inpatient)
+        form_layout.addRow(self.update_inpatient_button)
+
+        form_group.setLayout(form_layout)
+        layout.addWidget(form_group)
+
+        self.inpatient_tab.setLayout(QVBoxLayout())
+        self.inpatient_tab.layout().addWidget(scroll_area)
+
+    # ==================== Vitals Tab ====================
+    def init_vitals_tab(self):
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_widget = QWidget()
+        scroll_area.setWidget(scroll_widget)
+        layout = QVBoxLayout(scroll_widget)
+
+        # Vitals Form
+        form_group = QGroupBox("Update Vitals")
+        form_layout = QFormLayout()
+
+        self.patient_dropdown_vitals = QComboBox()
+        self.load_patients()
+        form_layout.addRow("Patient:", self.patient_dropdown_vitals)
+
+        self.blood_pressure_input = QLineEdit()
+        self.blood_pressure_input.setPlaceholderText("Enter Blood Pressure...")
+        form_layout.addRow("Blood Pressure:", self.blood_pressure_input)
+
+        self.heart_rate_input = QLineEdit()
+        self.heart_rate_input.setPlaceholderText("Enter Heart Rate...")
+        form_layout.addRow("Heart Rate:", self.heart_rate_input)
+
+        self.temperature_input = QLineEdit()
+        self.temperature_input.setPlaceholderText("Enter Temperature...")
+        form_layout.addRow("Temperature:", self.temperature_input)
+
+        self.update_vitals_button = QPushButton("Update Vitals")
+        self.update_vitals_button.setIcon(QIcon("assets/icons/update.png"))
+        self.update_vitals_button.setStyleSheet("background-color: #007bff;")
+        self.update_vitals_button.clicked.connect(self.update_vitals)
+        form_layout.addRow(self.update_vitals_button)
+
+        form_group.setLayout(form_layout)
+        layout.addWidget(form_group)
+
+        self.vitals_tab.setLayout(QVBoxLayout())
+        self.vitals_tab.layout().addWidget(scroll_area)
+
+    # ==================== Department Management Tab ====================
+    def init_department_tab(self):
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_widget = QWidget()
+        scroll_area.setWidget(scroll_widget)
+        layout = QVBoxLayout(scroll_widget)
+
+        # Department Creation Form
+        form_group = QGroupBox("Create Department")
+        form_layout = QFormLayout()
+
+        self.department_name_input = QLineEdit()
+        self.department_name_input.setPlaceholderText("Enter Department Name")
+        form_layout.addRow("Department Name:", self.department_name_input)
+
+        self.department_category_dropdown = QComboBox()
+        self.department_category_dropdown.addItems(["Outpatient", "Inpatient", "ICU"])
+        form_layout.addRow("Category:", self.department_category_dropdown)
+
+        self.create_department_button = QPushButton("Create Department")
+        self.create_department_button.setIcon(QIcon("assets/icons/create.png"))
+        self.create_department_button.setStyleSheet("background-color: #007bff;")
+        self.create_department_button.clicked.connect(self.create_department)
+        form_layout.addRow(self.create_department_button)
+
+        form_group.setLayout(form_layout)
+        layout.addWidget(form_group)
+
+        # Department Table
+        table_group = QGroupBox("Existing Departments")
+        table_layout = QVBoxLayout()
+
+        self.existing_department_table = QTableWidget()
+        self.existing_department_table.setColumnCount(3)
+        self.existing_department_table.setHorizontalHeaderLabels(["ID", "Name", "Category"])
+        table_layout.addWidget(self.existing_department_table)
+
+        # Search Bar
+        self.department_search_input = QLineEdit()
+        self.department_search_input.setPlaceholderText("Search Departments...")
+        self.department_search_input.textChanged.connect(self.filter_departments)
+        table_layout.addWidget(self.department_search_input)
+
+        # Refresh Button
+        refresh_button = QPushButton("Refresh")
+        refresh_button.setIcon(QIcon("assets/icons/refresh.png"))
+        refresh_button.clicked.connect(self.load_existing_departments)
+        table_layout.addWidget(refresh_button)
+
+        table_group.setLayout(table_layout)
+        layout.addWidget(table_group)
+
+        self.department_tab.setLayout(QVBoxLayout())
+        self.department_tab.layout().addWidget(scroll_area)
+
+    # ==================== Ward Management Tab ====================
+    def init_ward_tab(self):
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_widget = QWidget()
+        scroll_area.setWidget(scroll_widget)
+        layout = QVBoxLayout(scroll_widget)
+
+        # Ward Creation Form
+        form_group = QGroupBox("Create Ward")
+        form_layout = QFormLayout()
+
+        self.ward_name_input = QLineEdit()
+        self.ward_name_input.setPlaceholderText("Enter Ward Name")
+        form_layout.addRow("Ward Name:", self.ward_name_input)
+
+        self.department_dropdown_ward = QComboBox()
+        self.load_departments_for_ward()
+        form_layout.addRow("Department:", self.department_dropdown_ward)
+
+        self.create_ward_button = QPushButton("Create Ward")
+        self.create_ward_button.setIcon(QIcon("assets/icons/create.png"))
+        self.create_ward_button.setStyleSheet("background-color: #007bff;")
+        self.create_ward_button.clicked.connect(self.create_ward)
+        form_layout.addRow(self.create_ward_button)
+
+        form_group.setLayout(form_layout)
+        layout.addWidget(form_group)
+
+        # Ward Table
+        table_group = QGroupBox("Existing Wards")
+        table_layout = QVBoxLayout()
+
+        self.existing_ward_table = QTableWidget()
+        self.existing_ward_table.setColumnCount(3)
+        self.existing_ward_table.setHorizontalHeaderLabels(["ID", "Name", "Department"])
+        table_layout.addWidget(self.existing_ward_table)
+
+        # Search Bar
+        self.ward_search_input = QLineEdit()
+        self.ward_search_input.setPlaceholderText("Search Wards...")
+        self.ward_search_input.textChanged.connect(self.filter_wards)
+        table_layout.addWidget(self.ward_search_input)
+
+        # Refresh Button
+        refresh_button = QPushButton("Refresh")
+        refresh_button.setIcon(QIcon("assets/icons/refresh.png"))
+        refresh_button.clicked.connect(self.load_existing_wards)
+        table_layout.addWidget(refresh_button)
+
+        table_group.setLayout(table_layout)
+        layout.addWidget(table_group)
+
+        self.ward_tab.setLayout(QVBoxLayout())
+        self.ward_tab.layout().addWidget(scroll_area)
+
+    # ==================== Bed Management Tab ====================
+    def init_bed_tab(self):
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_widget = QWidget()
+        scroll_area.setWidget(scroll_widget)
+        layout = QVBoxLayout(scroll_widget)
+
+        # Bed Creation Form
+        form_group = QGroupBox("Create Bed")
+        form_layout = QFormLayout()
+
+        self.bed_number_input = QLineEdit()
+        self.bed_number_input.setPlaceholderText("Enter Bed Number")
+        form_layout.addRow("Bed Number:", self.bed_number_input)
+
+        self.ward_dropdown_bed = QComboBox()
+        self.load_wards_for_bed()
+        form_layout.addRow("Ward:", self.ward_dropdown_bed)
+
+        self.create_bed_button = QPushButton("Create Bed")
+        self.create_bed_button.setIcon(QIcon("assets/icons/create.png"))
+        self.create_bed_button.setStyleSheet("background-color: #007bff;")
+        self.create_bed_button.clicked.connect(self.create_bed)
+        form_layout.addRow(self.create_bed_button)
+
+        form_group.setLayout(form_layout)
+        layout.addWidget(form_group)
+
+        # Bed Table
+        table_group = QGroupBox("Existing Beds")
+        table_layout = QVBoxLayout()
+
+        self.existing_bed_table = QTableWidget()
+        self.existing_bed_table.setColumnCount(3)
+        self.existing_bed_table.setHorizontalHeaderLabels(["ID", "Bed Number", "Ward"])
+        table_layout.addWidget(self.existing_bed_table)
+
+        # Search Bar
+        self.bed_search_input = QLineEdit()
+        self.bed_search_input.setPlaceholderText("Search Beds...")
+        self.bed_search_input.textChanged.connect(self.filter_beds)
+        table_layout.addWidget(self.bed_search_input)
+
+        # Refresh Button
+        refresh_button = QPushButton("Refresh")
+        refresh_button.setIcon(QIcon("assets/icons/refresh.png"))
+        refresh_button.clicked.connect(self.load_existing_beds)
+        table_layout.addWidget(refresh_button)
+
+        table_group.setLayout(table_layout)
+        layout.addWidget(table_group)
+
+        self.bed_tab.setLayout(QVBoxLayout())
+        self.bed_tab.layout().addWidget(scroll_area)
+
+    # ==================== Search Functionality ====================
+    def filter_icu_patients(self):
+        """Filters ICU patients based on search input."""
+        search_text = self.icu_search_input.text().lower()
+        for row in range(self.icu_table.rowCount()):
+            match = False
+            for col in range(self.icu_table.columnCount()):
+                item = self.icu_table.item(row, col)
+                if item and search_text in item.text().lower():
+                    match = True
+                    break
+            self.icu_table.setRowHidden(row, not match)
+
+    def filter_inpatients(self):
+        """Filters inpatients based on search input."""
+        search_text = self.inpatient_search_input.text().lower()
+        for row in range(self.inpatient_table.rowCount()):
+            match = False
+            for col in range(self.inpatient_table.columnCount()):
+                item = self.inpatient_table.item(row, col)
+                if item and search_text in item.text().lower():
+                    match = True
+                    break
+            self.inpatient_table.setRowHidden(row, not match)
+
+    def filter_departments(self):
+        """Filters departments based on search input."""
+        search_text = self.department_search_input.text().lower()
+        for row in range(self.existing_department_table.rowCount()):
+            match = False
+            for col in range(self.existing_department_table.columnCount()):
+                item = self.existing_department_table.item(row, col)
+                if item and search_text in item.text().lower():
+                    match = True
+                    break
+            self.existing_department_table.setRowHidden(row, not match)
+
+    def filter_wards(self):
+        """Filters wards based on search input."""
+        search_text = self.ward_search_input.text().lower()
+        for row in range(self.existing_ward_table.rowCount()):
+            match = False
+            for col in range(self.existing_ward_table.columnCount()):
+                item = self.existing_ward_table.item(row, col)
+                if item and search_text in item.text().lower():
+                    match = True
+                    break
+            self.existing_ward_table.setRowHidden(row, not match)
+
+    def filter_beds(self):
+        """Filters beds based on search input."""
+        search_text = self.bed_search_input.text().lower()
+        for row in range(self.existing_bed_table.rowCount()):
+            match = False
+            for col in range(self.existing_bed_table.columnCount()):
+                item = self.existing_bed_table.item(row, col)
+                if item and search_text in item.text().lower():
+                    match = True
+                    break
+            self.existing_bed_table.setRowHidden(row, not match)
+
+    # ==================== Threading for API Calls ====================
+    def load_patients(self):
+        """Fetches and populates the dropdown with patients using threading."""
+        worker = Worker(fetch_data,self, os.getenv("PATIENT_LIST_URL"), self.token)
+        worker.signals.result.connect(self.populate_patient_dropdowns)
+        worker.signals.error.connect(self.show_error)
+        self.thread_pool.start(worker)
+
+    def populate_patient_dropdowns(self, patients):
+        """Populates patient dropdowns with fetched data."""
+        if patients:
+            self.patient_dropdown.clear()
+            self.patient_dropdown_vitals.clear()
+            for patient in patients:
+                self.patient_dropdown.addItem(patient["full_name"], patient["id"])
+                self.patient_dropdown_vitals.addItem(patient["full_name"], patient["id"])
+
+    def show_error(self, error_message):
+        """Displays an error message."""
+        QMessageBox.critical(self, "Error", error_message)
+
+    # ==================== Other Helper Methods ====================
+    def load_admissions(self):
+        """Fetches and populates the dropdown with admissions."""
+        api_url = os.getenv("ADMISSION_LIST_URL")
+        admissions = fetch_data(self, api_url, self.token)
+
+        if admissions:
+            self.admission_dropdown.clear()
+            for admission in admissions:
+                self.admission_dropdown.addItem(f"Admission {admission['id']}", admission["id"])
+
+    def load_admitted_icu(self):
+        """Fetches and populates the dropdown with ICU admissions."""
+        api_url = os.getenv("GET_ICU_PATIENTS_URL")
+        admissions = fetch_data(self, api_url, self.token)
+
+        if admissions:
+            self.patient_dropdown_icu.clear()
+            for admission in admissions:
+                self.patient_dropdown_icu.addItem(f"Admission {admission['id']}", admission["id"])
+
+    def load_icu_patients(self):
+        """Fetches and displays ICU patients."""
+        api_url = os.getenv("GET_ICU_PATIENTS_URL")
+        icu_patients = fetch_data(self, api_url, self.token)
+
+        if icu_patients:
+            self.icu_table.setRowCount(len(icu_patients))
+            for row, patient in enumerate(icu_patients):
+                self.icu_table.setItem(row, 0, QTableWidgetItem(patient["patient_name"]))
+                self.icu_table.setItem(row, 1, QTableWidgetItem(patient["status"]))
+                self.icu_table.setItem(row, 2, QTableWidgetItem(patient["condition_evolution"]))
+                self.icu_table.setItem(row, 3, QTableWidgetItem(patient["medications"]))
+                self.icu_table.setItem(row, 4, QTableWidgetItem(patient["drips"]))
+                self.icu_table.setItem(row, 5, QTableWidgetItem(patient["treatment_plan"]))
+                self.icu_table.setItem(row, 6, QTableWidgetItem(patient["updated_by"]))
+                self.icu_table.setItem(row, 7, QTableWidgetItem(patient["updated_at"]))
+
+    def load_admitted_inpatient(self):
+        """Fetches and populates the dropdown with Inpatient admissions."""
+        api_url = os.getenv("GET_INPATIENTS_URL")
+        in_patient = fetch_data(self, api_url, self.token)
+
+        if in_patient:
+            for patient in in_patient:
+                self.patient_dropdown_inpatient.addItem(f"Admission {patient['id']}", patient["id"])
+
+    def load_inpatients(self):
+        """Fetches and displays inpatients."""
+        api_url = os.getenv("GET_INPATIENTS_URL")
+        inpatients = fetch_data(self, api_url, self.token)
+
+        if inpatients:
+            self.inpatient_table.setRowCount(len(inpatients))
+            for row, patient in enumerate(inpatients):
+                self.inpatient_table.setItem(row, 0, QTableWidgetItem(patient["patient_name"]))
+                self.inpatient_table.setItem(row, 1, QTableWidgetItem(patient["status"]))
+                self.inpatient_table.setItem(row, 2, QTableWidgetItem(patient["condition_evolution"]))
+                self.inpatient_table.setItem(row, 3, QTableWidgetItem(patient["medications"]))
+                self.inpatient_table.setItem(row, 4, QTableWidgetItem(patient["treatment_plan"]))
+                self.inpatient_table.setItem(row, 5, QTableWidgetItem(patient["updated_by"]))
+                self.inpatient_table.setItem(row, 6, QTableWidgetItem(patient["updated_at"]))
+
     def load_departments(self):
         """Fetches and populates the dropdown with departments."""
         api_url = os.getenv("DEPARTMENT_LIST_URL")
@@ -143,10 +796,104 @@ class AdmissionManagement(QWidget):
             self.department_dropdown.clear()
             for department in departments:
                 self.department_dropdown.addItem(department["name"], department["id"])
-        else:
-            QMessageBox.critical(self, "Error", "Failed to fetch department list.")
 
+    def load_wards(self):
+        """Fetches and populates the dropdown with wards."""
+        api_url = os.getenv("WARD_LIST_URL")
+        wards = fetch_data(self, api_url, self.token)
 
+        if wards:
+            self.ward_dropdown.clear()
+            for ward in wards:
+                self.ward_dropdown.addItem(ward["name"], ward["id"])
+
+    def load_wards_for_department(self):
+        """Fetches and populates the dropdown with wards for a selected department."""
+        department_id = self.department_dropdown.currentData()
+        if department_id:
+            api_url = os.getenv("WARD_LIST_URL") + f"?department_id={department_id}"
+            wards = fetch_data(self, api_url, self.token)
+            self.ward_dropdown.clear()
+            for ward in wards:
+                self.ward_dropdown.addItem(ward["name"], ward["id"])
+
+    def load_departments_for_ward(self):
+        """Fetches and populates the dropdown with departments for ward creation."""
+        api_url = os.getenv("DEPARTMENT_LIST_URL")
+        departments = fetch_data(self, api_url, self.token)
+
+        if departments:
+            self.department_dropdown_ward.clear()
+            for department in departments:
+                self.department_dropdown_ward.addItem(department["name"], department["id"])
+
+    def load_wards_for_bed(self):
+        """Fetches and populates the dropdown with wards for bed creation."""
+        api_url = os.getenv("WARD_LIST_URL")
+        wards = fetch_data(self, api_url, self.token)
+
+        if wards:
+            self.ward_dropdown_bed.clear()
+            for ward in wards:
+                self.ward_dropdown_bed.addItem(ward["name"], ward["id"])
+
+    def load_beds(self):
+        """Fetches and populates the dropdown with beds."""
+        api_url = os.getenv("BED_LIST_URL")
+        beds = fetch_data(self, api_url, self.token)
+
+        if beds:
+            self.bed_dropdown.clear()
+            for bed in beds:
+                self.bed_dropdown.addItem(str(bed["bed_number"]), bed["id"])
+
+    def load_beds_for_ward(self):
+        """Fetches and populates the dropdown with beds for a selected ward."""
+        ward_id = self.ward_dropdown.currentData()
+        if ward_id:
+            api_url = os.getenv("BED_LIST_URL") + f"?ward_id={ward_id}&is_occupied=False"
+            beds = fetch_data(self, api_url, self.token)
+            self.bed_dropdown.clear()
+            for bed in beds:
+                self.bed_dropdown.addItem(str(bed["bed_number"]), bed["id"])
+
+    def load_existing_departments(self):
+        """Fetches and displays existing departments."""
+        api_url = os.getenv("DEPARTMENT_LIST_URL")
+        departments = fetch_data(self, api_url, self.token)
+
+        if departments:
+            self.existing_department_table.setRowCount(len(departments))
+            for row, department in enumerate(departments):
+                self.existing_department_table.setItem(row, 0, QTableWidgetItem(str(department["id"])))
+                self.existing_department_table.setItem(row, 1, QTableWidgetItem(department["name"]))
+                self.existing_department_table.setItem(row, 2, QTableWidgetItem(department["category"]))
+
+    def load_existing_wards(self):
+        """Fetches and displays existing wards."""
+        api_url = os.getenv("WARD_LIST_URL")
+        wards = fetch_data(self, api_url, self.token)
+
+        if wards:
+            self.existing_ward_table.setRowCount(len(wards))
+            for row, ward in enumerate(wards):
+                self.existing_ward_table.setItem(row, 0, QTableWidgetItem(str(ward["id"])))
+                self.existing_ward_table.setItem(row, 1, QTableWidgetItem(ward["name"]))
+                self.existing_ward_table.setItem(row, 2, QTableWidgetItem(str(ward["department_id"])))
+
+    def load_existing_beds(self):
+        """Fetches and displays existing beds."""
+        api_url = os.getenv("BED_LIST_URL")
+        beds = fetch_data(self, api_url, self.token)
+
+        if beds:
+            self.existing_bed_table.setRowCount(len(beds))
+            for row, bed in enumerate(beds):
+                self.existing_bed_table.setItem(row, 0, QTableWidgetItem(str(bed["id"])))
+                self.existing_bed_table.setItem(row, 1, QTableWidgetItem(bed["bed_number"]))
+                self.existing_bed_table.setItem(row, 2, QTableWidgetItem(str(bed["ward_id"])))
+
+    # ==================== API Interaction Methods ====================
     def admit_patient(self):
         """Admits a patient."""
         patient_id = self.patient_dropdown.currentData()
@@ -175,37 +922,6 @@ class AdmissionManagement(QWidget):
         else:
             QMessageBox.critical(self, "Error", "Failed to admit patient.")
 
-
-    def init_discharge_tab(self):
-        layout = QVBoxLayout()
-
-        # Discharge Form
-        form_layout = QFormLayout()
-
-        self.admission_dropdown = QComboBox()
-        self.load_admissions()
-        form_layout.addRow("Admission:", self.admission_dropdown)
-
-        self.discharge_button = QPushButton("Discharge Patient")
-        self.discharge_button.setStyleSheet("background-color: #e74c3c; color: white; padding: 10px;")
-        self.discharge_button.clicked.connect(self.discharge_patient)
-        form_layout.addRow(self.discharge_button)
-
-        layout.addLayout(form_layout)
-        self.discharge_tab.setLayout(layout)
-    
-    def load_admissions(self):
-        """Fetches and populates the dropdown with admissions."""
-        api_url = os.getenv("ADMISSION_LIST_URL")
-        admissions = fetch_data(self, api_url, self.token)
-
-        if admissions:
-            self.admission_dropdown.clear()
-            for admission in admissions:
-                self.admission_dropdown.addItem(f"Admission {admission['id']}", admission["id"])
-        else:
-            QMessageBox.critical(self, "Error", "Failed to fetch admission list.")
-    
     def discharge_patient(self):
         """Discharges a patient."""
         admission_id = self.admission_dropdown.currentData()
@@ -223,89 +939,6 @@ class AdmissionManagement(QWidget):
             self.load_admissions()
         else:
             QMessageBox.critical(self, "Error", "Failed to discharge patient.")
-
-    # ==================== ICU Management Tab ====================
-    def init_icu_tab(self):
-        layout = QVBoxLayout()
-
-        # ICU Patient Table
-        self.icu_table = QTableWidget()
-        self.icu_table.setColumnCount(8)
-        self.icu_table.setHorizontalHeaderLabels([
-            "Patient", "Status", "Condition Evolution", "Medications", "Drips", "Treatment Plan", "Updated By", "Updated At"
-        ])
-        self.icu_table.setStyleSheet("QTableWidget { font-size: 14px; }")
-        layout.addWidget(self.icu_table)
-
-        # ICU Patient Form
-        form_layout = QFormLayout()
-
-        self.patient_dropdown_icu = QComboBox()
-        self.load_admitted_icu()
-        form_layout.addRow("Patient:", self.patient_dropdown_icu)
-
-        self.status_input_icu = QComboBox()
-        self.status_input_icu.addItems(["Stable", "Critical", "Improving", "Deteriorating"])
-        form_layout.addRow("Status:", self.status_input_icu)
-
-        self.condition_evolution_input_icu = QTextEdit()
-        self.condition_evolution_input_icu.setPlaceholderText("Enter condition evolution...")
-        form_layout.addRow("Condition Evolution:", self.condition_evolution_input_icu)
-
-        self.medications_input_icu = QTextEdit()
-        self.medications_input_icu.setPlaceholderText("Enter medications...")
-        form_layout.addRow("Medications:", self.medications_input_icu)
-
-        self.drips_input_icu = QTextEdit()
-        self.drips_input_icu.setPlaceholderText("Enter drips...")
-        form_layout.addRow("Drips:", self.drips_input_icu)
-
-        self.treatment_plan_input_icu = QTextEdit()
-        self.treatment_plan_input_icu.setPlaceholderText("Enter treatment plan...")
-        form_layout.addRow("Treatment Plan:", self.treatment_plan_input_icu)
-
-        self.update_icu_button = QPushButton("Update ICU Patient")
-        self.update_icu_button.setStyleSheet("background-color: #007bff; color: white; padding: 10px;")
-        self.update_icu_button.clicked.connect(self.update_icu_patient)
-        form_layout.addRow(self.update_icu_button)
-
-        layout.addLayout(form_layout)
-        self.icu_tab.setLayout(layout)
-
-        # Load ICU Patients
-        self.load_icu_patients()
-        
-    
-    def load_admitted_icu(self):
-        """Fetches and displays ICU patients."""
-        api_url = os.getenv("GET_ICU_PATIENTS_URL")
-        icu_patients = fetch_data(self, api_url, self.token)
-        
-        if icu_patients:
-            self.patient_dropdown_icu.clear()
-            for patient in icu_patients:
-                self.patient_dropdown_icu.addItem(patient["full_name"], patient["id"])
-        
-
-    def load_icu_patients(self):
-        """Fetches and displays ICU patients."""
-        api_url = os.getenv("GET_ICU_PATIENTS_URL")
-        icu_patients = fetch_data(self, api_url, self.token)
-
-        if icu_patients:
-            self.icu_table.setRowCount(len(icu_patients))
-            for row, patient in enumerate(icu_patients):
-                self.icu_table.setItem(row, 0, QTableWidgetItem(patient["patient_name"]))
-                self.icu_table.setItem(row, 1, QTableWidgetItem(patient["status"]))
-                self.icu_table.setItem(row, 2, QTableWidgetItem(patient["condition_evolution"]))
-                self.icu_table.setItem(row, 3, QTableWidgetItem(patient["medications"]))
-                self.icu_table.setItem(row, 4, QTableWidgetItem(patient["drips"]))
-                self.icu_table.setItem(row, 5, QTableWidgetItem(patient["treatment_plan"]))
-                self.icu_table.setItem(row, 6, QTableWidgetItem(patient["updated_by"]))
-                self.icu_table.setItem(row, 7, QTableWidgetItem(patient["updated_at"]))
-                
-        else:
-            QMessageBox.critical(self, "Error", "Failed to fetch ICU patient list.")
 
     def update_icu_patient(self):
         """Updates ICU patient details."""
@@ -338,81 +971,6 @@ class AdmissionManagement(QWidget):
         else:
             QMessageBox.critical(self, "Error", "Failed to update ICU patient.")
 
-    # ==================== Inpatient Management Tab ====================
-    def init_inpatient_tab(self):
-        layout = QVBoxLayout()
-
-        # Inpatient Table
-        self.inpatient_table = QTableWidget()
-        self.inpatient_table.setColumnCount(7)
-        self.inpatient_table.setHorizontalHeaderLabels([
-            "Patient", "Status", "Condition Evolution", "Medications", "Treatment Plan", "Updated By", "Updated At"
-        ])
-        self.inpatient_table.setStyleSheet("QTableWidget { font-size: 14px; }")
-        layout.addWidget(self.inpatient_table)
-
-        # Inpatient Form
-        form_layout = QFormLayout()
-
-        self.patient_dropdown_inpatient = QComboBox()
-        self.load_admitted_inpatient()
-        form_layout.addRow("Patient:", self.patient_dropdown_inpatient)
-
-        self.status_input_inpatient = QComboBox()
-        self.status_input_inpatient.addItems(["Stable", "Recovering", "Discharged"])
-        form_layout.addRow("Status:", self.status_input_inpatient)
-
-        self.condition_evolution_input_inpatient = QTextEdit()
-        self.condition_evolution_input_inpatient.setPlaceholderText("Enter condition evolution...")
-        form_layout.addRow("Condition Evolution:", self.condition_evolution_input_inpatient)
-
-        self.medications_input_inpatient = QTextEdit()
-        self.medications_input_inpatient.setPlaceholderText("Enter medications...")
-        form_layout.addRow("Medications:", self.medications_input_inpatient)
-
-        self.treatment_plan_input_inpatient = QTextEdit()
-        self.treatment_plan_input_inpatient.setPlaceholderText("Enter treatment plan...")
-        form_layout.addRow("Treatment Plan:", self.treatment_plan_input_inpatient)
-
-        self.update_inpatient_button = QPushButton("Update Inpatient")
-        self.update_inpatient_button.setStyleSheet("background-color: #007bff; color: white; padding: 10px;")
-        self.update_inpatient_button.clicked.connect(self.update_inpatient)
-        form_layout.addRow(self.update_inpatient_button)
-
-        layout.addLayout(form_layout)
-        self.inpatient_tab.setLayout(layout)
-
-        # Load Inpatients
-        self.load_inpatients()
-        
-    def load_admitted_inpatient(self):
-        """Fetches and displays ICU patients."""
-        api_url = os.getenv("GET_INPATIENTS_URL")
-        inpatient = fetch_data(self, api_url, self.token)
-        
-        if inpatient:
-            self.patient_dropdown_inpatient.clear()
-            for patient in inpatient:
-                self.patient_dropdown_inpatient.addItem(patient["full_name"], patient["id"])
-
-    def load_inpatients(self):
-        """Fetches and displays inpatients."""
-        api_url = os.getenv("GET_INPATIENTS_URL")
-        inpatients = fetch_data(self, api_url, self.token)
-
-        if inpatients:
-            self.inpatient_table.setRowCount(len(inpatients))
-            for row, patient in enumerate(inpatients):
-                self.inpatient_table.setItem(row, 0, QTableWidgetItem(patient["patient_name"]))
-                self.inpatient_table.setItem(row, 1, QTableWidgetItem(patient["status"]))
-                self.inpatient_table.setItem(row, 2, QTableWidgetItem(patient["condition_evolution"]))
-                self.inpatient_table.setItem(row, 3, QTableWidgetItem(patient["medications"]))
-                self.inpatient_table.setItem(row, 4, QTableWidgetItem(patient["treatment_plan"]))
-                self.inpatient_table.setItem(row, 5, QTableWidgetItem(patient["updated_by"]))
-                self.inpatient_table.setItem(row, 6, QTableWidgetItem(patient["updated_at"]))
-        else:
-            QMessageBox.critical(self, "Error", "Failed to fetch inpatient list.")
-
     def update_inpatient(self):
         """Updates inpatient details."""
         patient_id = self.patient_dropdown_inpatient.currentData()
@@ -442,38 +1000,6 @@ class AdmissionManagement(QWidget):
         else:
             QMessageBox.critical(self, "Error", "Failed to update inpatient.")
 
-    # ==================== Vitals Tab ====================
-
-    def init_vitals_tab(self):
-        layout = QVBoxLayout()
-
-        # Vitals Form
-        form_layout = QFormLayout()
-
-        self.patient_dropdown_vitals = QComboBox()
-        self.load_patients()
-        form_layout.addRow("Patient:", self.patient_dropdown_vitals)
-
-        self.blood_pressure_input = QLineEdit()
-        self.blood_pressure_input.setPlaceholderText("Enter Blood Pressure...")
-        form_layout.addRow("Blood Pressure:", self.blood_pressure_input)
-
-        self.heart_rate_input = QLineEdit()
-        self.heart_rate_input.setPlaceholderText("Enter Heart Rate...")
-        form_layout.addRow("Heart Rate:", self.heart_rate_input)
-
-        self.temperature_input = QLineEdit()
-        self.temperature_input.setPlaceholderText("Enter Temperature...")
-        form_layout.addRow("Temperature:", self.temperature_input)
-
-        self.update_vitals_button = QPushButton("Update Vitals")
-        self.update_vitals_button.setStyleSheet("background-color: #007bff; color: white; padding: 10px;")
-        self.update_vitals_button.clicked.connect(self.update_vitals)
-        form_layout.addRow(self.update_vitals_button)
-
-        layout.addLayout(form_layout)
-        self.vitals_tab.setLayout(layout)
-    
     def update_vitals(self):
         """Updates patient vitals."""
         patient_id = self.patient_dropdown_vitals.currentData()
@@ -500,58 +1026,8 @@ class AdmissionManagement(QWidget):
         else:
             QMessageBox.critical(self, "Error", "Failed to update vitals.")
 
-    def generate_patient_form(self):
-        """Generates a downloadable PDF form with patient information."""
-        patient_id = self.patient_dropdown.currentData()
-        if not patient_id:
-            QMessageBox.warning(self, "Validation Error", "Please select a patient.")
-            return
-
-        api_url = os.getenv("PATIENT_INFO_URL")
-        patient_info = fetch_data(self, api_url, self.token)
-
-        if patient_info:
-            file_path, _ = QFileDialog.getSaveFileName(self, "Save Patient Form", "", "PDF Files (*.pdf)")
-            if file_path:
-                generate_pdf(patient_info, file_path)
-                QMessageBox.information(self, "Success", f"Patient form saved to {file_path}")
-        else:
-            QMessageBox.critical(self, "Error", "Failed to fetch patient information.")
-            
-    def init_department_tab(self):
-        layout = QVBoxLayout()
-
-        # Department Creation Form
-        form_layout = QFormLayout()
-
-        self.department_name_input = QLineEdit()
-        self.department_name_input.setPlaceholderText("Enter Department Name")
-        form_layout.addRow("Department Name:", self.department_name_input)
-
-        self.department_category_dropdown = QComboBox()
-        self.department_category_dropdown.addItems(["Outpatient", "Inpatient", "ICU"])
-        form_layout.addRow("Category:", self.department_category_dropdown)
-
-        self.create_department_button = QPushButton("Create Department")
-        self.create_department_button.setStyleSheet("background-color: #007bff; color: white; padding: 10px;")
-        self.create_department_button.clicked.connect(self.create_department)
-        form_layout.addRow(self.create_department_button)
-
-        # Department Table
-        self.existing_department_table = QTableWidget()
-        self.existing_department_table.setColumnCount(3)
-        self.existing_department_table.setHorizontalHeaderLabels(["ID", "Name", "Category"])
-        self.existing_department_table.setStyleSheet("QTableWidget { font-size: 14px; }")
-        layout.addWidget(self.existing_department_table)
-
-        layout.addLayout(form_layout)
-        self.department_tab.setLayout(layout)
-
-        # Load existing departments
-        self.load_existing_departments()
-
     def create_department(self):
-        """Create a new department."""
+        """Creates a new department."""
         name = self.department_name_input.text().strip()
         category = self.department_category_dropdown.currentText()
 
@@ -572,76 +1048,8 @@ class AdmissionManagement(QWidget):
         else:
             QMessageBox.critical(self, "Error", "Failed to create department.")
 
-    def load_existing_departments(self):
-        """Fetch and display departments."""
-        api_url = os.getenv("DEPARTMENT_LIST_URL")
-        departments = fetch_data(self, api_url, self.token)
-
-        if departments:
-            self.existing_department_table.setRowCount(len(departments))
-            for row, department in enumerate(departments):
-                self.existing_department_table.setItem(row, 0, QTableWidgetItem(str(department["id"])))
-                self.existing_department_table.setItem(row, 1, QTableWidgetItem(department["name"]))
-                self.existing_department_table.setItem(row, 2, QTableWidgetItem(department["category"]))
-    
-    def load_patients(self):
-        """Fetches and populates the dropdown with patients."""
-        api_url = os.getenv("PATIENT_LIST_URL")
-        patients = fetch_data(self, api_url, self.token)
-
-        if patients:
-            self.patient_dropdown.clear()
-            self.patient_dropdown_vitals.clear()
-            for patient in patients:
-                self.patient_dropdown.addItem(patient["full_name"], patient["id"])
-                self.patient_dropdown_vitals.addItem(patient["full_name"], patient["id"])
-        else:
-            QMessageBox.critical(self, "Error", "Failed to fetch patient list.")
-    
-    def init_ward_tab(self):
-        layout = QVBoxLayout()
-
-        # Ward Creation Form
-        form_layout = QFormLayout()
-
-        self.ward_name_input = QLineEdit()
-        self.ward_name_input.setPlaceholderText("Enter Ward Name")
-        form_layout.addRow("Ward Name:", self.ward_name_input)
-
-        self.department_dropdown_ward = QComboBox()
-        self.load_departments_for_ward()
-        form_layout.addRow("Department:", self.department_dropdown_ward)
-
-        self.create_ward_button = QPushButton("Create Ward")
-        self.create_ward_button.setStyleSheet("background-color: #007bff; color: white; padding: 10px;")
-        self.create_ward_button.clicked.connect(self.create_ward)
-        form_layout.addRow(self.create_ward_button)
-
-        # Ward Table
-        self.ward_table = QTableWidget()
-        self.ward_table.setColumnCount(3)
-        self.ward_table.setHorizontalHeaderLabels(["ID", "Name", "Department"])
-        self.ward_table.setStyleSheet("QTableWidget { font-size: 14px; }")
-        layout.addWidget(self.ward_table)
-
-        layout.addLayout(form_layout)
-        self.ward_tab.setLayout(layout)
-
-        # Load existing wards
-        self.load_wards()
-
-    def load_departments_for_ward(self):
-        """Fetch and populate departments for the ward dropdown."""
-        api_url = os.getenv("DEPARTMENT_LIST_URL")
-        departments = fetch_data(self, api_url, self.token)
-
-        if departments:
-            self.department_dropdown_ward.clear()
-            for department in departments:
-                self.department_dropdown_ward.addItem(department["name"], department["id"])
-
     def create_ward(self):
-        """Create a new ward."""
+        """Creates a new ward."""
         name = self.ward_name_input.text().strip()
         department_id = self.department_dropdown_ward.currentData()
 
@@ -658,66 +1066,12 @@ class AdmissionManagement(QWidget):
 
         if response:
             QMessageBox.information(self, "Success", "Ward created successfully.")
-            self.load_wards()
+            self.load_existing_wards()
         else:
             QMessageBox.critical(self, "Error", "Failed to create ward.")
 
-    def load_wards(self):
-        """Fetch and display wards."""
-        api_url = os.getenv("WARD_LIST_URL")
-        wards = fetch_data(self, api_url, self.token)
-
-        if wards:
-            self.ward_table.setRowCount(len(wards))
-            for row, ward in enumerate(wards):
-                self.ward_table.setItem(row, 0, QTableWidgetItem(str(ward["id"])))
-                self.ward_table.setItem(row, 1, QTableWidgetItem(ward["name"]))
-                self.ward_table.setItem(row, 2, QTableWidgetItem(ward["department_name"]))
-                
-    def init_bed_tab(self):
-        layout = QVBoxLayout()
-
-        # Bed Creation Form
-        form_layout = QFormLayout()
-
-        self.bed_number_input = QLineEdit()
-        self.bed_number_input.setPlaceholderText("Enter Bed Number")
-        form_layout.addRow("Bed Number:", self.bed_number_input)
-
-        self.ward_dropdown_bed = QComboBox()
-        self.load_wards_for_bed()
-        form_layout.addRow("Ward:", self.ward_dropdown_bed)
-
-        self.create_bed_button = QPushButton("Create Bed")
-        self.create_bed_button.setStyleSheet("background-color: #007bff; color: white; padding: 10px;")
-        self.create_bed_button.clicked.connect(self.create_bed)
-        form_layout.addRow(self.create_bed_button)
-
-        # Bed Table
-        self.bed_table = QTableWidget()
-        self.bed_table.setColumnCount(3)
-        self.bed_table.setHorizontalHeaderLabels(["ID", "Bed Number", "Ward"])
-        self.bed_table.setStyleSheet("QTableWidget { font-size: 14px; }")
-        layout.addWidget(self.bed_table)
-
-        layout.addLayout(form_layout)
-        self.bed_tab.setLayout(layout)
-
-        # Load existing beds
-        self.load_beds()
-
-    def load_wards_for_bed(self):
-        """Fetch and populate wards for the bed dropdown."""
-        api_url = os.getenv("WARD_LIST_URL")
-        wards = fetch_data(self, api_url, self.token)
-
-        if wards:
-            self.ward_dropdown_bed.clear()
-            for ward in wards:
-                self.ward_dropdown_bed.addItem(ward["name"], ward["id"])
-
     def create_bed(self):
-        """Create a new bed."""
+        """Creates a new bed."""
         bed_number = self.bed_number_input.text().strip()
         ward_id = self.ward_dropdown_bed.currentData()
 
@@ -738,14 +1092,13 @@ class AdmissionManagement(QWidget):
         else:
             QMessageBox.critical(self, "Error", "Failed to create bed.")
 
-    def load_beds(self):
-        """Fetch and display beds."""
-        api_url = os.getenv("BED_LIST_URL")
-        beds = fetch_data(self, api_url, self.token)
-
-        if beds:
-            self.bed_table.setRowCount(len(beds))
-            for row, bed in enumerate(beds):
-                self.bed_table.setItem(row, 0, QTableWidgetItem(str(bed["id"])))
-                self.bed_table.setItem(row, 1, QTableWidgetItem(bed["bed_number"]))
-                self.bed_table.setItem(row, 2, QTableWidgetItem(bed["ward_name"]))
+    def refresh_all(self):
+        """Refreshes all tabs."""
+        self.load_patients()
+        self.load_admissions()
+        self.load_icu_patients()
+        self.load_inpatients()
+        self.load_existing_departments()
+        self.load_existing_wards()
+        self.load_existing_beds()
+        self.status_bar.showMessage("All data refreshed successfully.", 3000)

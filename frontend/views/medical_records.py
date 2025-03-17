@@ -1,6 +1,6 @@
-from PySide6.QtWidgets import QWidget, QHeaderView, QPushButton, QMessageBox, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QScrollArea, QLineEdit, QHBoxLayout, QGridLayout
-from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QIcon, QFont
+from PySide6.QtWidgets import QApplication, QWidget, QHeaderView, QPushButton, QMessageBox, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QScrollArea, QLineEdit, QHBoxLayout, QGridLayout
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon
 from .doctors import PatientRecordUpdateWindow
 from utils.api_utils import fetch_data, post_data
 import os
@@ -13,7 +13,13 @@ class MedicalRecords(QWidget):
         self.token = token
         
         self.setWindowTitle("Patient Management")
-        self.setGeometry(300, 200, 800, 500)
+        screen = QApplication.primaryScreen()
+        screen_geometry = screen.availableGeometry()
+        max_width = screen_geometry.width() * 0.8  # 80% of screen width
+        max_height = screen_geometry.height() * 0.8  # 80% of screen height
+        
+        self.resize(int(max_width), int(max_height))  # Set window size
+        self.setMinimumSize(800, 600)  # Set a reasonable minimum size
         self.setStyleSheet("""
             QWidget {
                 background-color: #f5f7fa;

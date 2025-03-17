@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, 
     QTableWidgetItem, QMessageBox, QHBoxLayout, QLineEdit, 
-    QHeaderView
+    QHeaderView, QInputDialog,QApplication
 )
 from PySide6.QtCore import Qt
 import requests
@@ -30,7 +30,13 @@ class Billing(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("Billing Management")
-        self.setGeometry(300, 300, 800, 500)
+        screen = QApplication.primaryScreen()
+        screen_geometry = screen.availableGeometry()
+        max_width = screen_geometry.width() * 0.8  # 80% of screen width
+        max_height = screen_geometry.height() * 0.8  # 80% of screen height
+        
+        self.resize(int(max_width), int(max_height))  # Set window size
+        self.setMinimumSize(800, 600)  # Set a reasonable minimum size
         self.setStyleSheet("""
             QWidget {
                 background-color: #f4f4f4;
@@ -56,6 +62,11 @@ class Billing(QWidget):
                 border: 1px solid #ddd;
                 gridline-color: #ddd;
             }
+            QLineEdit, QComboBox {
+                padding: 8px;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+            }
         """)
 
         layout = QVBoxLayout()
@@ -65,12 +76,12 @@ class Billing(QWidget):
         layout.addWidget(self.title_label)
 
         self.billing_table = QTableWidget()
-        self.billing_table.setColumnCount(4)
-        self.billing_table.setHorizontalHeaderLabels(["Bill ID", "Patient", "Amount", "Status"])
+        self.billing_table.setColumnCount(5)
+        self.billing_table.setHorizontalHeaderLabels(["Bill ID", "Patient", "Amount", "Status", "Actions"])
         self.billing_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         layout.addWidget(self.billing_table)
 
-        if self.user_role in ["admin", "billing"]:
+        if self.role in ["admin", "billing"]:
             self.add_billing_section(layout)
 
         self.refresh_button = QPushButton("Refresh Bills")
@@ -99,18 +110,23 @@ class Billing(QWidget):
 
     def load_bills(self):
         """Fetches billing data from the backend"""
-        api_url = os.getenv("BILLING_LIST_URL")
-        headers = {"Authorization": f"Bearer {self.auth_token}"}
+        api_url = f"{os.getenv('API_BASE_URL')}/billing/"
+        headers = {"Authorization": f"Bearer {self.token}"}
         response = requests.get(api_url, headers=headers)
 
         if response.status_code == 200:
             bills = response.json()
             self.billing_table.setRowCount(len(bills))
             for row, bill in enumerate(bills):
-                self.billing_table.setItem(row, 0, QTableWidgetItem(str(bill["bill_id"])))
-                self.billing_table.setItem(row, 1, QTableWidgetItem(bill["patient_name"]))
-                self.billing_table.setItem(row, 2, QTableWidgetItem(f"${bill['amount']}"))
+                self.billing_table.setItem(row, 0, QTableWidgetItem(str(bill["id"])))
+                self.billing_table.setItem(row, 1, QTableWidgetItem(str(bill["patient_id"])))
+                self.billing_table.setItem(row, 2, QTableWidgetItem(f"CFA{bill['amount']}"))
                 self.billing_table.setItem(row, 3, QTableWidgetItem(bill["status"]))
+
+                # Add action buttons
+                action_button = QPushButton("Update Status")
+                action_button.clicked.connect(lambda _, b=bill["id"]: self.update_bill_status(b))
+                self.billing_table.setCellWidget(row, 4, action_button)
         else:
             QMessageBox.critical(self, "Error", "Failed to load billing data.")
 
@@ -123,9 +139,9 @@ class Billing(QWidget):
             QMessageBox.warning(self, "Input Error", "Please fill out all fields.")
             return
 
-        api_url = os.getenv("ADD_BILL_URL")
-        headers = {"Authorization": f"Bearer {self.auth_token}", "Content-Type": "application/json"}
-        data = {"patient_id": patient_id, "amount": amount}
+        api_url = f"{os.getenv('API_BASE_URL')}/billing/"
+        headers = {"Authorization": f"Bearer {self.token}", "Content-Type": "application/json"}
+        data = {"patient_id": int(patient_id), "amount": float(amount)}
 
         response = requests.post(api_url, json=data, headers=headers)
 
@@ -134,3 +150,19 @@ class Billing(QWidget):
             self.load_bills()
         else:
             QMessageBox.critical(self, "Error", "Failed to add bill.")
+
+    def update_bill_status(self, bill_id):
+        """Updates the status of a bill"""
+        status, ok = QInputDialog.getItem(self, "Update Status", "Select status:", ["Pending", "Paid", "Cancelled"], 0, False)
+        if ok and status:
+            api_url = f"{os.getenv('API_BASE_URL')}/billing/{bill_id}/status"
+            headers = {"Authorization": f"Bearer {self.token}", "Content-Type": "application/json"}
+            data = {"status": status}
+
+            response = requests.put(api_url, json=data, headers=headers)
+
+            if response.status_code == 200:
+                QMessageBox.information(self, "Success", "Bill status updated successfully.")
+                self.load_bills()
+            else:
+                QMessageBox.critical(self, "Error", "Failed to update bill status.")

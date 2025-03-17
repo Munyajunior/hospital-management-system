@@ -2,7 +2,7 @@ import os
 import requests
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
-    QMessageBox, QComboBox, QLineEdit, QFormLayout, QHeaderView, QHBoxLayout, QScrollArea
+    QMessageBox, QComboBox, QLineEdit, QFormLayout, QHeaderView, QHBoxLayout, QApplication
 )
 from utils.api_utils import fetch_data, post_data
 from PySide6.QtCore import Qt
@@ -23,7 +23,13 @@ class Scans(QWidget):
         self.token = token
         if self.user_role in ["doctor", "admin"]:
             self.setWindowTitle("Scan Request")
-            self.setMinimumSize(900, 600)
+            screen = QApplication.primaryScreen()
+            screen_geometry = screen.availableGeometry()
+            max_width = screen_geometry.width() * 0.8  # 80% of screen width
+            max_height = screen_geometry.height() * 0.8  # 80% of screen height
+            
+            self.resize(int(max_width), int(max_height))  # Set window size
+            self.setMinimumSize(900, 600)  # Set a reasonable minimum size
             self.init_ui()
         else:
             QMessageBox.warning(self, "Unauthorized access", "You are not authorized to access this interface")
