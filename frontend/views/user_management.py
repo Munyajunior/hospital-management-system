@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, 
     QTableWidgetItem, QMessageBox, QHBoxLayout, QComboBox, 
-    QLineEdit, QHeaderView
+    QLineEdit, QHeaderView, QApplication
 )
 from PySide6.QtCore import Qt
 from utils.api_utils import fetch_data, post_data, delete_data
@@ -30,7 +30,13 @@ class UserManagement(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("User Management")
-        self.setGeometry(300, 300, 900, 600)
+        screen = QApplication.primaryScreen()
+        screen_geometry = screen.availableGeometry()
+        max_width = screen_geometry.width() * 0.8  # 80% of screen width
+        max_height = screen_geometry.height() * 0.8  # 80% of screen height
+        
+        self.resize(int(max_width), int(max_height))  # Set window size
+        self.setMinimumSize(800, 600)  # Set a reasonable minimum size
         self.setStyleSheet("""
             QWidget {
                 background-color: #f4f4f4;

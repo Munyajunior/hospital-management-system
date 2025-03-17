@@ -1,6 +1,6 @@
 import os
 import requests
-from PySide6.QtWidgets import (
+from PySide6.QtWidgets import (QApplication,
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTableWidget,
     QTableWidgetItem, QMessageBox, QLineEdit, QComboBox, QInputDialog,
     QDateEdit, QCheckBox
@@ -24,6 +24,13 @@ class PatientManagement(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("Patient Management")
+        screen = QApplication.primaryScreen()
+        screen_geometry = screen.availableGeometry()
+        max_width = screen_geometry.width() * 0.8  # 80% of screen width
+        max_height = screen_geometry.height() * 0.8  # 80% of screen height
+        
+        self.resize(int(max_width), int(max_height))  # Set window size
+        self.setMinimumSize(800, 600)  # Set a reasonable minimum size
         self.setStyleSheet("""
             QWidget {
                 background-color: #f5f7fa;

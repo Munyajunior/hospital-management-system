@@ -1,5 +1,5 @@
 import os
-from PySide6.QtWidgets import (
+from PySide6.QtWidgets import (QApplication,
     QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QGroupBox,
     QHeaderView, QTableWidgetItem, QMessageBox, QLineEdit, QComboBox,
     QFormLayout, QHBoxLayout, QTextEdit)
@@ -16,7 +16,13 @@ class DoctorManagement(QWidget):
         self.user_role = role
         
         self.setWindowTitle("Patient Management")
-        self.setGeometry(300, 200, 800, 500)
+        screen = QApplication.primaryScreen()
+        screen_geometry = screen.availableGeometry()
+        max_width = screen_geometry.width() * 0.8  # 80% of screen width
+        max_height = screen_geometry.height() * 0.8  # 80% of screen height
+        
+        self.resize(int(max_width), int(max_height))  # Set window size
+        self.setMinimumSize(800, 600)  # Set a reasonable minimum size
         self.init_ui()
 
     def init_ui(self):

@@ -33,7 +33,7 @@ class Patient(Base):
     admissions = relationship("PatientAdmission", back_populates="patient")
 
 
-    #icu_records = relationship("ICUPatient", back_populates="patient", cascade="all, delete-orphan")
+    bills = relationship("Billing", back_populates="patient", cascade="all, delete-orphan")
     lab_tests = relationship("LabTest", back_populates="patient", cascade="all, delete-orphan")
     prescriptions = relationship("Prescription", back_populates="patient", cascade="all, delete-orphan")
     radiology_scan = relationship("RadiologyScan", back_populates="patient", cascade="all, delete-orphan")

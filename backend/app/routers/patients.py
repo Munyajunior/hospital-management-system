@@ -7,6 +7,7 @@ from models.user import User
 from models.admission import PatientAdmission, Bed
 from core.database import get_db
 from utils.security import hash_password, generate_password
+from utils.email_util import send_password_email  
 from core.dependencies import RoleChecker
 
 router = APIRouter(prefix="/patients", tags=["Patients"])
@@ -58,6 +59,12 @@ def create_patient(patient: PatientCreate, db: Session = Depends(get_db), curren
         # Mark the bed as occupied
         bed.is_occupied = True
         db.commit()
+
+    # Send the generated password to the patient's email
+    email_sent = send_password_email(new_patient.email, password)
+    if not email_sent:
+        # Log the error but do not fail the registration
+        print("Failed to send password email to patient.")
 
     return {**new_patient.__dict__, "password": password}
 

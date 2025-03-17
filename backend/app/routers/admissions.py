@@ -45,7 +45,7 @@ def admit_patient(admission_data: AdmissionCreate, db: Session = Depends(get_db)
             raise HTTPException(status_code=400, detail="No available doctors for assignment")
         admission_data.assigned_doctor_id = doctor.id
 
-    try:
+    try: 
         # Create the admission record
         new_admission = PatientAdmission(**admission_data.model_dump(), admitted_by=user.id)
         db.add(new_admission)
