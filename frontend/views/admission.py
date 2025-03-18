@@ -867,7 +867,7 @@ class AdmissionManagement(QMainWindow):
     def load_wards_for_bed(self):
         """Fetches and populates the dropdown with wards for bed creation."""
         worker = Worker(fetch_data, self, os.getenv("WARD_LIST_URL"), self.token)
-        worker.signals.results.connect(self.populate_ward_dropdown_bed)
+        worker.signals.result.connect(self.populate_ward_dropdown_bed)
         worker.signals.error.connect(self.show_error)
         self.thread_pool.start(worker)
 

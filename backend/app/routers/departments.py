@@ -9,7 +9,7 @@ from typing import List
 
 router = APIRouter(prefix="/departments", tags=["Departments"])
 
-doctor_or_nurse = RoleChecker(["doctor", "nurse"])
+doctor_or_nurse = RoleChecker(["doctor", "nurse", "admin"])
 @router.post("/", response_model=DepartmentResponse)
 def create_department(department_data: DepartmentCreate, db: Session = Depends(get_db), user: User = Depends(doctor_or_nurse)):
     """Create a new department."""

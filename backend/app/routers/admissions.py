@@ -11,7 +11,7 @@ from typing import List, Optional
 
 router = APIRouter(prefix="/admissions", tags=["Admissions"]) 
 
-nurse_or_doctor = RoleChecker(["nurse", "doctor"])
+nurse_or_doctor = RoleChecker(["nurse", "doctor", "admin"])
 
 @router.post("/", response_model=AdmissionResponse)
 def admit_patient(admission_data: AdmissionCreate, db: Session = Depends(get_db), user: User = Depends(nurse_or_doctor)):

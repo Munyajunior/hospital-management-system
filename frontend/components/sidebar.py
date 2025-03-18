@@ -25,7 +25,6 @@ class Sidebar(QWidget):
             ("Laboratory", "laboratory", ["lab_technician"]),
             ("Radiology", "radiology", ["radiologist"]),
             ("Radiography Request", "radiography_request", ["doctor"]),
-            ("ICU", "icu", ["admin", "icu_staff"]),
             ("Appointments", "appointments", ["nurse", "doctor"]),
             ("Medical Records", "medical_records", ["admin", "doctor", "nurse"]),
             ("Prescriptions", "prescriptions", ["nurse", "doctor"]),

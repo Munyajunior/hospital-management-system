@@ -13,7 +13,7 @@ from core.dependencies import RoleChecker
 router = APIRouter(prefix="/patients", tags=["Patients"])
 
 staff_only = RoleChecker(["admin", "nurse", "receptionist"])
-doctor_or_nurse = RoleChecker(["doctor", "nurse"])
+doctor_or_nurse = RoleChecker(["doctor", "nurse", "admin"])
 
 @router.post("/", response_model=PatientCreateResponse)
 def create_patient(patient: PatientCreate, db: Session = Depends(get_db), current_user: User = Depends(staff_only)):
