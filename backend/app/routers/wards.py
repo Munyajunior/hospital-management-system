@@ -22,6 +22,20 @@ def create_ward(ward_data: WardCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/", response_model=List[WardResponse])
+def list_wards(
+    department_id: Optional[int] = Query(None, description="Filter wards by department ID"),
+    db: Session = Depends(get_db)
+):
+    """Retrieve a list of wards, optionally filtered by department ID."""
+    query = db.query(Ward)
+
+    if department_id:
+        query = query.filter(Ward.department_id == department_id)
+
+    wards = query.all()
+    return wards
+
+@router.get("/", response_model=List[WardResponse])
 def list_wards(db: Session = Depends(get_db)):
     """Retrieve a list of all wards."""
     wards = db.query(Ward).all()
@@ -51,19 +65,6 @@ def update_ward(ward_id: int, ward_data: WardCreate, db: Session = Depends(get_d
     db.refresh(ward)
     return ward
 
-@router.get("/", response_model=List[WardResponse])
-def list_wards(
-    department_id: Optional[int] = Query(None, description="Filter wards by department ID"),
-    db: Session = Depends(get_db)
-):
-    """Retrieve a list of wards, optionally filtered by department ID."""
-    query = db.query(Ward)
-
-    if department_id:
-        query = query.filter(Ward.department_id == department_id)
-
-    wards = query.all()
-    return wards
 
 @router.delete("/{ward_id}")
 def delete_ward(ward_id: int, db: Session = Depends(get_db)):

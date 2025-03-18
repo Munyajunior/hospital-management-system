@@ -2,9 +2,9 @@ import os
 from PySide6.QtWidgets import (QApplication,
     QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
     QMessageBox, QComboBox, QTextEdit, QTabWidget, QFormLayout, QLineEdit,
-    QGridLayout, QGroupBox, QToolBar, QStatusBar, QMainWindow, QScrollArea, QSizePolicy, QSpacerItem
+    QGridLayout, QGroupBox, QToolBar, QStatusBar, QMainWindow, QScrollArea, QHeaderView, QSizePolicy
 )
-from PySide6.QtCore import Qt, QThread, Signal, QObject, QRunnable, QThreadPool
+from PySide6.QtCore import Qt, Signal, QObject, QRunnable, QThreadPool
 from PySide6.QtGui import QIcon, QAction
 from utils.api_utils import fetch_data, post_data, update_data
 from utils.pdf_utils import generate_pdf
@@ -50,6 +50,7 @@ class AdmissionManagement(QMainWindow):
         self.user_id = user_id
         self.token = auth_token
         self.thread_pool = QThreadPool()  # Thread pool for concurrent tasks
+        self.thread_pool.setMaxThreadCount(4)  # Limit the number of concurrent threads
         self.init_ui()
 
     def init_ui(self):
@@ -302,11 +303,16 @@ class AdmissionManagement(QMainWindow):
         table_group = QGroupBox("ICU Patients")
         table_layout = QVBoxLayout()
 
+        # ICU Table
         self.icu_table = QTableWidget()
         self.icu_table.setColumnCount(8)
         self.icu_table.setHorizontalHeaderLabels([
             "Patient", "Status", "Condition Evolution", "Medications", "Drips", "Treatment Plan", "Updated By", "Updated At"
         ])
+        self.icu_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.icu_table.horizontalHeader().setStretchLastSection(True)
+        self.icu_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.icu_table.horizontalHeader().setTextElideMode(Qt.ElideRight)
         table_layout.addWidget(self.icu_table)
 
         # Search Bar
@@ -376,11 +382,16 @@ class AdmissionManagement(QMainWindow):
         table_group = QGroupBox("Inpatients")
         table_layout = QVBoxLayout()
 
+        # Inpatient Table
         self.inpatient_table = QTableWidget()
         self.inpatient_table.setColumnCount(7)
         self.inpatient_table.setHorizontalHeaderLabels([
             "Patient", "Status", "Condition Evolution", "Medications", "Treatment Plan", "Updated By", "Updated At"
         ])
+        self.inpatient_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.inpatient_table.horizontalHeader().setStretchLastSection(True)
+        self.inpatient_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.inpatient_table.horizontalHeader().setTextElideMode(Qt.ElideRight)
         table_layout.addWidget(self.inpatient_table)
 
         # Search Bar
@@ -507,9 +518,14 @@ class AdmissionManagement(QMainWindow):
         table_group = QGroupBox("Existing Departments")
         table_layout = QVBoxLayout()
 
+        # Department Table
         self.existing_department_table = QTableWidget()
         self.existing_department_table.setColumnCount(3)
         self.existing_department_table.setHorizontalHeaderLabels(["ID", "Name", "Category"])
+        self.existing_department_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.existing_department_table.horizontalHeader().setStretchLastSection(True)
+        self.existing_department_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.existing_department_table.horizontalHeader().setTextElideMode(Qt.ElideRight)
         table_layout.addWidget(self.existing_department_table)
 
         # Search Bar
@@ -563,9 +579,14 @@ class AdmissionManagement(QMainWindow):
         table_group = QGroupBox("Existing Wards")
         table_layout = QVBoxLayout()
 
+        # Ward Table
         self.existing_ward_table = QTableWidget()
         self.existing_ward_table.setColumnCount(3)
         self.existing_ward_table.setHorizontalHeaderLabels(["ID", "Name", "Department"])
+        self.existing_ward_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.existing_ward_table.horizontalHeader().setStretchLastSection(True)
+        self.existing_ward_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.existing_ward_table.horizontalHeader().setTextElideMode(Qt.ElideRight)
         table_layout.addWidget(self.existing_ward_table)
 
         # Search Bar
@@ -619,9 +640,14 @@ class AdmissionManagement(QMainWindow):
         table_group = QGroupBox("Existing Beds")
         table_layout = QVBoxLayout()
 
+        # Bed Table
         self.existing_bed_table = QTableWidget()
         self.existing_bed_table.setColumnCount(3)
         self.existing_bed_table.setHorizontalHeaderLabels(["ID", "Bed Number", "Ward"])
+        self.existing_bed_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.existing_bed_table.horizontalHeader().setStretchLastSection(True)
+        self.existing_bed_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.existing_bed_table.horizontalHeader().setTextElideMode(Qt.ElideRight)
         table_layout.addWidget(self.existing_bed_table)
 
         # Search Bar
@@ -703,13 +729,23 @@ class AdmissionManagement(QMainWindow):
                     break
             self.existing_bed_table.setRowHidden(row, not match)
 
+    def resizeEvent(self, event):
+        """Handle window resize events."""
+        super().resizeEvent(event)
+        self.icu_table.resizeColumnsToContents()
+        self.inpatient_table.resizeColumnsToContents()
+        self.existing_department_table.resizeColumnsToContents()
+        self.existing_ward_table.resizeColumnsToContents()
+        self.existing_bed_table.resizeColumnsToContents()
+        
     # ==================== Threading for API Calls ====================
     def load_patients(self):
         """Fetches and populates the dropdown with patients using threading."""
-        worker = Worker(fetch_data,self, os.getenv("PATIENT_LIST_URL"), self.token)
-        worker.signals.result.connect(self.populate_patient_dropdowns)
-        worker.signals.error.connect(self.show_error)
-        self.thread_pool.start(worker)
+        try:
+            patients = fetch_data(self, os.getenv("PATIENT_LIST_URL"), self.token)
+            self.populate_patient_dropdowns(patients)
+        except Exception as e:
+            self.show_error(str(e))
 
     def populate_patient_dropdowns(self, patients):
         """Populates patient dropdowns with fetched data."""
@@ -721,43 +757,45 @@ class AdmissionManagement(QMainWindow):
                 self.patient_dropdown_vitals.addItem(patient["full_name"], patient["id"])
 
     def load_admissions(self):
-            """Fetches and populates the dropdown with admissions using threading."""
-            worker = Worker(fetch_data, self, os.getenv("ADMISSION_LIST_URL"), self.token)
-            worker.signals.result.connect(self.populate_admission_dropdown)
-            worker.signals.error.connect(self.show_error)
-            self.thread_pool.start(worker)
+        """Fetches and populates the dropdown with admissions."""
+        try:
+            admissions = fetch_data(self, os.getenv("ADMISSION_LIST_URL"), self.token)
+            self.populate_admission_dropdown(admissions)
+        except Exception as e:
+            self.show_error(str(e))
 
     def populate_admission_dropdown(self, admissions):
-        """Populates the admission dropdown with fetched data (runs in the main thread)."""
+        """Populates the admission dropdown with fetched data."""
         if admissions:
             self.admission_dropdown.clear()
             for admission in admissions:
                 self.admission_dropdown.addItem(f"Admission {admission['id']}", admission["id"])
 
-
     def load_admitted_icu(self):
-        """Fetches and display icu admissions using threading."""
-        worker = Worker(fetch_data, self, os.getenv("GET_ICU_PATIENTS_URL"), self.token)
-        worker.signals.result.connect(self.populate_icu_admitted)
-        worker.signals.error.connect(self.show_error)
-        self.thread_pool.start(worker)
+        """Fetches and displays ICU admissions."""
+        try:
+            admissions = fetch_data(self, os.getenv("GET_ICU_PATIENTS_URL"), self.token)
+            self.populate_icu_admitted(admissions)
+        except Exception as e:
+            self.show_error(str(e))
 
     def populate_icu_admitted(self, admissions):
-        """Populates the icu admitted dropdown with fetched data (runs in the main thread)."""
+        """Populates the ICU admitted dropdown with fetched data."""
         if admissions:
             self.patient_dropdown_icu.clear()
             for admission in admissions:
                 self.patient_dropdown_icu.addItem(f"Admission {admission['id']}", admission["id"])
 
     def load_icu_patients(self):
-        """Fetches and displays ICU patients using threading."""
-        worker = Worker(fetch_data, self, os.getenv("GET_ICU_PATIENTS_URL"), self.token)
-        worker.signals.result.connect(self.populate_icu_table)
-        worker.signals.error.connect(self.show_error)
-        self.thread_pool.start(worker)
+        """Fetches and displays ICU patients."""
+        try:
+            icu_patients = fetch_data(self, os.getenv("GET_ICU_PATIENTS_URL"), self.token)
+            self.populate_icu_table(icu_patients)
+        except Exception as e:
+            self.show_error(str(e))
 
     def populate_icu_table(self, icu_patients):
-        """Populates the ICU table with fetched data (runs in the main thread)."""
+        """Populates the ICU table with fetched data."""
         if icu_patients:
             self.icu_table.setRowCount(len(icu_patients))
             for row, patient in enumerate(icu_patients):
@@ -769,29 +807,33 @@ class AdmissionManagement(QMainWindow):
                 self.icu_table.setItem(row, 5, QTableWidgetItem(patient["treatment_plan"]))
                 self.icu_table.setItem(row, 6, QTableWidgetItem(patient["updated_by"]))
                 self.icu_table.setItem(row, 7, QTableWidgetItem(patient["updated_at"]))
-
+            self.icu_table.resizeColumnsToContents()
 
     def load_admitted_inpatient(self):
-        """Fetches and display Inpatient admissions with threading."""
-        worker = Worker(fetch_data, self, os.getenv("GET_INPATIENTS_URL"), self.token)
-        worker.signals.result.connect(self.populate_inpatient_admitted)
-        worker.signals.error.connect(self.show_error)
-        self.thread_pool.start(worker)
+        """Fetches and displays Inpatient admissions."""
+        try:
+            in_patients = fetch_data(self, os.getenv("GET_INPATIENTS_URL"), self.token)
+            self.populate_inpatient_admitted(in_patients)
+        except Exception as e:
+            self.show_error(str(e))
 
-    def populate_inpatient_admitted(self, in_patient):
-        if in_patient:
-            for patient in in_patient:
+    def populate_inpatient_admitted(self, in_patients):
+        """Populates the Inpatient admitted dropdown with fetched data."""
+        if in_patients:
+            self.patient_dropdown_inpatient.clear()
+            for patient in in_patients:
                 self.patient_dropdown_inpatient.addItem(f"Admission {patient['id']}", patient["id"])
 
     def load_inpatients(self):
-        """Fetches and displays inpatients with threading."""
-        worker = Worker(fetch_data, self, os.getenv("GET_INPATIENTS_URL"), self.token)
-        worker.signals.result.connect(self.populate_inpatient_table)
-        worker.signals.error.connect(self.show_error)
-        self.thread_pool.start(worker)
+        """Fetches and displays inpatients."""
+        try:
+            inpatients = fetch_data(self, os.getenv("GET_INPATIENTS_URL"), self.token)
+            self.populate_inpatient_table(inpatients)
+        except Exception as e:
+            self.show_error(str(e))
 
     def populate_inpatient_table(self, inpatients):
-        """Populates the Inpatient table with fetched data (runs in the main thread)."""
+        """Populates the Inpatient table with fetched data."""
         if inpatients:
             self.inpatient_table.setRowCount(len(inpatients))
             for row, patient in enumerate(inpatients):
@@ -802,13 +844,15 @@ class AdmissionManagement(QMainWindow):
                 self.inpatient_table.setItem(row, 4, QTableWidgetItem(patient["treatment_plan"]))
                 self.inpatient_table.setItem(row, 5, QTableWidgetItem(patient["updated_by"]))
                 self.inpatient_table.setItem(row, 6, QTableWidgetItem(patient["updated_at"]))
+            self.inpatient_table.resizeColumnsToContents()
 
     def load_departments(self):
-        """Fetches and populates the dropdown with departments using threading."""
-        worker = Worker(fetch_data, self, os.getenv("GET_DEPARTMENTS_URL"), self.token)
-        worker.signals.result.connect(self.populate_department_dropdowns)
-        worker.signals.error.connect(self.show_error)
-        self.thread_pool.start(worker)
+        """Fetches and populates the dropdown with departments."""
+        try:
+            departments = fetch_data(self, os.getenv("DEPARTMENT_LIST_URL"), self.token)
+            self.populate_department_dropdowns(departments)
+        except Exception as e:
+            self.show_error(str(e))
 
     def populate_department_dropdowns(self, departments):
         """Populates department dropdowns with fetched data."""
@@ -818,11 +862,12 @@ class AdmissionManagement(QMainWindow):
                 self.department_dropdown.addItem(department["name"], department["id"])
 
     def load_wards(self):
-        """Fetches and populates the dropdown with wards using threading."""
-        worker = Worker(fetch_data, self, os.getenv("WARD_LIST_URL"), self.token)
-        worker.signals.result.connect(self.populate_ward_dropdowns)
-        worker.signals.error.connect(self.show_error)
-        self.thread_pool.start(worker)
+        """Fetches and populates the dropdown with wards."""
+        try:
+            wards = fetch_data(self, os.getenv("WARD_LIST_URL"), self.token)
+            self.populate_ward_dropdowns(wards)
+        except Exception as e:
+            self.show_error(str(e))
 
     def populate_ward_dropdowns(self, wards):
         """Populates ward dropdowns with fetched data."""
@@ -832,19 +877,18 @@ class AdmissionManagement(QMainWindow):
                 self.ward_dropdown.addItem(ward["name"], ward["id"])
 
     def load_wards_for_department(self):
-        """Fetches and populates the dropdown with wards for a selected department using threading."""
+        """Fetches and populates the dropdown with wards for a selected department."""
         department_id = self.department_dropdown.currentData()
         if department_id:
-            api_url = os.getenv("WARD_LIST_URL") + f"?department_id={department_id}"
-            
-            # Create a worker to fetch wards
-            worker = Worker(fetch_data, self, api_url, self.token)
-            worker.signals.result.connect(self.populate_ward_dropdown)
-            worker.signals.error.connect(self.show_error)
-            self.thread_pool.start(worker)
+            try:
+                api_url = os.getenv("CREATE_WARD_URL") + f"?department_id={department_id}"
+                wards = fetch_data(self, api_url, self.token)
+                self.populate_ward_dropdown(wards)
+            except Exception as e:
+                self.show_error(str(e))
 
     def populate_ward_dropdown(self, wards):
-        """Populates the ward dropdown with fetched data (runs in the main thread)."""
+        """Populates the ward dropdown with fetched data."""
         if wards:
             self.ward_dropdown.clear()
             for ward in wards:
@@ -852,10 +896,11 @@ class AdmissionManagement(QMainWindow):
 
     def load_departments_for_ward(self):
         """Fetches and populates the dropdown with departments for ward creation."""
-        worker = Worker(fetch_data, self, os.getenv("DEPARTMENT_LIST_URL"), self.token)
-        worker.signals.result.connect(self.populate_department_dropdown_ward)
-        worker.signals.error.connect(self.show_error)
-        self.thread_pool.start(worker)
+        try:
+            departments = fetch_data(self, os.getenv("DEPARTMENT_LIST_URL"), self.token)
+            self.populate_department_dropdown_ward(departments)
+        except Exception as e:
+            self.show_error(str(e))
 
     def populate_department_dropdown_ward(self, departments):
         """Populates the department dropdown for ward creation."""
@@ -866,10 +911,11 @@ class AdmissionManagement(QMainWindow):
 
     def load_wards_for_bed(self):
         """Fetches and populates the dropdown with wards for bed creation."""
-        worker = Worker(fetch_data, self, os.getenv("WARD_LIST_URL"), self.token)
-        worker.signals.result.connect(self.populate_ward_dropdown_bed)
-        worker.signals.error.connect(self.show_error)
-        self.thread_pool.start(worker)
+        try:
+            wards = fetch_data(self, os.getenv("WARD_LIST_URL"), self.token)
+            self.populate_ward_dropdown_bed(wards)
+        except Exception as e:
+            self.show_error(str(e))
 
     def populate_ward_dropdown_bed(self, wards):
         """Populates the ward dropdown for bed creation."""
@@ -880,10 +926,11 @@ class AdmissionManagement(QMainWindow):
 
     def load_beds(self):
         """Fetches and populates the dropdown with beds."""
-        worker = Worker(fetch_data, self, os.getenv("BED_LIST_URL"), self.token)
-        worker.signals.result.connect(self.populate_bed_dropdowns)
-        worker.signals.error.connect(self.show_error)
-        self.thread_pool.start(worker)
+        try:
+            beds = fetch_data(self, os.getenv("BED_LIST_URL"), self.token)
+            self.populate_bed_dropdowns(beds)
+        except Exception as e:
+            self.show_error(str(e))
 
     def populate_bed_dropdowns(self, beds):
         """Populates bed dropdowns with fetched data."""
@@ -896,11 +943,12 @@ class AdmissionManagement(QMainWindow):
         """Fetches and populates the dropdown with beds for a selected ward."""
         ward_id = self.ward_dropdown.currentData()
         if ward_id:
-            api_url = os.getenv("BED_LIST_URL") + f"?ward_id={ward_id}&is_occupied=False"
-            worker = Worker(fetch_data, self, api_url, self.token)
-            worker.signals.result.connect(self.populate_bed_dropdown)
-            worker.signals.error.connect(self.show_error)
-            self.thread_pool.start(worker)
+            try:
+                api_url = os.getenv("BED_LIST_URL") + f"?ward_id={ward_id}&is_occupied=False"
+                beds = fetch_data(self, api_url, self.token)
+                self.populate_bed_dropdown(beds)
+            except Exception as e:
+                self.show_error(str(e))
 
     def populate_bed_dropdown(self, beds):
         """Populates the bed dropdown with fetched data."""
@@ -911,10 +959,11 @@ class AdmissionManagement(QMainWindow):
 
     def load_existing_departments(self):
         """Fetches and displays existing departments."""
-        worker = Worker(fetch_data, self, os.getenv("DEPARTMENT_LIST_URL"), self.token)
-        worker.signals.result.connect(self.populate_existing_departments)
-        worker.signals.error.connect(self.show_error)
-        self.thread_pool.start(worker)
+        try:
+            departments = fetch_data(self, os.getenv("DEPARTMENT_LIST_URL"), self.token)
+            self.populate_existing_departments(departments)
+        except Exception as e:
+            self.show_error(str(e))
 
     def populate_existing_departments(self, departments):
         """Populates the existing department table with fetched data."""
@@ -924,13 +973,15 @@ class AdmissionManagement(QMainWindow):
                 self.existing_department_table.setItem(row, 0, QTableWidgetItem(str(department["id"])))
                 self.existing_department_table.setItem(row, 1, QTableWidgetItem(department["name"]))
                 self.existing_department_table.setItem(row, 2, QTableWidgetItem(department["category"]))
+            self.existing_department_table.resizeColumnsToContents()
 
     def load_existing_wards(self):
         """Fetches and displays existing wards."""
-        worker = Worker(fetch_data, self, os.getenv("WARD_LIST_URL"), self.token)
-        worker.signals.result.connect(self.populate_existing_wards)
-        worker.signals.error.connect(self.show_error)
-        self.thread_pool.start(worker)
+        try:
+            wards = fetch_data(self, os.getenv("WARD_LIST_URL"), self.token)
+            self.populate_existing_wards(wards)
+        except Exception as e:
+            self.show_error(str(e))
 
     def populate_existing_wards(self, wards):
         """Populates the existing ward table with fetched data."""
@@ -940,13 +991,15 @@ class AdmissionManagement(QMainWindow):
                 self.existing_ward_table.setItem(row, 0, QTableWidgetItem(str(ward["id"])))
                 self.existing_ward_table.setItem(row, 1, QTableWidgetItem(ward["name"]))
                 self.existing_ward_table.setItem(row, 2, QTableWidgetItem(str(ward["department_id"])))
+            self.existing_ward_table.resizeColumnsToContents()
 
     def load_existing_beds(self):
         """Fetches and displays existing beds."""
-        worker = Worker(fetch_data, self, os.getenv("BED_LIST_URL"), self.token)
-        worker.signals.result.connect(self.populate_existing_beds)
-        worker.signals.error.connect(self.show_error)
-        self.thread_pool.start(worker)
+        try:
+            beds = fetch_data(self, os.getenv("BED_LIST_URL"), self.token)
+            self.populate_existing_beds(beds)
+        except Exception as e:
+            self.show_error(str(e))
 
     def populate_existing_beds(self, beds):
         """Populates the existing bed table with fetched data."""
@@ -954,8 +1007,9 @@ class AdmissionManagement(QMainWindow):
             self.existing_bed_table.setRowCount(len(beds))
             for row, bed in enumerate(beds):
                 self.existing_bed_table.setItem(row, 0, QTableWidgetItem(str(bed["id"])))
-                self.existing_bed_table.setItem(row, 1, QTableWidgetItem(bed["bed_number"]))
+                self.existing_bed_table.setItem(row, 1, QTableWidgetItem(str(bed["bed_number"])))
                 self.existing_bed_table.setItem(row, 2, QTableWidgetItem(str(bed["ward_id"])))
+            self.existing_bed_table.resizeColumnsToContents()
                 
     def show_error(self, error_message):
         """Displays an error message in the main thread."""
