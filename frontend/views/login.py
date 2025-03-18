@@ -142,7 +142,6 @@ class LoginScreen(QWidget):
         """Authenticate user with backend API."""
         try:
             success, message, role, user_id, token = self.auth_handler.authenticate(email, password)
-            print(f"Success: {success}, Message: {message}, Role: {role}, Token: {token}, User ID: {user_id}")
             if success:
                 QMessageBox.information(self, "Login Success", f"Welcome, {role}!")
                 self.on_login_success(role, user_id, token)  # Pass role, token, and user ID
@@ -150,7 +149,6 @@ class LoginScreen(QWidget):
             else:
                 QMessageBox.critical(self, "Login Failed", message)
         except Exception as e:
-            print(f"Error during login success: {e}")
             QMessageBox.critical(self, "Error", f"An error occurred during login: {e}")
 
         # Re-enable the login button

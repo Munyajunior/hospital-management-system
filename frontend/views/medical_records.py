@@ -231,7 +231,7 @@ class MedicalRecords(QWidget):
 
     def update_patient_record(self, patient_id):
         """Open the patient record management window."""
-        self.patient_record_window = PatientRecordUpdateWindow(patient_id)
+        self.patient_record_window = PatientRecordUpdateWindow(patient_id, self.token, self.user_id)
         self.patient_record_window.show()
         
     def create_view_button(self, patient_id):
@@ -434,7 +434,7 @@ class PatientRecordWindow(QWidget):
 
     def open_patient_record(self, patient_id):
         """Open the patient record management window."""
-        self.patient_record_window = PatientRecordUpdateWindow(patient_id)
+        self.patient_record_window = PatientRecordUpdateWindow(patient_id, self.token, self.user_id)
         self.patient_record_window.show()
         self.close()
 

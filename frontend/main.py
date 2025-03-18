@@ -13,7 +13,6 @@ class MainApp:
 
     def on_login_success(self, role, user_id, token):
         try:
-            print(f"Success Debug: Role: {role}, Token: {token}, User ID: {user_id}")
             if not role or not token or not user_id:  # Handle missing data
                 raise ValueError("Role, token, or user ID is missing!")
 
@@ -21,7 +20,6 @@ class MainApp:
             self.dashboard.show()
             self.login_screen.close()
         except Exception as e:
-            print(f"Error during login success: {e}")
             QMessageBox.critical(None, "Error", f"Login success failed: {e}")
    
 

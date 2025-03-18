@@ -153,7 +153,7 @@ class DoctorManagement(QWidget):
 
     def view_assigned_patients(self, doctor_id, doctor_name):
         """Open a window to display patients assigned to a doctor."""
-        self.patient_list_window = PatientListWindow(doctor_id, doctor_name)
+        self.patient_list_window = PatientListWindow(doctor_id, doctor_name, self.token)
         self.patient_list_window.show()
 
     def button_style(self, small=False):
@@ -186,16 +186,16 @@ class DoctorManagement(QWidget):
 
     def show_registration_form(self):
         """Show doctor registration form"""
-        self.registration_window = DoctorRegistrationForm(self)
+        self.registration_window = DoctorRegistrationForm(self, self.token, self.user_id)
         self.registration_window.show()
       
 
 class DoctorRegistrationForm(QWidget):
-    def __init__(self, parent):
+    def __init__(self, parent, token, user_id):
         super().__init__()
         self.parent = parent
-        self.token = LoadAuthCred.load_auth_token(self)
-        self.user_id = int(LoadAuthCred.load_user_id(self))
+        self.token = token
+        self.user_id = user_id
         self.init_ui()
 
     def init_ui(self):
@@ -387,11 +387,11 @@ class DoctorRegistrationForm(QWidget):
             """
 
 class PatientListWindow(QWidget):
-    def __init__(self, doctor_id, doctor_name):
+    def __init__(self, doctor_id, doctor_name, token):
         super().__init__()
         self.doctor_id = doctor_id
         self.doctor_name = doctor_name
-        self.token = LoadAuthCred.load_auth_token(self)
+        self.token = token
 
         self.setWindowTitle("Assigned Patients")
         self.setGeometry(200, 200, 800, 600)  # Slightly larger window for better spacing
@@ -507,7 +507,7 @@ class PatientListWindow(QWidget):
 
     def open_patient_record(self, patient_id):
         """Open the patient record management window."""
-        self.patient_record_window = PatientRecordUpdateWindow(patient_id)
+        self.patient_record_window = PatientRecordUpdateWindow(patient_id, self.token, self.user_id)
         self.patient_record_window.show()
         self.close()
 
@@ -525,11 +525,11 @@ class PatientListWindow(QWidget):
 
 
 class PatientRecordUpdateWindow(QWidget):
-    def __init__(self, patient_id):
+    def __init__(self, patient_id, token, user_id):
         super().__init__()
         self.patient_id = patient_id
-        self.token = LoadAuthCred.load_auth_token(self)
-        self.doctor_id = LoadAuthCred.load_user_id(self)
+        self.token = token
+        self.doctor_id = user_id
         self.setWindowTitle(f"Patient Record - {patient_id}")
         self.setGeometry(250, 250, 800, 700)  # Slightly larger window for better spacing
         self.init_ui()
