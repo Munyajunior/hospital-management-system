@@ -49,8 +49,8 @@ class AdmissionManagement(QMainWindow):
         self.role = user_role
         self.user_id = user_id
         self.token = auth_token
-        self.thread_pool = QThreadPool()  # Thread pool for concurrent tasks
-        self.thread_pool.setMaxThreadCount(4)  # Limit the number of concurrent threads
+        #self.thread_pool = QThreadPool()  # Thread pool for concurrent tasks
+        #self.thread_pool.setMaxThreadCount(4)  # Limit the number of concurrent threads
         self.init_ui()
 
     def init_ui(self):
