@@ -176,7 +176,6 @@ class AdmissionManagement(QMainWindow):
         self.bed_dropdown = QComboBox()
         self.ward_dropdown = QComboBox()
 
-
         # Admission Tab
         self.admission_tab = QWidget()
         self.init_admission_tab()
@@ -303,7 +302,6 @@ class AdmissionManagement(QMainWindow):
         table_group = QGroupBox("ICU Patients")
         table_layout = QVBoxLayout()
 
-        # ICU Table
         self.icu_table = QTableWidget()
         self.icu_table.setColumnCount(8)
         self.icu_table.setHorizontalHeaderLabels([
@@ -382,7 +380,6 @@ class AdmissionManagement(QMainWindow):
         table_group = QGroupBox("Inpatients")
         table_layout = QVBoxLayout()
 
-        # Inpatient Table
         self.inpatient_table = QTableWidget()
         self.inpatient_table.setColumnCount(7)
         self.inpatient_table.setHorizontalHeaderLabels([
@@ -518,7 +515,6 @@ class AdmissionManagement(QMainWindow):
         table_group = QGroupBox("Existing Departments")
         table_layout = QVBoxLayout()
 
-        # Department Table
         self.existing_department_table = QTableWidget()
         self.existing_department_table.setColumnCount(3)
         self.existing_department_table.setHorizontalHeaderLabels(["ID", "Name", "Category"])
@@ -579,7 +575,6 @@ class AdmissionManagement(QMainWindow):
         table_group = QGroupBox("Existing Wards")
         table_layout = QVBoxLayout()
 
-        # Ward Table
         self.existing_ward_table = QTableWidget()
         self.existing_ward_table.setColumnCount(3)
         self.existing_ward_table.setHorizontalHeaderLabels(["ID", "Name", "Department"])
@@ -640,7 +635,6 @@ class AdmissionManagement(QMainWindow):
         table_group = QGroupBox("Existing Beds")
         table_layout = QVBoxLayout()
 
-        # Bed Table
         self.existing_bed_table = QTableWidget()
         self.existing_bed_table.setColumnCount(3)
         self.existing_bed_table.setHorizontalHeaderLabels(["ID", "Bed Number", "Ward"])
@@ -667,6 +661,15 @@ class AdmissionManagement(QMainWindow):
 
         self.bed_tab.setLayout(QVBoxLayout())
         self.bed_tab.layout().addWidget(scroll_area)
+
+    def resizeEvent(self, event):
+        """Handle window resize events."""
+        super().resizeEvent(event)
+        self.icu_table.resizeColumnsToContents()
+        self.inpatient_table.resizeColumnsToContents()
+        self.existing_department_table.resizeColumnsToContents()
+        self.existing_ward_table.resizeColumnsToContents()
+        self.existing_bed_table.resizeColumnsToContents()
 
     # ==================== Search Functionality ====================
     def filter_icu_patients(self):
@@ -729,14 +732,7 @@ class AdmissionManagement(QMainWindow):
                     break
             self.existing_bed_table.setRowHidden(row, not match)
 
-    def resizeEvent(self, event):
-        """Handle window resize events."""
-        super().resizeEvent(event)
-        self.icu_table.resizeColumnsToContents()
-        self.inpatient_table.resizeColumnsToContents()
-        self.existing_department_table.resizeColumnsToContents()
-        self.existing_ward_table.resizeColumnsToContents()
-        self.existing_bed_table.resizeColumnsToContents()
+   
         
     # ==================== Threading for API Calls ====================
     def load_patients(self):
