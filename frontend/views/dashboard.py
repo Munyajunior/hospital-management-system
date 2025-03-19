@@ -121,8 +121,8 @@ class Dashboard(QWidget):
             "doctor": [
                 {"title": "My Patients", "value": "0", "icon": "assets/icons/patient.png", "api_key": "my_patients"},
                 {"title": "My Appointments", "value": "0", "icon": "assets/icons/date.png", "api_key": "my_appointments"},
-                {"title": "No-Show Rate", "value": "0%", "icon": "assets/icons/no_show.png", "api_key": "no_show_rate"},
-                {"title": "Predicted Admissions", "value": "0", "icon": "assets/icons/admissions.png", "api_key": "predicted_admissions"},
+                {"title": "No-Show Rate", "value": "0%", "icon": "assets/icons/absence.png", "api_key": "no_show_rate"},
+                {"title": "Predicted Admissions", "value": "0", "icon": "assets/icons/admission.png", "api_key": "predicted_admissions"},
             ],
             "nurse":[
                 {"title": "Total Admissions", "value": "0", "icon": "assets/icons/admission.png", "api_key": "total_admissions"},
@@ -267,8 +267,6 @@ class Dashboard(QWidget):
             api_key = self.metric_api_keys.get(title)
             if api_key and api_key in metrics:
                 value = metrics[api_key]
-                if title == "No-Show Rate":
-                    value = f"{value * 100:.2f}%"  # Format as percentage
                 value_label.setText(str(value))
 
     def update_doctor_metrics(self):
@@ -283,10 +281,22 @@ class Dashboard(QWidget):
 
     def update_ai_metric(self):
         """Fetch and update AI-driven metrics."""
-        pa_ai = fetch_data(self, f"{os.getenv('AI_BASE_URL')}/predict-admissions", self.auth_token)
-        if pa_ai:
-            self.update_ai_admissions_prediction_metrics(pa_ai)
-        #no_sh_ai = fetch_data(self, f"{os.getenv('AI_BASE_URL')}/predict-no-show", self.auth_token)
+        admission_predictions = fetch_data(self, f"{os.getenv('AI_BASE_URL')}/predict-admissions", self.auth_token)
+        if admission_predictions:
+            for title, value_label in self.metric_labels.items():
+                api_key = self.metric_api_keys.get(title)
+                if api_key and api_key in admission_predictions:
+                    value = admission_predictions[api_key]
+                    value_label.setText(str(value))
+        no_show_rate = fetch_data(self, f"{os.getenv('AI_BASE_URL')}/no-show-rate", self.auth_token)
+        if no_show_rate:
+            for title, value_label in self.metric_labels.items():
+                api_key = self.metric_api_keys.get(title)
+                if api_key and api_key in no_show_rate:
+                    value = no_show_rate[api_key]
+                    if title == "No-Show Rate":
+                        value = f"{value * 100:.2f}%"  # Format as percentage
+                    value_label.setText(str(value))
     
 
     def update_pie_chart(self, patient_distribution):

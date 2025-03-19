@@ -19,14 +19,27 @@ class PredictiveAnalytics:
         forecast = model_fit.forecast(steps=7)  # Predict next 7 days
         return forecast
 
-    def predict_appointment_no_shows(self):
-        """Predict no-shows using a classification model."""
-        X = self.data[['age', 'gender', 'previous_no_shows']]
-        y = self.data['no_show']
-        model = RandomForestClassifier()
-        model.fit(X, y)
-        predictions = model.predict(X)
-        return predictions
+    def calculate_no_show_rate(self):
+        """Calculate the no-show rate based on appointment data."""
+        if self.data.empty:
+            raise ValueError("No appointment data provided")
+
+        # Filter appointments with status "Completed" or "Canceled"
+        completed_appointments = self.data[self.data['status'] == 'Completed']
+        canceled_appointments = self.data[self.data['status'] == 'Canceled']
+
+        # Total appointments (excluding rescheduled)
+        total_appointments = len(completed_appointments) + len(canceled_appointments)
+
+        if total_appointments == 0:
+            return 0  # Avoid division by zero
+
+        # No-shows are canceled appointments
+        no_shows = len(canceled_appointments)
+
+        # Calculate no-show rate
+        no_show_rate = (no_shows / total_appointments) * 100
+        return no_show_rate
 
 
 class AnomalyDetection:

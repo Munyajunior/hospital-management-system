@@ -2,12 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import pandas as pd
 from models.admission import PatientAdmission, PatientVitals
+from models.appointment import Appointment
 from core.database import get_db
-from utils.ai_utils import PredictiveAnalytics, AnomalyDetection
+from utils.ai_utils import PredictiveAnalytics, AnomalyDetection, NLPProcessor
 from models.admission import PatientVitals
 from models.lab import LabTest
 from models.radiology import RadiologyScan
-from utils.ai_utils import AnomalyDetection, NLPProcessor
 from typing import List, Dict
 
 
@@ -35,6 +35,20 @@ def predict_admissions(db: Session = Depends(get_db)):
     return {"predictions": forecast.tolist()}
 
 
+@router.get("/no-show-rate", response_model=Dict[str, float])
+def get_no_show_rate(db: Session = Depends(get_db)):
+    """Calculate the no-show rate for appointments."""
+    appointments = db.query(Appointment).all()
+    if not appointments:
+        raise HTTPException(status_code=404, detail="No appointment data found")
+
+    # Convert appointments to DataFrame
+    appointments_df = pd.DataFrame([a.__dict__ for a in appointments])
+
+    # Calculate no-show rate
+    ai = PredictiveAnalytics(appointments_df)
+    no_show_rate = ai.calculate_no_show_rate()
+    return {"no_show_rate": no_show_rate}
 
 @router.get("/detect-anomalies/vitals", response_model=Dict[str, List[int]])
 def detect_anomalies_in_vitals(db: Session = Depends(get_db)):
