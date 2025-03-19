@@ -63,13 +63,13 @@ class Dashboard(QWidget):
 
         # Main Content Area
         self.main_content = QStackedWidget()
+        self.main_content.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         main_layout.addWidget(self.main_content)
 
         # Dashboard View
         self.dashboard_view = QWidget()
         self.init_dashboard_view()
         self.main_content.addWidget(self.dashboard_view)
-        
 
         # Dictionary to store dynamically loaded views
         self.views = {}
@@ -110,7 +110,21 @@ class Dashboard(QWidget):
         self.add_metric(metrics_layout, "Appointments", "0", "assets/icons/date.png")
         self.add_metric(metrics_layout, "Pending Lab Tests", "0", "assets/icons/result.png")
         self.add_metric(metrics_layout, "Billing Transactions", "0", "assets/icons/payment.png")
+        # Add AI-driven metrics
+        self.add_metric(metrics_layout, "Predicted Admissions", "0", "assets/icons/admissions.png")
+        self.add_metric(metrics_layout, "No-Show Rate", "0%", "assets/icons/no_show.png")
         layout.addLayout(metrics_layout)
+        
+        # Add anomaly detection section
+        self.anomalies_label = QLabel("Anomalies Detected:")
+        self.anomalies_label.setFont(QFont("Arial", 14, QFont.Bold))
+        self.anomalies_label.setStyleSheet("color: #2c3e50;")
+        layout.addWidget(self.anomalies_label)
+
+        self.anomalies_text = QLabel("No anomalies detected.")
+        self.anomalies_text.setFont(QFont("Arial", 12))
+        self.anomalies_text.setStyleSheet("color: #333333;")
+        layout.addWidget(self.anomalies_text)
 
         # Charts Section
         charts_layout = QHBoxLayout()
@@ -207,7 +221,7 @@ class Dashboard(QWidget):
         """Initialize data fetching and periodic updates."""
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_dashboard_data)
-        self.timer.start(5000)  # Refresh data every 5 seconds
+        self.timer.start(5000000)  # Refresh data every 5 seconds
         self.update_dashboard_data()  # Initial data fetch
 
     def update_dashboard_data(self):
@@ -217,13 +231,44 @@ class Dashboard(QWidget):
             self.update_metrics(metrics)
             self.update_pie_chart(metrics["patient_distribution"])
             #self.update_bar_chart(metrics["appointments_data"])
-
+        self.update_ai_metric()
+            
     def update_metrics(self, metrics):
-        """Update the metric labels."""
-        self.metric_labels["Total Patients"].setText(str(metrics["total_patients"]))
-        self.metric_labels["Appointments"].setText(str(metrics["total_appointments"]))
-        self.metric_labels["Pending Lab Tests"].setText(str(metrics["pending_lab_tests"]))
-        self.metric_labels["Billing Transactions"].setText(str(metrics["total_billing_transactions"]))
+        """Update the metric labels based on the user's role."""
+        if self.role == "admin":
+            self.metric_labels["Total Patients"].setText(str(metrics["total_patients"]))
+            self.metric_labels["Total Appointments"].setText(str(metrics["total_appointments"]))
+            self.metric_labels["Pending Lab Tests"].setText(str(metrics["pending_lab_tests"]))
+            self.metric_labels["Billing Transactions"].setText(str(metrics["total_billing_transactions"]))
+
+        elif self.role == "doctor":
+            self.metric_labels["My Patients"].setText(str(metrics["total_patients"]))
+            self.metric_labels["My Appointments"].setText(str(metrics["total_appointments"]))
+            self.metric_labels["Pending Lab Tests"].setText(str(metrics["pending_lab_tests"]))
+
+        elif self.role == "nurse":
+            self.metric_labels["Total Admissions"].setText(str(metrics["total_admissions"]))
+            self.metric_labels["Pending Vitals"].setText(str(metrics["pending_vitals"]))
+
+        elif self.role == "pharmacist":
+            self.metric_labels["Total Prescriptions"].setText(str(metrics["total_prescriptions"]))
+            self.metric_labels["Pending Prescriptions"].setText(str(metrics["pending_prescriptions"]))
+
+        elif self.role == "lab":
+            self.metric_labels["Total Lab Tests"].setText(str(metrics["total_lab_tests"]))
+            self.metric_labels["Pending Lab Tests"].setText(str(metrics["pending_lab_tests"]))
+
+        elif self.role == "radiology":
+            self.metric_labels["Total Scans"].setText(str(metrics["total_scans"]))
+            self.metric_labels["Pending Scans"].setText(str(metrics["pending_scans"]))
+
+    def update_ai_metric(self):
+        """Fetch and update AI-driven metrics."""
+        pa_ai = fetch_data(self, f"{os.getenv('AI_BASE_URL')}/predict-admissions", self.auth_token)
+        if pa_ai:
+            self.update_ai_admissions_prediction_metrics(pa_ai)
+        no_sh_ai = fetch_data(self, f"{os.getenv('AI_BASE_URL')}/predict-no-show", self.auth_token)
+    
 
     def update_pie_chart(self, patient_distribution):
         """Update the pie chart with patient distribution data."""
@@ -232,12 +277,20 @@ class Dashboard(QWidget):
         self.pie_chart_series.append("Inpatients", patient_distribution["inpatients"])
         self.pie_chart_series.append("ICU", patient_distribution["icu"])
         self.pie_chart_series.append("Emergency", patient_distribution["emergency"])
-
+        
     def update_bar_chart(self, appointments_data):
         """Update the bar chart with appointments data."""
-        #self.bar_chart_set0.replace([appointments_data["completed"]])
-        #self.bar_chart_set1.replace([appointments_data["pending"]])
-
+        self.bar_chart_set0.replace([appointments_data["completed"]])
+        self.bar_chart_set1.replace([appointments_data["pending"]])
+    
+    def update_ai_admissions_prediction_metrics(self, metrics):
+        """Update AI-driven metrics."""
+        self.metric_labels["Predicted Admissions"].setText(str(metrics["predicted_admissions"][0]))
+        
+    def update_ai_no_show_rate(self, metrics):
+        """Update AI-driven metrics."""
+        self.metric_labels["No-Show Rate"].setText(f"{metrics['no_show_rate'] * 100:.2f}%")
+   
     def logout_user(self):
         """Log out the user and restart the application."""
         print("Logging out user...")
@@ -249,12 +302,8 @@ class Dashboard(QWidget):
     def switch_module(self, module):
         """Switches between different modules and hides the dashboard when another module is selected."""
         if module == "dashboard":
-            # Ensure the dashboard view is in self.views
-            if "dashboard" not in self.views:
-                self.views["dashboard"] = self.dashboard_view
-            self.main_content.setCurrentWidget(self.views["dashboard"])  # Switch to dashboard view
+            self.main_content.setCurrentWidget(self.dashboard_view)
         else:
-            # If module isn't in views, create and add it
             if module not in self.views:
                 if module == "patients":
                     self.views[module] = PatientManagement(self.role, self.user_id, self.auth_token)
@@ -283,11 +332,16 @@ class Dashboard(QWidget):
                 elif module == "profile":
                     self.views[module] = ProfileWindow(self.user_id, self.auth_token)
                 elif module == "admission":
-                    self.views[module] = AdmissionManagement(self.role, self.user_id, self.auth_token )
+                    self.views[module] = AdmissionManagement(self.role, self.user_id, self.auth_token)
                 # Add more views here...
 
                 self.main_content.addWidget(self.views[module])
 
             self.main_content.setCurrentWidget(self.views[module])  # Show selected module
 
-
+    def resizeEvent(self, event):
+        """Handle window resize events."""
+        super().resizeEvent(event)
+        # Resize charts and other components dynamically
+        self.pie_chart_view.setFixedHeight(self.height() * 0.3)
+        self.bar_chart_view.setFixedHeight(self.height() * 0.3)

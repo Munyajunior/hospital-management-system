@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (QApplication,
     QGridLayout, QGroupBox, QToolBar, QStatusBar, QMainWindow, QScrollArea, QHeaderView, QSizePolicy
 )
 from PySide6.QtCore import Qt, Signal, QObject, QRunnable, QThreadPool
-from PySide6.QtGui import QIcon, QAction
+from PySide6.QtGui import QIcon, QAction, QFont
 from utils.api_utils import fetch_data, post_data, update_data
 from utils.pdf_utils import generate_pdf
 
@@ -479,8 +479,33 @@ class AdmissionManagement(QMainWindow):
         form_group.setLayout(form_layout)
         layout.addWidget(form_group)
 
+        # Anomaly Detection Section
+        anomaly_group = QGroupBox("Anomaly Detection")
+        anomaly_layout = QVBoxLayout()
+
+        self.anomalies_label = QLabel("Anomalies Detected:")
+        self.anomalies_label.setFont(QFont("Arial", 14, QFont.Bold))
+        self.anomalies_label.setStyleSheet("color: #2c3e50;")
+        anomaly_layout.addWidget(self.anomalies_label)
+
+        self.anomalies_text = QLabel("No anomalies detected.")
+        self.anomalies_text.setFont(QFont("Arial", 12))
+        self.anomalies_text.setStyleSheet("color: #333333;")
+        anomaly_layout.addWidget(self.anomalies_text)
+
+        anomaly_group.setLayout(anomaly_layout)
+        layout.addWidget(anomaly_group)
+        
         self.vitals_tab.setLayout(QVBoxLayout())
         self.vitals_tab.layout().addWidget(scroll_area)
+    
+    def update_anomalies(self):
+        """Fetch and display anomalies in vitals."""
+        anomalies = fetch_data(self, f"{os.getenv('AI_BASE_URL')}/detect-anomalies/vitals", self.token)
+        if anomalies:
+            self.anomalies_text.setText(f"Anomalies detected: {anomalies['anomalies']}")
+        else:
+            self.anomalies_text.setText("No anomalies detected.")
 
     # ==================== Department Management Tab ====================
     def init_department_tab(self):
