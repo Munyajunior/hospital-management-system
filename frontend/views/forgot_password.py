@@ -4,6 +4,11 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QFont
 from PySide6.QtCore import Qt
 import requests
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 class ForgotPasswordPage(QWidget):
     def __init__(self):
@@ -82,7 +87,7 @@ class ForgotPasswordPage(QWidget):
         try:
             # Send request to the backend
             response = requests.post(
-                "http://localhost:8000/auth/forgot-password",
+                os.getenv("FORGOT_PASSWORD_RESET_URL"),
                 json={"email": email}
             )
             print(response.status_code, response.text) #Debugging Line
@@ -91,7 +96,7 @@ class ForgotPasswordPage(QWidget):
                 QMessageBox.information(self, "Success", "A reset link has been sent to your email.")
                 self.close()
             else:
-                QMessageBox.warning(self, "Error", response.json().get("detail", "Something went wrong"))
+                QMessageBox.warning(self, "Error", f"{response.text}")
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to send request: {str(e)}")
         finally:
