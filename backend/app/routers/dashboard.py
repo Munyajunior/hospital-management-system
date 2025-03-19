@@ -16,36 +16,27 @@ from core.dependencies import RoleChecker
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
-staff_only = RoleChecker(["admin", "doctor", "nurse"])
+staff_only = RoleChecker(["admin", "doctor", "nurse", "lab_technician", "pharmacist", "radiologist"])
  
 @router.get("/metrics", response_model=Dict[str, Any])
 def get_dashboard_metrics(db: Session = Depends(get_db), user: User = Depends(staff_only)):
     """Fetch all metrics for the dashboard."""
     # Total Patients
     total_patients = db.query(func.count(Patient.id)).scalar()
-
     # Total Appointments
     total_appointments = db.query(func.count(Appointment.id)).scalar()
-    
     # Total Lab Tests
     total_lab_tests = db.query(func.count(LabTest.id)).scalar()
-
     # Total Scans
     total_scans = db.query(func.count(RadiologyScan.id)).scalar()
-
     # Total Prescriptions
     total_prescriptions = db.query(func.count(Prescription.id)).scalar()
-    
     # Pending Prescriptions
     pending_prescriptions = db.query(func.count(Prescription.id)).filter(Prescription.status == PrescriptionStatus.PENDING).scalar()
-    
     # Pending Lab Tests
     pending_lab_tests = db.query(func.count(LabTest.id)).filter(LabTest.status == LabTestStatus.PENDING).scalar()
-    
     # Pending Scans
     pending_scans = db.query(func.count(RadiologyScan.id)).filter(RadiologyScan.status == RadiologyScanStatus.PENDING).scalar()
-
-
     # Total Billing Transactions
     total_billing_transactions = db.query(func.count(Billing.id)).scalar()
 
