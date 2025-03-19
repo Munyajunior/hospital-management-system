@@ -159,6 +159,7 @@ class LoginScreen(QWidget):
         """Open the Forgot Password window."""
         self.forgot_password_window = ForgotPasswordPage()
         self.forgot_password_window.show()
+        self.close()
     
     
     
