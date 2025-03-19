@@ -12,7 +12,7 @@ from core.dependencies import RoleChecker
 router = APIRouter(prefix="/lab", tags=["Lab"])
 
 doctor_only = RoleChecker(["doctor"])
-lab_staff_only = RoleChecker(["lab"])
+lab_staff_only = RoleChecker(["lab_technician"])
 
 
 # create lab Test
