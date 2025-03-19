@@ -1,12 +1,12 @@
-import os
-from PySide6.QtWidgets import (QApplication,
-    QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QGroupBox,
+from PySide6.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QGroupBox,
     QHeaderView, QTableWidgetItem, QMessageBox, QLineEdit, QComboBox,
-    QFormLayout, QHBoxLayout, QTextEdit)
+    QFormLayout, QHBoxLayout, QTextEdit
+)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon, QColor
 from utils.api_utils import fetch_data, post_data, update_data
-
+import os
 
 class DoctorManagement(QWidget):
     def __init__(self, role, user_id, token):
@@ -95,7 +95,7 @@ class DoctorManagement(QWidget):
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Actions column resizes to content
         self.doctor_table.setAlternatingRowColors(True)
         self.doctor_table.setStyleSheet("QTableWidget::item { padding: 10px; }")
-        self.add_placeholder_header()
+        self.add_placeholder_header()  # Add the placeholder header row
         main_layout.addWidget(self.doctor_table)
 
         # Buttons for Admin
@@ -122,7 +122,7 @@ class DoctorManagement(QWidget):
             QMessageBox.critical(self, "Unauthorized", "You are not authorized to access this page")
             return
         self.setLayout(main_layout)
-    
+
     def add_placeholder_header(self):
         """Add a placeholder row to simulate a duplicated header."""
         self.doctor_table.insertRow(0)  # Insert a new row at the top
@@ -130,7 +130,7 @@ class DoctorManagement(QWidget):
             header_text = self.doctor_table.horizontalHeaderItem(col).text()  # Get header text
             item = QTableWidgetItem(header_text)  # Create a QTableWidgetItem with the header text
             item.setFlags(Qt.NoItemFlags)  # Make the placeholder row non-editable
-            item.setBackground(QColor("#007BFF"))  # Set background color to match the header
+            item.setBackground(QColor("#3498db"))  # Set background color to match the header
             item.setForeground(QColor("white"))  # Set text color to white
             self.doctor_table.setItem(0, col, item)  # Add the item to the table
 
@@ -143,14 +143,13 @@ class DoctorManagement(QWidget):
         self.doctor_table.setColumnWidth(1, int(table_width * 0.4))  # Name column: 40% of table width
         self.doctor_table.setColumnWidth(2, int(table_width * 0.4))  # Specialization column: 40% of table width
         self.doctor_table.setColumnWidth(3, int(table_width * 0.1))  # Actions column: 10% of table width
-    
+
     def load_logged_doctors(self, user_id):
         """Fetch doctor data from API."""
         base_url = os.getenv("DOCTOR_LIST_URL")
         api_url = f"{base_url}{user_id}"
         doctor = fetch_data(self, api_url, self.token)
         self.populate_table(doctor)
-        
 
     def load_doctors(self):
         """Fetch doctor data from API."""
@@ -161,16 +160,17 @@ class DoctorManagement(QWidget):
     def populate_table(self, doctors):
         """Populate table with doctor data."""
         self.doctor_table.setRowCount(0)  # Clear existing data
-        self.add_placeholder_header() 
+        self.add_placeholder_header()  # Add the placeholder header row
+
         if isinstance(doctors, dict):  # If a single doctor object is returned
             doctors = [doctors]  # Convert it into a list
-            
-        self.doctor_table.setRowCount(len(doctors))
+
         for row, doctor in enumerate(doctors):
-            self.doctor_table.setItem(row, 0, QTableWidgetItem(str(doctor["id"])))
-            self.doctor_table.setItem(row, 1, QTableWidgetItem(doctor["full_name"]))
-            self.doctor_table.setItem(row, 2, QTableWidgetItem(doctor["specialization"]))
-            
+            self.doctor_table.insertRow(row + 1)  # Insert rows below the placeholder header
+            self.doctor_table.setItem(row + 1, 0, QTableWidgetItem(str(doctor["id"])))
+            self.doctor_table.setItem(row + 1, 1, QTableWidgetItem(doctor["full_name"]))
+            self.doctor_table.setItem(row + 1, 2, QTableWidgetItem(doctor["specialization"]))
+
             if self.user_role == "doctor":
                 view_patient_button = QPushButton(f"All Doctor {doctor['full_name']} patients")
                 view_patient_button.setStyleSheet(self.button_style(small=True))
@@ -182,10 +182,7 @@ class DoctorManagement(QWidget):
                 view_patient_button.setStyleSheet(self.button_style())
                 view_patient_button.setToolTip("Only Doctor can view Patients")
             # View Patients Button
-            self.doctor_table.setCellWidget(row, 3, view_patient_button)
-            
-        
-       
+            self.doctor_table.setCellWidget(row + 1, 3, view_patient_button)
 
     def view_assigned_patients(self, doctor_id, doctor_name):
         """Open a window to display patients assigned to a doctor."""
@@ -223,8 +220,7 @@ class DoctorManagement(QWidget):
     def show_registration_form(self):
         """Show doctor registration form"""
         self.registration_window = DoctorRegistrationForm(self, self.token, self.user_id)
-        self.registration_window.show()
-      
+        self.registration_window.show()     
 
 class DoctorRegistrationForm(QWidget):
     def __init__(self, parent, token, user_id):
