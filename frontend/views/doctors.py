@@ -4,9 +4,8 @@ from PySide6.QtWidgets import (QApplication,
     QHeaderView, QTableWidgetItem, QMessageBox, QLineEdit, QComboBox,
     QFormLayout, QHBoxLayout, QTextEdit)
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QColor
 from utils.api_utils import fetch_data, post_data, update_data
-from utils.load_auth_cred import LoadAuthCred
 
 
 class DoctorManagement(QWidget):
@@ -96,6 +95,7 @@ class DoctorManagement(QWidget):
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Actions column resizes to content
         self.doctor_table.setAlternatingRowColors(True)
         self.doctor_table.setStyleSheet("QTableWidget::item { padding: 10px; }")
+        self.add_placeholder_header()
         main_layout.addWidget(self.doctor_table)
 
         # Buttons for Admin
@@ -122,6 +122,17 @@ class DoctorManagement(QWidget):
             QMessageBox.critical(self, "Unauthorized", "You are not authorized to access this page")
             return
         self.setLayout(main_layout)
+    
+    def add_placeholder_header(self):
+        """Add a placeholder row to simulate a duplicated header."""
+        self.doctor_table.insertRow(0)  # Insert a new row at the top
+        for col in range(self.doctor_table.columnCount()):
+            header_text = self.doctor_table.horizontalHeaderItem(col).text()  # Get header text
+            item = QTableWidgetItem(header_text)  # Create a QTableWidgetItem with the header text
+            item.setFlags(Qt.NoItemFlags)  # Make the placeholder row non-editable
+            item.setBackground(QColor("#007BFF"))  # Set background color to match the header
+            item.setForeground(QColor("white"))  # Set text color to white
+            self.doctor_table.setItem(0, col, item)  # Add the item to the table
 
     def resizeEvent(self, event):
         """Handle window resizing to adjust table columns."""
@@ -149,6 +160,8 @@ class DoctorManagement(QWidget):
 
     def populate_table(self, doctors):
         """Populate table with doctor data."""
+        self.doctor_table.setRowCount(0)  # Clear existing data
+        self.add_placeholder_header() 
         if isinstance(doctors, dict):  # If a single doctor object is returned
             doctors = [doctors]  # Convert it into a list
             
@@ -823,10 +836,10 @@ class PatientRecordUpdateWindow(QWidget):
 class LabTests(QWidget):
     """Dialog for requesting lab tests for a patient."""
 
-    def __init__(self, patient_id, token):
+    def __init__(self, patient_id, token ,user_id):
         super().__init__()
         self.patient_id = patient_id
-        self.user_id = LoadAuthCred.load_user_id(self)
+        self.user_id = user_id
         self.token = token
         self.setWindowTitle("Request Lab Test")
         self.setGeometry(300, 300, 400, 300)
