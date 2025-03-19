@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QStackedWidget, QFrame, QApplication, QSizePolicy
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame, QApplication, QSizePolicy
 )
 from PySide6.QtGui import QFont, QPixmap, QPainter, QColor
 from PySide6.QtCore import Qt, QTimer
@@ -62,14 +62,16 @@ class Dashboard(QWidget):
         main_layout.addWidget(self.sidebar)
 
         # Main Content Area
-        self.main_content = QStackedWidget()
+        self.main_content = QWidget()
         self.main_content.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         main_layout.addWidget(self.main_content)
 
         # Dashboard View
         self.dashboard_view = QWidget()
         self.init_dashboard_view()
-        self.main_content.addWidget(self.dashboard_view)
+        self.current_view = self.dashboard_view
+        self.main_content_layout = QVBoxLayout(self.main_content)
+        self.main_content_layout.addWidget(self.current_view)
 
         # Dictionary to store dynamically loaded views
         self.views = {}
@@ -198,6 +200,7 @@ class Dashboard(QWidget):
         vbox.addWidget(value_label)
         metric_box.setLayout(vbox)
         layout.addWidget(metric_box)
+
     def create_pie_chart(self):
         """Create a pie chart for patient distribution."""
         series = self.pie_chart_series
@@ -257,7 +260,7 @@ class Dashboard(QWidget):
             self.update_metrics(metrics)
             self.update_doctor_metrics()
             self.update_pie_chart(metrics["patient_distribution"])
-            #self.update_bar_chart(metrics["appointments_data"])
+            self.update_bar_chart(metrics["appointments_data"])
         self.update_ai_metric()
             
     def update_metrics(self, metrics):
@@ -309,8 +312,11 @@ class Dashboard(QWidget):
         
     def update_bar_chart(self, appointments_data):
         """Update the bar chart with appointments data."""
-        self.bar_chart_set0.replace([appointments_data["completed"]])
-        self.bar_chart_set1.replace([appointments_data["pending"]])
+        # Replace the values in the bar sets
+        self.bar_chart_set0.replace(0, appointments_data["completed"]) 
+        self.bar_chart_set1.replace(0, appointments_data["pending"])   
+        # Refresh the chart to reflect the changes
+        self.bar_chart_view.chart().update()
     
     def update_ai_admissions_prediction_metrics(self, metrics):
         """Update AI-driven metrics."""
@@ -331,7 +337,9 @@ class Dashboard(QWidget):
     def switch_module(self, module):
         """Switches between different modules and hides the dashboard when another module is selected."""
         if module == "dashboard":
-            self.main_content.setCurrentWidget(self.dashboard_view)
+            self.current_view.hide()
+            self.current_view = self.dashboard_view
+            self.current_view.show()
         else:
             if module not in self.views:
                 if module == "patients":
@@ -364,15 +372,17 @@ class Dashboard(QWidget):
                     self.views[module] = AdmissionManagement(self.role, self.user_id, self.auth_token)
                 # Add more views here...
 
-                self.main_content.addWidget(self.views[module])
+                self.main_content_layout.addWidget(self.views[module])
 
-            self.main_content.setCurrentWidget(self.views[module])  # Show selected module
+            self.current_view.hide()
+            self.current_view = self.views[module]
+            self.current_view.show()
 
     def resizeEvent(self, event):
         """Handle window resize events."""
         super().resizeEvent(event)
         # Check if the current widget is the dashboard_view
-        if self.main_content.currentWidget() == self.dashboard_view:
+        if self.current_view == self.dashboard_view:
             # Resize charts and other components dynamically
             self.pie_chart_view.setFixedHeight(self.height() * 0.3)
             self.bar_chart_view.setFixedHeight(self.height() * 0.3)
