@@ -19,7 +19,7 @@ class MedicalRecords(QWidget):
         max_height = screen_geometry.height() * 0.8  # 80% of screen height
         
         self.resize(int(max_width), int(max_height))  # Set window size
-        self.setMinimumSize(800, 600)  # Set a reasonable minimum size
+        self.setMinimumSize(800, 600)
         self.setStyleSheet("""
             QWidget {
                 background-color: #f5f7fa;

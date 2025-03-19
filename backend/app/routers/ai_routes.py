@@ -1,4 +1,3 @@
-# routes/ai_routes.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 import pandas as pd
@@ -18,11 +17,23 @@ router = APIRouter(prefix="/ai", tags=["AI"])
 def predict_admissions(db: Session = Depends(get_db)):
     """Predict patient admissions for the next 7 days."""
     admissions_data = db.query(PatientAdmission).all()
+    
+    if not admissions_data:
+        raise HTTPException(status_code=404, detail="No admissions data found")
+
     admissions = [admission.admission_date for admission in admissions_data]
     admissions_df = pd.DataFrame(admissions, columns=['admissions'])
+    admissions_df['admissions'] = pd.to_datetime(admissions_df['admissions'])
+    admissions_df.set_index('admissions', inplace=True)
+
+
+    if admissions_df.empty:
+        raise HTTPException(status_code=400, detail="Insufficient data for prediction")
+
     ai = PredictiveAnalytics(admissions_df)
     forecast = ai.predict_patient_admissions()
     return {"predictions": forecast.tolist()}
+
 
 
 @router.get("/detect-anomalies/vitals", response_model=Dict[str, List[int]])

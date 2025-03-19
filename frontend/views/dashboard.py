@@ -104,28 +104,55 @@ class Dashboard(QWidget):
         layout.addLayout(header_layout)
 
         # Metrics Section
-        self.metric_labels = {}
+        self.metric_labels = {}  # Stores QLabel widgets
+        self.metric_api_keys = {}  # Maps metric titles to API keys
         metrics_layout = QHBoxLayout()
-        self.add_metric(metrics_layout, "Total Patients", "0", "assets/icons/patient.png")
-        self.add_metric(metrics_layout, "Appointments", "0", "assets/icons/date.png")
-        self.add_metric(metrics_layout, "Pending Lab Tests", "0", "assets/icons/result.png")
-        self.add_metric(metrics_layout, "Billing Transactions", "0", "assets/icons/payment.png")
-        # Add AI-driven metrics
-        self.add_metric(metrics_layout, "Predicted Admissions", "0", "assets/icons/admissions.png")
-        self.add_metric(metrics_layout, "No-Show Rate", "0%", "assets/icons/no_show.png")
+        # Define metrics for each role
+        self.role_metrics = {
+            "admin": [
+                {"title": "Total Patients", "value": "0", "icon": "assets/icons/patient.png", "api_key": "total_patients"},
+                {"title": "Total Lab Tests", "value": "0", "icon": "assets/icons/lab.png", "api_key": "total_lab_tests"},
+                {"title": "Total Scans", "value": "0", "icon": "assets/icons/scan.png", "api_key": "total_scans"},
+                {"title": "Total Prescriptions", "value": "0", "icon": "assets/icons/prescription.png", "api_key": "total_prescriptions"},
+                {"title": "Appointments", "value": "0", "icon": "assets/icons/date.png", "api_key": "total_appointments"},
+                {"title": "Billing Transactions", "value": "0", "icon": "assets/icons/payment.png", "api_key": "total_billing_transactions"},
+                {"title": "Predicted Admissions", "value": "0", "icon": "assets/icons/admissions.png", "api_key": "predicted_admissions"},
+            ],
+            "doctor": [
+                {"title": "My Patients", "value": "0", "icon": "assets/icons/patient.png", "api_key": "my_patients"},
+                {"title": "My Appointments", "value": "0", "icon": "assets/icons/date.png", "api_key": "my_appointments"},
+                {"title": "No-Show Rate", "value": "0%", "icon": "assets/icons/no_show.png", "api_key": "no_show_rate"},
+                {"title": "Predicted Admissions", "value": "0", "icon": "assets/icons/admissions.png", "api_key": "predicted_admissions"},
+            ],
+            "nurse":[
+                {"title": "Total Admissions", "value": "0", "icon": "assets/icons/admission.png", "api_key": "total_admissions"},
+                {"title": "Total Admissions", "value": "0", "icon": "assets/icons/date.png", "api_key":"total_appointments"},
+                {"title": "Predicted Admissions", "value": "0", "icon": "assets/icons/admissions.png", "api_key": "predicted_admissions"},
+            ],
+            "pharmacist": [
+                {"title": "Total Prescriptions", "value": "0", "icon": "assets/icons/prescription.png", "api_key": "total_prescriptions"},
+                {"title": "Pending Prescriptions", "value": "0", "icon": "assets/icons/prescription.png", "api_key": "pending_prescriptions"},
+            ],
+            "lab_technician":[
+                {"title": "Total Lab Tests", "value": "0", "icon": "assets/icons/lab.png", "api_key": "total_lab_tests"},
+                {"title": "Pending Lab Tests", "value": "0", "icon": "assets/icons/result.png", "api_key": "pending_lab_tests"},
+                {"title": "Lab Tests In Progress", "value": "0", "icon": "assets/icons/result.png", "api_key": "lab_tests_in_progress"},
+            ],
+            "radiologist": [
+                {"title": "Total Scans", "value": "0", "icon": "assets/icons/scan.png", "api_key": "total_scans"},
+                {"title": "Pending Scans", "value": "0", "icon": "assets/icons/result.png", "api_key": "pending_scans"},
+                {"title": "Scans In Progress", "value": "0", "icon": "assets/icons/result.png", "api_key": "scans_in_progress"},
+            ]
+        }
+                             
+
+         # Add metrics based on the user's role
+        for metric in self.role_metrics.get(self.role, []):
+            self.add_metric(metrics_layout, metric["title"], metric["value"], metric["icon"])
+            self.metric_api_keys[metric["title"]] = metric["api_key"]  # Store API key
+        
         layout.addLayout(metrics_layout)
         
-        # Add anomaly detection section
-        self.anomalies_label = QLabel("Anomalies Detected:")
-        self.anomalies_label.setFont(QFont("Arial", 14, QFont.Bold))
-        self.anomalies_label.setStyleSheet("color: #2c3e50;")
-        layout.addWidget(self.anomalies_label)
-
-        self.anomalies_text = QLabel("No anomalies detected.")
-        self.anomalies_text.setFont(QFont("Arial", 12))
-        self.anomalies_text.setStyleSheet("color: #333333;")
-        layout.addWidget(self.anomalies_text)
-
         # Charts Section
         charts_layout = QHBoxLayout()
         self.pie_chart_series = QPieSeries()
@@ -171,7 +198,6 @@ class Dashboard(QWidget):
         vbox.addWidget(value_label)
         metric_box.setLayout(vbox)
         layout.addWidget(metric_box)
-
     def create_pie_chart(self):
         """Create a pie chart for patient distribution."""
         series = self.pie_chart_series
@@ -229,45 +255,38 @@ class Dashboard(QWidget):
         metrics = fetch_data(self, f"{os.getenv('API_BASE_URL')}/dashboard/metrics", self.auth_token)
         if metrics:
             self.update_metrics(metrics)
+            self.update_doctor_metrics()
             self.update_pie_chart(metrics["patient_distribution"])
             #self.update_bar_chart(metrics["appointments_data"])
         self.update_ai_metric()
             
     def update_metrics(self, metrics):
-        """Update the metric labels based on the user's role."""
-        if self.role == "admin":
-            self.metric_labels["Total Patients"].setText(str(metrics["total_patients"]))
-            self.metric_labels["Total Appointments"].setText(str(metrics["total_appointments"]))
-            self.metric_labels["Pending Lab Tests"].setText(str(metrics["pending_lab_tests"]))
-            self.metric_labels["Billing Transactions"].setText(str(metrics["total_billing_transactions"]))
+        """Update the dashboard metrics dynamically."""
+        for title, value_label in self.metric_labels.items():
+            # Find the corresponding API key for the metric title
+            api_key = self.metric_api_keys.get(title)
+            if api_key and api_key in metrics:
+                value = metrics[api_key]
+                if title == "No-Show Rate":
+                    value = f"{value * 100:.2f}%"  # Format as percentage
+                value_label.setText(str(value))
 
-        elif self.role == "doctor":
-            self.metric_labels["My Patients"].setText(str(metrics["total_patients"]))
-            self.metric_labels["My Appointments"].setText(str(metrics["total_appointments"]))
-            self.metric_labels["Pending Lab Tests"].setText(str(metrics["pending_lab_tests"]))
-
-        elif self.role == "nurse":
-            self.metric_labels["Total Admissions"].setText(str(metrics["total_admissions"]))
-            self.metric_labels["Pending Vitals"].setText(str(metrics["pending_vitals"]))
-
-        elif self.role == "pharmacist":
-            self.metric_labels["Total Prescriptions"].setText(str(metrics["total_prescriptions"]))
-            self.metric_labels["Pending Prescriptions"].setText(str(metrics["pending_prescriptions"]))
-
-        elif self.role == "lab":
-            self.metric_labels["Total Lab Tests"].setText(str(metrics["total_lab_tests"]))
-            self.metric_labels["Pending Lab Tests"].setText(str(metrics["pending_lab_tests"]))
-
-        elif self.role == "radiology":
-            self.metric_labels["Total Scans"].setText(str(metrics["total_scans"]))
-            self.metric_labels["Pending Scans"].setText(str(metrics["pending_scans"]))
+    def update_doctor_metrics(self):
+        """Fetch and update doctor-specific metrics."""
+        metrics = fetch_data(self, f"{os.getenv('API_BASE_URL')}/dashboard/metrics/doctor/{self.user_id}", self.auth_token)
+        if metrics:
+            for title, value_label in self.metric_labels.items():
+                api_key = self.metric_api_keys.get(title)
+                if api_key and api_key in metrics:
+                    value = metrics[api_key]
+                    value_label.setText(str(value))
 
     def update_ai_metric(self):
         """Fetch and update AI-driven metrics."""
         pa_ai = fetch_data(self, f"{os.getenv('AI_BASE_URL')}/predict-admissions", self.auth_token)
         if pa_ai:
             self.update_ai_admissions_prediction_metrics(pa_ai)
-        no_sh_ai = fetch_data(self, f"{os.getenv('AI_BASE_URL')}/predict-no-show", self.auth_token)
+        #no_sh_ai = fetch_data(self, f"{os.getenv('AI_BASE_URL')}/predict-no-show", self.auth_token)
     
 
     def update_pie_chart(self, patient_distribution):
@@ -342,6 +361,8 @@ class Dashboard(QWidget):
     def resizeEvent(self, event):
         """Handle window resize events."""
         super().resizeEvent(event)
-        # Resize charts and other components dynamically
-        self.pie_chart_view.setFixedHeight(self.height() * 0.3)
-        self.bar_chart_view.setFixedHeight(self.height() * 0.3)
+        # Check if the current widget is the dashboard_view
+        if self.main_content.currentWidget() == self.dashboard_view:
+            # Resize charts and other components dynamically
+            self.pie_chart_view.setFixedHeight(self.height() * 0.3)
+            self.bar_chart_view.setFixedHeight(self.height() * 0.3)

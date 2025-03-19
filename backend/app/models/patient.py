@@ -11,6 +11,7 @@ class Patient(Base):
     full_name = Column(String, nullable=False)
     date_of_birth = Column(Date, nullable=False)
     gender = Column(Enum("Male", "Female", "Other", name="gender_enum"), nullable=False)
+    role = Column(String, default="patient" ,nullable=False)
     contact_number = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False)
     hashed_password = Column(String, nullable=False)  # Authentication for mobile app

@@ -20,6 +20,7 @@ class MainApp:
             self.dashboard.show()
             self.login_screen.close()
         except Exception as e:
+            print("Login success failed!", {e})
             QMessageBox.critical(None, "Error", f"Login success failed: {e}")
    
 

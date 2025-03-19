@@ -53,6 +53,7 @@ def login_user(login_cred: LoginRequest, db: Session = Depends(get_db)):
     Logs in a user and returns a JWT token.
     """
     user = db.query(Patient).filter(Patient.email == login_cred.email).first()
+    print("Login Credentials: " + login_cred.email + " " + login_cred.password)
     if not user or not verify_password(login_cred.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     access_token = create_access_token({"sub": user.id, "role":user.role}, expires_delta=timedelta(minutes=30))

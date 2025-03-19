@@ -8,21 +8,57 @@ from PySide6.QtGui import QIcon
 from utils.api_utils import fetch_data, post_data, update_data
 from utils.load_auth_cred import LoadAuthCred
 
+
 class DoctorManagement(QWidget):
     def __init__(self, role, user_id, token):
         super().__init__()
         self.token = token
         self.user_id = user_id
         self.user_role = role
-        
+
         self.setWindowTitle("Patient Management")
         screen = QApplication.primaryScreen()
         screen_geometry = screen.availableGeometry()
         max_width = screen_geometry.width() * 0.8  # 80% of screen width
         max_height = screen_geometry.height() * 0.8  # 80% of screen height
-        
+
         self.resize(int(max_width), int(max_height))  # Set window size
         self.setMinimumSize(800, 600)  # Set a reasonable minimum size
+        self.setStyleSheet("""
+            QTableWidget {
+                background-color: white;
+                border: 1px solid #dcdcdc;
+                alternate-background-color: #f9f9f9;
+                gridline-color: #dcdcdc;
+                border-radius: 10px;
+            }
+            QTableWidget::item {
+                padding: 8px;
+            }
+            QTableWidget::horizontalHeader {
+                background-color: #3498db;
+                color: white;
+                font-weight: bold;
+                font-size: 14px;
+                border-radius: 5px;
+                padding: 5px;
+            }
+            QTableWidget::horizontalHeader::section {
+                padding-left: 10px;
+                padding-right: 10px;
+                text-align: center;
+            }
+            QLineEdit {
+                padding: 10px;
+                border: 1px solid #dcdcdc;
+                border-radius: 5px;
+                font-size: 14px;
+            }
+            QLineEdit:focus {
+                border: 1px solid #007bff;
+            }
+        """)
+
         self.init_ui()
 
     def init_ui(self):
@@ -30,7 +66,7 @@ class DoctorManagement(QWidget):
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(20)
-        
+
         # Title Label
         self.title_label = QLabel("Doctor Management")
         self.title_label.setAlignment(Qt.AlignCenter)
@@ -46,12 +82,6 @@ class DoctorManagement(QWidget):
         # Search Bar
         self.search_bar = QLineEdit()
         self.search_bar.setPlaceholderText("Search doctors...")
-        self.search_bar.setStyleSheet("""
-            padding: 10px;
-            border: 1px solid #dcdcdc;
-            border-radius: 5px;
-            font-size: 14px;
-        """)
         self.search_bar.textChanged.connect(self.filter_doctors)
         main_layout.addWidget(self.search_bar)
 
@@ -59,36 +89,19 @@ class DoctorManagement(QWidget):
         self.doctor_table = QTableWidget()
         self.doctor_table.setColumnCount(4)
         self.doctor_table.setHorizontalHeaderLabels(["ID", "Name", "Specialization", "Actions"])
-        self.doctor_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        header = self.doctor_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # ID column resizes to content
+        header.setSectionResizeMode(1, QHeaderView.Stretch)  # Name column stretches
+        header.setSectionResizeMode(2, QHeaderView.Stretch)  # Specialization column stretches
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Actions column resizes to content
         self.doctor_table.setAlternatingRowColors(True)
-        self.doctor_table.setStyleSheet("""
-            QTableWidget {
-                background-color: #f8f9fa;
-                gridline-color: #ddd;
-                font-size: 14px;
-                border-radius: 10px;
-            }
-            QTableWidget::item {
-                padding: 10px;
-            }
-            QTableWidget::item:selected {
-                background-color: #007BFF;
-                color: white;
-            }
-            QHeaderView::section {
-                background-color: #007BFF;
-                color: white;
-                font-weight: bold;
-                padding: 10px;
-                border-radius: 5px;
-            }
-        """)
+        self.doctor_table.setStyleSheet("QTableWidget::item { padding: 10px; }")
         main_layout.addWidget(self.doctor_table)
 
         # Buttons for Admin
         if self.user_role in ["admin", "nurse", "receptionist"]:
             button_layout = QHBoxLayout()
-            
+
             self.refresh_button = QPushButton("Refresh Doctors")
             self.refresh_button.setIcon(QIcon("assets/icons/refresh.png"))
             self.refresh_button.setStyleSheet(self.button_style())
@@ -109,7 +122,16 @@ class DoctorManagement(QWidget):
             QMessageBox.critical(self, "Unauthorized", "You are not authorized to access this page")
             return
         self.setLayout(main_layout)
-        
+
+    def resizeEvent(self, event):
+        """Handle window resizing to adjust table columns."""
+        super().resizeEvent(event)
+        # Adjust table column widths dynamically
+        table_width = self.doctor_table.width()
+        self.doctor_table.setColumnWidth(0, int(table_width * 0.1))  # ID column: 10% of table width
+        self.doctor_table.setColumnWidth(1, int(table_width * 0.4))  # Name column: 40% of table width
+        self.doctor_table.setColumnWidth(2, int(table_width * 0.4))  # Specialization column: 40% of table width
+        self.doctor_table.setColumnWidth(3, int(table_width * 0.1))  # Actions column: 10% of table width
     
     def load_logged_doctors(self, user_id):
         """Fetch doctor data from API."""
@@ -144,6 +166,7 @@ class DoctorManagement(QWidget):
             else:
                 view_patient_button = QPushButton("You Are not a Doctor")
                 view_patient_button.setEnabled(False)
+                view_patient_button.setStyleSheet(self.button_style())
                 view_patient_button.setToolTip("Only Doctor can view Patients")
             # View Patients Button
             self.doctor_table.setCellWidget(row, 3, view_patient_button)
@@ -423,9 +446,9 @@ class PatientListWindow(QWidget):
                 background-color: #0056b3;
             }
             QLineEdit {
-                padding: 8px;
+                padding: 10px;
                 border: 1px solid #dcdcdc;
-                border-radius: 4px;
+                border-radius: 5px;
                 font-size: 14px;
             }
             QLineEdit:focus {

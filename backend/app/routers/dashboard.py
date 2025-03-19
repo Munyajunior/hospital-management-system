@@ -7,6 +7,8 @@ from sqlalchemy import func
 from models.patient import Patient
 from models.appointment import Appointment
 from models.lab import LabTest, LabTestStatus
+from models.radiology import RadiologyScan, RadiologyScanStatus
+from models.pharmacy import Prescription, PrescriptionStatus
 from models.billing import Billing
 from models.admission import PatientAdmission, AdmissionStatus
 from core.database import get_db
@@ -24,9 +26,25 @@ def get_dashboard_metrics(db: Session = Depends(get_db), user: User = Depends(st
 
     # Total Appointments
     total_appointments = db.query(func.count(Appointment.id)).scalar()
+    
+    # Total Lab Tests
+    total_lab_tests = db.query(func.count(LabTest.id)).scalar()
 
+    # Total Scans
+    total_scans = db.query(func.count(RadiologyScan.id)).scalar()
+
+    # Total Prescriptions
+    total_prescriptions = db.query(func.count(Prescription.id)).scalar()
+    
+    # Pending Prescriptions
+    pending_prescriptions = db.query(func.count(Prescription.id)).filter(Prescription.status == PrescriptionStatus.PENDING).scalar()
+    
     # Pending Lab Tests
     pending_lab_tests = db.query(func.count(LabTest.id)).filter(LabTest.status == LabTestStatus.PENDING).scalar()
+    
+    # Pending Scans
+    pending_scans = db.query(func.count(RadiologyScan.id)).filter(RadiologyScan.status == RadiologyScanStatus.PENDING).scalar()
+
 
     # Total Billing Transactions
     total_billing_transactions = db.query(func.count(Billing.id)).scalar()
@@ -59,13 +77,35 @@ def get_dashboard_metrics(db: Session = Depends(get_db), user: User = Depends(st
             PatientAdmission.status == AdmissionStatus.DISCHARGED
         ).scalar(),
     }
+    
+    # Totol Admissions
+    total_admissions = db.query(func.count(PatientAdmission.id)).scalar()
+    
 
     return {
         "total_patients": total_patients,
         "total_appointments": total_appointments,
+        "total_lab_tests": total_lab_tests,
+        "total_scans": total_scans,
         "pending_lab_tests": pending_lab_tests,
+        "Pending_scans": pending_scans,
         "total_billing_transactions": total_billing_transactions,
         "patient_distribution": patient_distribution,
         "appointments_data": appointments_data,
         "admissions_data": admissions_data,
+        "total_admissions": total_admissions,
+        "total_prescription": total_prescriptions,
+        "pending_prescriptions": pending_prescriptions,
+    }
+ 
+@router.get("/metrics/doctor/{doctor_id}", response_model=Dict[str, Any])
+def get_doctor_dashboard_metrics(doctor_id: int, db: Session = Depends(get_db), user: User = Depends(staff_only)):
+    """Fetch doctor specific metrics for the dashboard."""
+    my_patients = db.query(func.count(Patient.id)).filter(Patient.assigned_doctor_id == doctor_id).scalar()
+    my_appointments = db.query(func.count(Appointment.id)).filter(Appointment.doctor_id == doctor_id).scalar()
+    
+    
+    return {
+        "my_patients": my_patients,
+        "my_appointments": my_appointments,
     }

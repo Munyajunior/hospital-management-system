@@ -11,7 +11,9 @@ class PredictiveAnalytics:
         self.data = data
 
     def predict_patient_admissions(self):
-        """Predict patient admissions using ARIMA."""
+        if len(self.data) < 10:  # Ensure enough data points
+            raise ValueError("Not enough data to train ARIMA model")
+
         model = ARIMA(self.data['admissions'], order=(5, 1, 0))
         model_fit = model.fit()
         forecast = model_fit.forecast(steps=7)  # Predict next 7 days
