@@ -1,5 +1,10 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
 import requests
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 class ResetPasswordPage(QWidget):
     def __init__(self, token):
@@ -41,7 +46,7 @@ class ResetPasswordPage(QWidget):
             return
 
         try:
-            response = requests.post("http://localhost:8000/auth/reset-password", json={
+            response = requests.post(os.getenv("RESET_PASSWORD_URL"), json={
                 "token": self.token,
                 "new_password": password
             })
