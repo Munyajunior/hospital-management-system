@@ -109,7 +109,7 @@ async def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(
     email_sent = await send_reset_email(request.email, reset_link)
     if not email_sent:
         raise HTTPException(status_code=500, detail="Failed to send reset email")
-
+ 
     return {"message": "Reset link sent to your email"}
 
 
