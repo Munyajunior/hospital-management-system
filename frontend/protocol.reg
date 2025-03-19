@@ -1,0 +1,25 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CLASSES_ROOT\hmsresetpass]
+"URL Protocol"=""
+@="URL:hmsresetpass Protocol"
+
+[HKEY_CLASSES_ROOT\hmsresetpass\shell]
+
+[HKEY_CLASSES_ROOT\hmsresetpass\shell\open]
+
+[HKEY_CLASSES_ROOT\hmsresetpass\shell\open\command]
+@="\"%1\" \"%2\""
+
+; Windows Registry Editor Version 5.00
+
+; [HKEY_CLASSES_ROOT\hmsresetpass]
+; "URL Protocol"=""
+; @="URL:hmsresetpass Protocol"
+
+; [HKEY_CLASSES_ROOT\hmsresetpass\shell]
+
+; [HKEY_CLASSES_ROOT\hmsresetpass\shell\open]
+
+; [HKEY_CLASSES_ROOT\hmsresetpass\shell\open\command]
+; @="\"C:\\Users\\ASUS-PC\\AppData\\Local\\Programs\\Python\\Python312\\python.exe\" \"C:\\Users\\ASUS-PC\\Desktop\\Project\\Hospital-Management-System\\frontend\\main.py\" \"%1\""
