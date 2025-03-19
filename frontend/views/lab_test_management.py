@@ -1,12 +1,11 @@
-import os
-import requests
 from PySide6.QtWidgets import (
-   QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTableView,
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTableView,
     QMessageBox, QLineEdit, QHeaderView, QDialog, QTextEdit, QStyledItemDelegate, QStyleOptionButton, QStyle
 )
 from PySide6.QtCore import Qt, QSettings
 from PySide6.QtGui import QIcon, QStandardItemModel, QStandardItem, QMouseEvent, QColor
 from utils.api_utils import fetch_data, update_data
+import os
 
 
 class ButtonDelegate(QStyledItemDelegate):
@@ -15,20 +14,20 @@ class ButtonDelegate(QStyledItemDelegate):
         super().__init__(parent)
 
     def paint(self, painter, option, index):
-        # Render the button
-        button_style = QStyleOptionButton()
-        button_style.rect = option.rect
-        button_style.text = "🛠 Process Test"
-        button_style.state = QStyle.State_Enabled | QStyle.State_Active
-        QApplication.style().drawControl(QStyle.CE_PushButton, button_style, painter)
+        # Render the button only for data rows (skip the placeholder header row)
+        if index.row() != 0:  # Skip the first row (placeholder header)
+            button_style = QStyleOptionButton()
+            button_style.rect = option.rect
+            button_style.text = "🛠 Process Test"
+            button_style.state = QStyle.State_Enabled | QStyle.State_Active
+            QApplication.style().drawControl(QStyle.CE_PushButton, button_style, painter)
 
     def editorEvent(self, event, model, option, index):
-        # Handle button click
-        if event.type() == QMouseEvent.MouseButtonRelease:
+        # Handle button click only for data rows (skip the placeholder header row)
+        if index.row() != 0 and event.type() == QMouseEvent.MouseButtonRelease:
             self.parent().process_button_clicked(index)
             return True
         return False
-
 
 
 class LabTestManagement(QWidget):
@@ -111,7 +110,10 @@ class LabTestManagement(QWidget):
         # Set custom delegate for the "Action" column
         self.button_delegate = ButtonDelegate(self)
         self.lab_test_table.setItemDelegateForColumn(6, self.button_delegate)
-        
+
+        # Add a placeholder row to simulate a duplicated header
+        self.add_placeholder_header()
+
         main_layout.addWidget(self.lab_test_table)
 
         # Button Layout
@@ -231,7 +233,7 @@ class LabTestManagement(QWidget):
             self.populate_table(lab_tests)
         else:
             QMessageBox.information(self, "Empty", "No lab test requests have been made.")
-            
+
     def add_placeholder_header(self):
         """Add a placeholder row to simulate a duplicated header."""
         placeholder_row = []
@@ -244,13 +246,15 @@ class LabTestManagement(QWidget):
             placeholder_row.append(item)  # Add the item to the row
         self.model.appendRow(placeholder_row)  # Add the row to the model
 
-
     def populate_table(self, lab_tests):
         """Fills the lab test requests table with data."""
         self.model.clear()  # Clear existing data
         self.model.setHorizontalHeaderLabels(["Patient", "Doctor", "Test Type", "Status", "Results", "Additional Notes", "Action"])
+
         # Add the placeholder header row
         self.add_placeholder_header()
+
+        # Populate the table with data
         for request in lab_tests:
             row = [
                 QStandardItem(str(request["patient_id"])),
@@ -262,7 +266,7 @@ class LabTestManagement(QWidget):
                 QStandardItem("🛠 Process Test")  # Placeholder for action
             ]
             self.model.appendRow(row)
-            
+
     def process_button_clicked(self, index):
         """Handle button click in the 'Action' column."""
         request_id = self.model.item(index.row(), 0).text()  # Get request ID from the first column
@@ -271,6 +275,7 @@ class LabTestManagement(QWidget):
         test_type = self.model.item(index.row(), 2).text()
         status = self.model.item(index.row(), 3).text()
         self.show_request_process(request_id, patient_id, requested_by, test_type, status)
+
     def show_request_process(self, request_id, patient_id, requested_by, test_type, status):
         """Displays details of a Lab Test request and provides update options."""
         msg = QMessageBox(self)
