@@ -132,24 +132,21 @@ class LoginScreen(QWidget):
 
         # Simulate a delay for the login process
         QTimer.singleShot(1500, lambda: self.authenticate(email, password))
-
+        
     def validate_email(self, email):
         """Validate email format using regex."""
         email_regex = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
         return re.match(email_regex, email) is not None
-
+    
     def authenticate(self, email, password):
         """Authenticate user with backend API."""
-        try:
-            success, message, role, user_id, token = self.auth_handler.authenticate(email, password)
-            if success:
-                QMessageBox.information(self, "Login Success", f"Welcome, {role}!")
-                self.on_login_success(role, user_id, token)  # Pass role, token, and user ID
-                self.close()
-            else:
-                QMessageBox.critical(self, "Login Failed", message)
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"An error occurred during login: {e}")
+        success, message, role, user_id, token = self.auth_handler.authenticate(email, password)
+        if success:
+            QMessageBox.information(self, "Login Success", f"Welcome, {role}!")
+            self.on_login_success(role, user_id, token)  # Pass role, token, and user ID
+            self.close()
+        else:
+            QMessageBox.critical(self, "Login Failed", message)
 
         # Re-enable the login button
         self.login_button.setText("Login")

@@ -1,39 +1,13 @@
 import os
-from PySide6.QtWidgets import (QApplication,
-    QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
-    QMessageBox, QComboBox, QTextEdit, QTabWidget, QFormLayout, QLineEdit,
-    QGridLayout, QGroupBox, QToolBar, QStatusBar, QMainWindow, QScrollArea, QHeaderView, QSizePolicy
+from PySide6.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
+    QMessageBox, QComboBox, QTextEdit, QTabWidget, QFormLayout, QLineEdit, QGridLayout,
+    QGroupBox, QToolBar, QStatusBar, QMainWindow, QScrollArea, QHeaderView, QSizePolicy
 )
-from PySide6.QtCore import Qt, Signal, QObject, QRunnable, QThreadPool
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon, QAction, QFont
 from utils.api_utils import fetch_data, post_data, update_data
 from utils.pdf_utils import generate_pdf
-
-
-class WorkerSignals(QObject):
-    """Signals for worker threads."""
-    finished = Signal()
-    error = Signal(str)
-    result = Signal(object)
-
-
-class Worker(QRunnable):
-    """Worker thread for API calls."""
-    def __init__(self, fn, *args, **kwargs):
-        super().__init__()
-        self.fn = fn
-        self.args = args
-        self.kwargs = kwargs
-        self.signals = WorkerSignals()
-
-    def run(self):
-        try:
-            result = self.fn(*self.args, **self.kwargs)
-            self.signals.result.emit(result)
-        except Exception as e:
-            self.signals.error.emit(str(e))
-        finally:
-            self.signals.finished.emit()
 
 
 class AdmissionManagement(QMainWindow):
@@ -49,8 +23,7 @@ class AdmissionManagement(QMainWindow):
         self.role = user_role
         self.user_id = user_id
         self.token = auth_token
-        #self.thread_pool = QThreadPool()  # Thread pool for concurrent tasks
-        #self.thread_pool.setMaxThreadCount(4)  # Limit the number of concurrent threads
+        self.is_dark_theme = False  # Track theme state
         self.init_ui()
 
     def init_ui(self):
@@ -60,86 +33,9 @@ class AdmissionManagement(QMainWindow):
         screen_geometry = screen.availableGeometry()
         max_width = screen_geometry.width() * 0.8  # 80% of screen width
         max_height = screen_geometry.height() * 0.8  # 80% of screen height
-        
+
         self.resize(int(max_width), int(max_height))  # Set window size
         self.setMinimumSize(800, 600)  # Set a reasonable minimum size
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #f5f7fa;
-                font-family: 'Arial', sans-serif;
-            }
-            QLabel {
-                font-size: 16px;
-                color: #2c3e50;
-            }
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                padding: 10px;
-                font-size: 14px;
-                border-radius: 5px;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            }
-            QPushButton:pressed {
-                background-color: #1c5980;
-            }
-            QTableWidget {
-                background-color: white;
-                border: 1px solid #dcdcdc;
-                font-size: 14px;
-                alternate-background-color: #f9f9f9;
-            }
-            QTableWidget::item {
-                padding: 8px;
-            }
-            QTableWidget::horizontalHeader {
-                background-color: #3498db;
-                color: white;
-                font-weight: bold;
-                font-size: 14px;
-                padding: 5px;
-            }
-            QTabWidget::pane {
-                border: 1px solid #dcdcdc;
-                background-color: #f5f7fa;
-            }
-            QTabBar::tab {
-                background-color: #3498db;
-                color: white;
-                padding: 10px;
-                font-size: 14px;
-                border-radius: 5px;
-                margin: 2px;
-            }
-            QTabBar::tab:selected {
-                background-color: #2980b9;
-            }
-            QLineEdit, QTextEdit, QComboBox {
-                padding: 8px;
-                border: 1px solid #dcdcdc;
-                border-radius: 5px;
-                font-size: 14px;
-            }
-            QLineEdit:focus, QTextEdit:focus, QComboBox:focus {
-                border: 1px solid #3498db;
-            }
-            QGroupBox {
-                border: 1px solid #dcdcdc;
-                border-radius: 5px;
-                margin-top: 10px;
-                font-size: 16px;
-                font-weight: bold;
-                padding: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 3px;
-            }
-        """)
 
         # Main Layout
         main_widget = QWidget()
@@ -155,6 +51,11 @@ class AdmissionManagement(QMainWindow):
         refresh_action.triggered.connect(self.refresh_all)
         self.toolbar.addAction(refresh_action)
 
+        # Theme Toggle Action
+        self.toggle_theme_action = QAction(QIcon("assets/icons/theme.png"), "Toggle Theme", self)
+        self.toggle_theme_action.triggered.connect(self.toggle_theme)
+        self.toolbar.addAction(self.toggle_theme_action)
+
         # Status Bar
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
@@ -163,7 +64,7 @@ class AdmissionManagement(QMainWindow):
         # Title
         self.title_label = QLabel("Admission Management System")
         self.title_label.setAlignment(Qt.AlignCenter)
-        self.title_label.setStyleSheet("font-size: 24px; font-weight: bold; padding: 20px; color: #2c3e50;")
+        self.title_label.setFont(QFont("Segoe UI", 24, QFont.Bold))
         layout.addWidget(self.title_label)
 
         # Tab Widget
@@ -216,6 +117,101 @@ class AdmissionManagement(QMainWindow):
         self.init_bed_tab()
         self.tabs.addTab(self.bed_tab, QIcon("assets/icons/bed.png"), "Bed Management")
 
+        # Apply the initial theme
+        self.apply_theme()
+
+    def toggle_theme(self):
+        """Toggles between light and dark themes."""
+        self.is_dark_theme = not self.is_dark_theme
+        self.apply_theme()
+
+    def apply_theme(self):
+        """Applies the current theme (light or dark)."""
+        if self.is_dark_theme:
+            self.setStyleSheet("""
+                QWidget {
+                    background-color: #2C3E50;
+                    color: #ECF0F1;
+                    font-family: 'Segoe UI', 'Arial', sans-serif;
+                    font-size: 14px;
+                }
+                QLabel {
+                    font-size: 16px;
+                    font-weight: bold;
+                    color: #ECF0F1;
+                }
+                QTableWidget {
+                    background-color: #34495E;
+                    color: #ECF0F1;
+                    alternate-background-color: #2C3E50;
+                    font-size: 14px;
+                }
+                QHeaderView::section {
+                    background-color: #007BFF;
+                    color: white;
+                    font-weight: bold;
+                    font-size: 14px;
+                }
+                QLineEdit, QComboBox, QTextEdit, QListWidget {
+                    background-color: #34495E;
+                    color: #ECF0F1;
+                    border: 1px solid #5D6D7E;
+                    font-size: 14px;
+                }
+                QPushButton {
+                    background-color: #007BFF;
+                    color: white;
+                    font-size: 14px;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background-color: #0056b3;
+                }
+            """)
+            self.toggle_theme_action.setText("☀️ Light Theme")
+        else:
+            self.setStyleSheet("""
+                QWidget {
+                    background-color: #F4F6F7;
+                    color: #2C3E50;
+                    font-family: 'Segoe UI', 'Arial', sans-serif;
+                    font-size: 14px;
+                }
+                QLabel {
+                    font-size: 16px;
+                    font-weight: bold;
+                    color: #2C3E50;
+                }
+                QTableWidget {
+                    background-color: white;
+                    color: #2C3E50;
+                    alternate-background-color: #F8F9F9;
+                    font-size: 14px;
+                }
+                QHeaderView::section {
+                    background-color: #007BFF;
+                    color: white;
+                    font-weight: bold;
+                    font-size: 14px;
+                }
+                QLineEdit, QComboBox, QTextEdit, QListWidget {
+                    background-color: white;
+                    color: #2C3E50;
+                    border: 1px solid #D5DBDB;
+                    font-size: 14px;
+                }
+                QPushButton {
+                    background-color: #007BFF;
+                    color: white;
+                    font-size: 14px;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background-color: #0056b3;
+                }
+            """)
+            self.toggle_theme_action.setText("🌙 Dark Theme")
+
     # ==================== Admission Tab ====================
     def init_admission_tab(self):
         scroll_area = QScrollArea()
@@ -223,7 +219,53 @@ class AdmissionManagement(QMainWindow):
         scroll_widget = QWidget()
         scroll_area.setWidget(scroll_widget)
         layout = QVBoxLayout(scroll_widget)
+        
+        # Admitted Patient Table
+        table_group = QGroupBox("Admitted Patients")
+        table_layout = QVBoxLayout()
 
+        self.admitted_table = QTableWidget()
+        self.admitted_table.setColumnCount(9)
+        self.admitted_table.setHorizontalHeaderLabels([
+            "Patient", "Admitted by", "Assigned Doctor", "Category", "Department", "Ward", "Bed", "Status",
+            "Admission Date"
+        ])
+         # Set size policy to ensure the table expands
+        self.admitted_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        
+        # Set a minimum height to accommodate at least 10 rows
+        self.admitted_table.setMinimumHeight(300)
+        self.admitted_table.horizontalHeader().setStretchLastSection(True)
+        self.admitted_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.admitted_table.horizontalHeader().setTextElideMode(Qt.ElideRight)
+        table_layout.addWidget(self.admitted_table, stretch=1)
+        
+        # Add duplicate header at the top
+        self.admitted_table.setRowCount(self.admitted_table.rowCount() + 1)
+        for col in range(self.admitted_table.columnCount()):
+            item = QTableWidgetItem(self.admitted_table.horizontalHeaderItem(col).text())
+            item.setBackground(Qt.gray)
+            item.setForeground(Qt.white)
+            self.admitted_table.setItem(self.admitted_table.rowCount() - 1, col, item)
+        
+        self.load_admitted_patient()
+
+        # Search Bar
+        self.admitted_search_input = QLineEdit()
+        self.admitted_search_input.setPlaceholderText("Search Admitted Patients...")
+        self.admitted_search_input.textChanged.connect(self.filter_admitted_patients)
+        table_layout.addWidget(self.admitted_search_input)
+
+        # Refresh Button
+        refresh_button = QPushButton("Refresh")
+        refresh_button.setIcon(QIcon("assets/icons/refresh.png"))
+        refresh_button.clicked.connect(self.load_admitted_patient)
+        table_layout.addWidget(refresh_button)
+        
+        
+        table_group.setLayout(table_layout)
+        layout.addWidget(table_group)
+        
         # Admission Form
         form_group = QGroupBox("Admit Patient")
         form_layout = QFormLayout()
@@ -311,7 +353,15 @@ class AdmissionManagement(QMainWindow):
         self.icu_table.horizontalHeader().setStretchLastSection(True)
         self.icu_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.icu_table.horizontalHeader().setTextElideMode(Qt.ElideRight)
-        table_layout.addWidget(self.icu_table)
+        table_layout.addWidget(self.icu_table, stretch=1)
+
+        # Add duplicate header at the top
+        self.icu_table.insertRow(0)
+        for col in range(self.icu_table.columnCount()):
+            item = QTableWidgetItem(self.icu_table.horizontalHeaderItem(col).text())
+            item.setBackground(Qt.gray)
+            item.setForeground(Qt.white)
+            self.icu_table.setItem(0, col, item)
 
         # Search Bar
         self.icu_search_input = QLineEdit()
@@ -390,6 +440,14 @@ class AdmissionManagement(QMainWindow):
         self.inpatient_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.inpatient_table.horizontalHeader().setTextElideMode(Qt.ElideRight)
         table_layout.addWidget(self.inpatient_table)
+
+        # Add duplicate header at the top
+        self.inpatient_table.insertRow(0)
+        for col in range(self.inpatient_table.columnCount()):
+            item = QTableWidgetItem(self.inpatient_table.horizontalHeaderItem(col).text())
+            item.setBackground(Qt.gray)
+            item.setForeground(Qt.white)
+            self.inpatient_table.setItem(0, col, item)
 
         # Search Bar
         self.inpatient_search_input = QLineEdit()
@@ -484,28 +542,20 @@ class AdmissionManagement(QMainWindow):
         anomaly_layout = QVBoxLayout()
 
         self.anomalies_label = QLabel("Anomalies Detected:")
-        self.anomalies_label.setFont(QFont("Arial", 14, QFont.Bold))
+        self.anomalies_label.setFont(QFont("Segoe UI", 14, QFont.Bold))
         self.anomalies_label.setStyleSheet("color: #2c3e50;")
         anomaly_layout.addWidget(self.anomalies_label)
 
         self.anomalies_text = QLabel("No anomalies detected.")
-        self.anomalies_text.setFont(QFont("Arial", 12))
+        self.anomalies_text.setFont(QFont("Segoe UI", 12))
         self.anomalies_text.setStyleSheet("color: #333333;")
         anomaly_layout.addWidget(self.anomalies_text)
 
         anomaly_group.setLayout(anomaly_layout)
         layout.addWidget(anomaly_group)
-        
+
         self.vitals_tab.setLayout(QVBoxLayout())
         self.vitals_tab.layout().addWidget(scroll_area)
-    
-    def update_anomalies(self):
-        """Fetch and display anomalies in vitals."""
-        anomalies = fetch_data(self, f"{os.getenv('AI_BASE_URL')}/detect-anomalies/vitals", self.token)
-        if anomalies:
-            self.anomalies_text.setText(f"Anomalies detected: {anomalies['anomalies']}")
-        else:
-            self.anomalies_text.setText("No anomalies detected.")
 
     # ==================== Department Management Tab ====================
     def init_department_tab(self):
@@ -548,6 +598,14 @@ class AdmissionManagement(QMainWindow):
         self.existing_department_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.existing_department_table.horizontalHeader().setTextElideMode(Qt.ElideRight)
         table_layout.addWidget(self.existing_department_table)
+
+        # Add duplicate header at the top
+        self.existing_department_table.insertRow(0)
+        for col in range(self.existing_department_table.columnCount()):
+            item = QTableWidgetItem(self.existing_department_table.horizontalHeaderItem(col).text())
+            item.setBackground(Qt.gray)
+            item.setForeground(Qt.white)
+            self.existing_department_table.setItem(0, col, item)
 
         # Search Bar
         self.department_search_input = QLineEdit()
@@ -609,6 +667,14 @@ class AdmissionManagement(QMainWindow):
         self.existing_ward_table.horizontalHeader().setTextElideMode(Qt.ElideRight)
         table_layout.addWidget(self.existing_ward_table)
 
+        # Add duplicate header at the top
+        self.existing_ward_table.insertRow(0)
+        for col in range(self.existing_ward_table.columnCount()):
+            item = QTableWidgetItem(self.existing_ward_table.horizontalHeaderItem(col).text())
+            item.setBackground(Qt.gray)
+            item.setForeground(Qt.white)
+            self.existing_ward_table.setItem(0, col, item)
+
         # Search Bar
         self.ward_search_input = QLineEdit()
         self.ward_search_input.setPlaceholderText("Search Wards...")
@@ -669,6 +735,14 @@ class AdmissionManagement(QMainWindow):
         self.existing_bed_table.horizontalHeader().setTextElideMode(Qt.ElideRight)
         table_layout.addWidget(self.existing_bed_table)
 
+        # Add duplicate header at the top
+        self.existing_bed_table.insertRow(0)
+        for col in range(self.existing_bed_table.columnCount()):
+            item = QTableWidgetItem(self.existing_bed_table.horizontalHeaderItem(col).text())
+            item.setBackground(Qt.gray)
+            item.setForeground(Qt.white)
+            self.existing_bed_table.setItem(0, col, item)
+
         # Search Bar
         self.bed_search_input = QLineEdit()
         self.bed_search_input.setPlaceholderText("Search Beds...")
@@ -687,16 +761,19 @@ class AdmissionManagement(QMainWindow):
         self.bed_tab.setLayout(QVBoxLayout())
         self.bed_tab.layout().addWidget(scroll_area)
 
-    def resizeEvent(self, event):
-        """Handle window resize events."""
-        super().resizeEvent(event)
-        self.icu_table.resizeColumnsToContents()
-        self.inpatient_table.resizeColumnsToContents()
-        self.existing_department_table.resizeColumnsToContents()
-        self.existing_ward_table.resizeColumnsToContents()
-        self.existing_bed_table.resizeColumnsToContents()
-
     # ==================== Search Functionality ====================
+    def filter_admitted_patients(self):
+        """Filter Admitted patients based on search"""
+        search_text = self.admitted_search_input.text().lower()
+        for row in range(self.admitted_table.rowCount()):
+            match = False
+            for col in range(self.admitted_table.columnCount()):
+                item = self.admitted_table.item(row, col)
+                if item and search_text in item.text().low():
+                    match = True
+                    break
+                self.admitted_table.setRowHidden(row, not match)
+    
     def filter_icu_patients(self):
         """Filters ICU patients based on search input."""
         search_text = self.icu_search_input.text().lower()
@@ -757,8 +834,6 @@ class AdmissionManagement(QMainWindow):
                     break
             self.existing_bed_table.setRowHidden(row, not match)
 
-   
-        
     # ==================== Threading for API Calls ====================
     def load_patients(self):
         """Fetches and populates the dropdown with patients using threading."""
@@ -814,6 +889,21 @@ class AdmissionManagement(QMainWindow):
             self.populate_icu_table(icu_patients)
         except Exception as e:
             self.show_error(str(e))
+    
+    def load_admitted_patient(self):
+        """Fetches and displays admitted patients."""
+        try:
+            # Fetch admitted patients data from the API
+            admitted_patients = fetch_data(self, os.getenv("ADMITTED_PATIENT_URL"), self.token)
+            # Check if data was fetched successfully
+            print("Admissions fetched:", admitted_patients)
+            if admitted_patients:
+                self.populate_admitted_table(admitted_patients)
+            else:
+                self.show_error("No admitted patients found")
+        except Exception as e:
+            # Handle any exceptions and display an error message
+            self.show_error(f"An error occurred while fetching admitted patients: {str(e)}")
 
     def populate_icu_table(self, icu_patients):
         """Populates the ICU table with fetched data."""
@@ -830,6 +920,34 @@ class AdmissionManagement(QMainWindow):
                 self.icu_table.setItem(row, 7, QTableWidgetItem(patient["updated_at"]))
             self.icu_table.resizeColumnsToContents()
 
+    def populate_admitted_table(self, admitted_patients):
+        """Populates the admitted patients table with fetched data, including names for IDs."""
+        self.admitted_table.setRowCount(0)
+        self.admitted_table.insertRow(0)
+        
+        # Add duplicate header at the top
+        for col in range(self.admitted_table.columnCount()):
+            item = QTableWidgetItem(self.admitted_table.horizontalHeaderItem(col).text())
+            item.setBackground(Qt.gray)
+            item.setForeground(Qt.white)
+            self.admitted_table.setItem(0, col, item)
+        
+        # Populate the table with data
+        for row, patient in enumerate(admitted_patients, start=1):
+                self.admitted_table.insertRow(row)
+                # Add data to each column
+                self.admitted_table.setItem(row, 0, QTableWidgetItem(patient.get("patient_name", "")))
+                self.admitted_table.setItem(row, 1, QTableWidgetItem(patient.get("admitted_by_name", "")))
+                self.admitted_table.setItem(row, 2, QTableWidgetItem(patient.get("assigned_doctor_name", "")))
+                self.admitted_table.setItem(row, 3, QTableWidgetItem(patient.get("category", "")))
+                self.admitted_table.setItem(row, 4, QTableWidgetItem(patient.get("department_name", "")))
+                self.admitted_table.setItem(row, 5, QTableWidgetItem(patient.get("ward_name", "")))
+                self.admitted_table.setItem(row, 6, QTableWidgetItem(patient.get("bed_number", "")))
+                self.admitted_table.setItem(row, 7, QTableWidgetItem(patient.get("status", "")))
+                self.admitted_table.setItem(row, 8, QTableWidgetItem(patient.get("admission_date", "")))
+        
+        self.admitted_table.resizeColumnsToContents()
+    
     def load_admitted_inpatient(self):
         """Fetches and displays Inpatient admissions."""
         try:
@@ -1031,7 +1149,7 @@ class AdmissionManagement(QMainWindow):
                 self.existing_bed_table.setItem(row, 1, QTableWidgetItem(str(bed["bed_number"])))
                 self.existing_bed_table.setItem(row, 2, QTableWidgetItem(str(bed["ward_id"])))
             self.existing_bed_table.resizeColumnsToContents()
-                
+
     def show_error(self, error_message):
         """Displays an error message in the main thread."""
         QMessageBox.critical(self, "Error", error_message)
@@ -1062,6 +1180,7 @@ class AdmissionManagement(QMainWindow):
         if response:
             QMessageBox.information(self, "Success", "Patient admitted successfully.")
             self.load_admissions()
+            self.load_admitted_patient()
         else:
             QMessageBox.critical(self, "Error", "Failed to admit patient.")
 
@@ -1240,6 +1359,7 @@ class AdmissionManagement(QMainWindow):
         self.load_patients()
         self.load_admissions()
         self.load_icu_patients()
+        self.load_admitted_patient()
         self.load_inpatients()
         self.load_existing_departments()
         self.load_existing_wards()

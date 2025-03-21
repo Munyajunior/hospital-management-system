@@ -1,6 +1,6 @@
 import os
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,QApplication,
+    QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem, QApplication,
     QMessageBox, QComboBox, QTextEdit, QHBoxLayout, QHeaderView, QScrollArea, QFormLayout, QLineEdit, QListWidget
 )
 from utils.api_utils import fetch_data, post_data
@@ -20,6 +20,7 @@ class Prescriptions(QWidget):
         self.user_id = user_id
         self.token = token
         self.inventory = {}  # Store drug inventory
+        self.is_dark_theme = False  # Track theme state
         self.init_ui()
 
     def init_ui(self):
@@ -28,69 +29,25 @@ class Prescriptions(QWidget):
         screen_geometry = screen.availableGeometry()
         max_width = screen_geometry.width() * 0.8  # 80% of screen width
         max_height = screen_geometry.height() * 0.8  # 80% of screen height
-        
+
         self.resize(int(max_width), int(max_height))  # Set window size
         self.setMinimumSize(800, 600)  # Set a reasonable minimum size
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #f4f6f9;
-                font-family: 'Arial', sans-serif;
-            }
-            QLabel {
-                font-size: 18px;
-                font-weight: bold;
-                color: #2c3e50;
-                padding: 10px;
-            }
-            QTableWidget {
-                background-color: white;
-                border: 1px solid #dcdcdc;
-                font-size: 14px;
-                alternate-background-color: #f9f9f9;
-                border-radius: 10px;
-            }
-            QTableWidget::item {
-                padding: 8px;
-            }
-            QHeaderView::section {
-                background-color: #3498db;
-                color: white;
-                font-weight: bold;
-                padding: 10px;
-            }
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                padding: 10px;
-                font-size: 14px;
-                border-radius: 5px;
-                min-width: 120px;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            }
-            QPushButton:pressed {
-                background-color: #1e6fa7;
-            }
-            QComboBox, QTextEdit, QLineEdit, QListWidget {
-                background-color: white;
-                border: 1px solid #dcdcdc;
-                font-size: 14px;
-                padding: 8px;
-                border-radius: 5px;
-            }
-            QListWidget::item {
-                padding: 5px;
-            }
-        """)
 
-        layout = QVBoxLayout()
+        self.layout = QVBoxLayout()
+        self.layout.setSpacing(15)
+        self.layout.setContentsMargins(20, 20, 20, 20)
 
-        # Title Label
+        # Title and Theme Toggle
+        title_layout = QHBoxLayout()
         self.title_label = QLabel("Manage Prescriptions")
         self.title_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.title_label)
+        title_layout.addWidget(self.title_label)
+
+        # Theme Toggle Button
+        self.toggle_theme_button = QPushButton("🌙 Dark Theme")
+        self.toggle_theme_button.clicked.connect(self.toggle_theme)
+        title_layout.addWidget(self.toggle_theme_button)
+        self.layout.addLayout(title_layout)
 
         # Scrollable Prescription Table
         self.scroll_area = QScrollArea()
@@ -101,24 +58,24 @@ class Prescriptions(QWidget):
         self.prescription_table.setHorizontalHeaderLabels(["Patient", "Doctor", "Medication", "Dosage", "Instructions", "Status"])
         self.prescription_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.scroll_area.setWidget(self.prescription_table)
-        layout.addWidget(self.scroll_area)
+        self.layout.addWidget(self.scroll_area)
 
         # Patient Selection
         self.patient_dropdown = QComboBox()
         self.patient_dropdown.setPlaceholderText("Select a Patient")
         self.load_patients()
-        layout.addWidget(self.patient_dropdown)
+        self.layout.addWidget(self.patient_dropdown)
 
         # Search Bar for Drugs
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Search for a drug...")
         self.search_input.textChanged.connect(self.search_drugs)
-        layout.addWidget(self.search_input)
+        self.layout.addWidget(self.search_input)
 
         # List to Display Available Drugs
         self.drug_list = QListWidget()
         self.drug_list.itemClicked.connect(self.select_drug)
-        layout.addWidget(self.drug_list)
+        self.layout.addWidget(self.drug_list)
 
         # Medication Input Fields
         form_layout = QFormLayout()
@@ -136,7 +93,7 @@ class Prescriptions(QWidget):
         self.instructions_input.setPlaceholderText("Enter instructions...")
         form_layout.addRow("Instructions:", self.instructions_input)
 
-        layout.addLayout(form_layout)
+        self.layout.addLayout(form_layout)
 
         # Button Layout
         button_layout = QHBoxLayout()
@@ -149,12 +106,15 @@ class Prescriptions(QWidget):
         self.clear_button.clicked.connect(self.clear_fields)
         button_layout.addWidget(self.clear_button)
 
-        layout.addLayout(button_layout)
+        self.layout.addLayout(button_layout)
 
         self.load_inventory()  # Load available drugs
         self.load_prescriptions()
 
-        self.setLayout(layout)
+        # Apply the initial theme
+        self.apply_theme()
+
+        self.setLayout(self.layout)
 
     def load_patients(self):
         """Fetch and populate the dropdown with assigned patients."""
@@ -213,8 +173,19 @@ class Prescriptions(QWidget):
 
     def populate_table(self, prescriptions):
         """Fills the table with prescription data."""
-        self.prescription_table.setRowCount(len(prescriptions))
-        for row, prescription in enumerate(prescriptions):
+        self.prescription_table.setRowCount(0)  # Clear the table
+        self.prescription_table.insertRow(0)  # Insert a new row for the duplicate header
+
+        # Add the duplicate header at row 0
+        for col in range(self.prescription_table.columnCount()):
+            item = QTableWidgetItem(self.prescription_table.horizontalHeaderItem(col).text())
+            item.setBackground(Qt.gray)
+            item.setForeground(Qt.white)
+            self.prescription_table.setItem(0, col, item)
+
+        # Populate the table with data starting from row 1
+        for row, prescription in enumerate(prescriptions, start=1):
+            self.prescription_table.insertRow(row)
             self.prescription_table.setItem(row, 0, QTableWidgetItem(str(prescription["patient_id"])))
             self.prescription_table.setItem(row, 1, QTableWidgetItem(str(prescription["prescribed_by"])))
             self.prescription_table.setItem(row, 2, QTableWidgetItem(prescription["drug_name"]))
@@ -265,3 +236,95 @@ class Prescriptions(QWidget):
         self.instructions_input.clear()
         self.search_input.clear()
         self.update_drug_list()  # Reset the drug list
+
+    def toggle_theme(self):
+        """Toggles between light and dark themes."""
+        self.is_dark_theme = not self.is_dark_theme
+        self.apply_theme()
+
+    def apply_theme(self):
+        """Applies the current theme (light or dark)."""
+        if self.is_dark_theme:
+            self.setStyleSheet("""
+                QWidget {
+                    background-color: #2C3E50;
+                    color: #ECF0F1;
+                    font-family: 'Segoe UI', 'Arial', sans-serif;
+                    font-size: 14px;
+                }
+                QLabel {
+                    font-size: 18px;
+                    font-weight: bold;
+                    color: #ECF0F1;
+                }
+                QTableWidget {
+                    background-color: #34495E;
+                    color: #ECF0F1;
+                    alternate-background-color: #2C3E50;
+                    font-size: 14px;
+                }
+                QHeaderView::section {
+                    background-color: #007BFF;
+                    color: white;
+                    font-weight: bold;
+                    font-size: 14px;
+                }
+                QLineEdit, QComboBox, QTextEdit, QListWidget {
+                    background-color: #34495E;
+                    color: #ECF0F1;
+                    border: 1px solid #5D6D7E;
+                    font-size: 14px;
+                }
+                QPushButton {
+                    background-color: #007BFF;
+                    color: white;
+                    font-size: 14px;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background-color: #0056b3;
+                }
+            """)
+            self.toggle_theme_button.setText("☀️ Light Theme")
+        else:
+            self.setStyleSheet("""
+                QWidget {
+                    background-color: #F4F6F7;
+                    color: #2C3E50;
+                    font-family: 'Segoe UI', 'Arial', sans-serif;
+                    font-size: 14px;
+                }
+                QLabel {
+                    font-size: 18px;
+                    font-weight: bold;
+                    color: #2C3E50;
+                }
+                QTableWidget {
+                    background-color: white;
+                    color: #2C3E50;
+                    alternate-background-color: #F8F9F9;
+                    font-size: 14px;
+                }
+                QHeaderView::section {
+                    background-color: #007BFF;
+                    color: white;
+                    font-weight: bold;
+                    font-size: 14px;
+                }
+                QLineEdit, QComboBox, QTextEdit, QListWidget {
+                    background-color: white;
+                    color: #2C3E50;
+                    border: 1px solid #D5DBDB;
+                    font-size: 14px;
+                }
+                QPushButton {
+                    background-color: #007BFF;
+                    color: white;
+                    font-size: 14px;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background-color: #0056b3;
+                }
+            """)
+            self.toggle_theme_button.setText("🌙 Dark Theme")

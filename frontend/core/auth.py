@@ -19,11 +19,14 @@ class AuthHandler:
                 role = result.get("role")
                 user_id = str(result.get("sub"))
                 
-                #self.save_token(token, role, user_id)
                 return True, "Login successful!", role, user_id, token
-            return False, "Invalid credentials. Please try again.", None
-        except requests.exceptions.RequestException:
-            return False, "Unable to connect to the server.", None
+            elif response.status_code == 401:
+                # Handle invalid credentials
+                return False, "Invalid credentials. Please try again.", None, None, None
+            else:
+                return False, "An error occurred. Please try again later.", None, None, None
+        except requests.exceptions.RequestException as e:
+            return False, f"Unable to connect to the server: {str(e)}", None, None, None
 
     def save_token(self, token, role, user_id):
         with open("auth_token.txt", "w") as file:

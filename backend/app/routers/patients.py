@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from schemas.patients import PatientCreate, PatientCreateResponse, PatientResponse, PatientUpdate
+from schemas.admission import AdmissionCategory
 from models.patient import Patient
 from models.user import User
 from models.admission import PatientAdmission, Bed
@@ -16,7 +17,7 @@ staff_only = RoleChecker(["admin", "nurse", "receptionist"])
 doctor_or_nurse = RoleChecker(["doctor", "nurse", "admin"])
 
 @router.post("/", response_model=PatientCreateResponse)
-def create_patient(patient: PatientCreate, db: Session = Depends(get_db), current_user: User = Depends(staff_only)):
+async def create_patient(patient: PatientCreate, db: Session = Depends(get_db), current_user: User = Depends(staff_only)):
     # Check if the email is already registered
     existing_user = db.query(Patient).filter(Patient.email == patient.email).first()
     if existing_user:
@@ -48,7 +49,7 @@ def create_patient(patient: PatientCreate, db: Session = Depends(get_db), curren
         # Create an admission record
         admission_data = {
             "patient_id": new_patient.id,
-            "category": "inpatient",
+            "category": AdmissionCategory.INPATIENT,
             "bed_id": bed.id,
             "assigned_doctor_id": patient.assigned_doctor_id,
             "admitted_by": current_user.id
@@ -61,10 +62,9 @@ def create_patient(patient: PatientCreate, db: Session = Depends(get_db), curren
         db.commit()
 
     # Send the generated password to the patient's email
-    email_sent = send_password_email(new_patient.email, password)
+    email_sent = await send_password_email(new_patient.email, password)
     if not email_sent:
-        # Log the error but do not fail the registration
-        print("Failed to send password email to patient.")
+        raise HTTPException(status_code=500, detail="Failed to send password to email")
 
     return {**new_patient.__dict__, "password": password}
 

@@ -2,14 +2,14 @@ from sqlalchemy import Column, Integer, String, ForeignKey, Enum, DateTime, Bool
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from core.database import Base
-import enum
+from enum import Enum as PyEnum
 
-class AdmissionCategory(str, enum.Enum):
+class AdmissionCategory(str, PyEnum):
     OUTPATIENT = "Outpatient"
     INPATIENT = "Inpatient"
     ICU = "ICU"
 
-class AdmissionStatus(str, enum.Enum):
+class AdmissionStatus(str, PyEnum):
     ADMITTED = "Admitted"
     STABLE = "Stable"
     CRITICAL = "Critical"

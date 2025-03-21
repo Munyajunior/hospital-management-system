@@ -4,9 +4,9 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
     QMessageBox, QComboBox, QLineEdit, QFormLayout, QHeaderView, QHBoxLayout, QApplication
 )
-from utils.api_utils import fetch_data, post_data
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QColor
+from utils.api_utils import fetch_data, post_data
 
 
 class Scans(QWidget):
@@ -21,13 +21,15 @@ class Scans(QWidget):
         self.user_role = user_role
         self.user_id = user_id
         self.token = token
+        self.current_theme = "light"  # Default theme
+
         if self.user_role in ["doctor", "admin"]:
             self.setWindowTitle("Scan Request")
             screen = QApplication.primaryScreen()
             screen_geometry = screen.availableGeometry()
             max_width = screen_geometry.width() * 0.8  # 80% of screen width
             max_height = screen_geometry.height() * 0.8  # 80% of screen height
-            
+
             self.resize(int(max_width), int(max_height))  # Set window size
             self.setMinimumSize(900, 600)  # Set a reasonable minimum size
             self.init_ui()
@@ -36,26 +38,7 @@ class Scans(QWidget):
             return
 
     def init_ui(self):
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #F4F6F7;
-                font-family: Arial, sans-serif;
-            }
-            QLabel {
-                font-size: 18px;
-                font-weight: bold;
-                color: #2C3E50;
-                padding: 10px;
-            }
-            QComboBox, QLineEdit {
-                background-color: white;
-                border: 1px solid #D5DBDB;
-                font-size: 14px;
-                padding: 8px;
-                border-radius: 5px;
-            }
-        """)
-
+        """Initialize UI elements with enhanced styling."""
         layout = QVBoxLayout()
         layout.setSpacing(15)
         layout.setContentsMargins(20, 20, 20, 20)
@@ -71,21 +54,19 @@ class Scans(QWidget):
         """)
         layout.addWidget(self.title_label)
 
-        # Search Bar
+        # Search Bar and Theme Toggle
         search_layout = QHBoxLayout()
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("🔍 Search by Patient ID, Scan Type, or Status...")
-        self.search_input.setStyleSheet("""
-            QLineEdit {
-                background-color: white;
-                border: 1px solid #D5DBDB;
-                border-radius: 5px;
-                padding: 8px;
-                font-size: 14px;
-            }
-        """)
         self.search_input.textChanged.connect(self.filter_scans)
         search_layout.addWidget(self.search_input)
+
+        # Theme Toggle Button
+        self.theme_toggle_button = QPushButton("🌙 Toggle Theme")
+        self.theme_toggle_button.setStyleSheet(self.button_style())
+        self.theme_toggle_button.clicked.connect(self.toggle_theme)
+        search_layout.addWidget(self.theme_toggle_button)
+
         layout.addLayout(search_layout)
 
         # Scan Requests Table
@@ -94,25 +75,7 @@ class Scans(QWidget):
         self.scan_table.setHorizontalHeaderLabels(["Patient", "Doctor", "Scan Type", "Status", "Results", "Additional Notes"])
         self.scan_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.scan_table.setAlternatingRowColors(True)
-        self.scan_table.setStyleSheet("""
-            QTableWidget {
-                background-color: white;
-                border: 1px solid #D5DBDB;
-                font-size: 14px;
-                alternate-background-color: #F8F9F9;
-                border-radius: 5px;
-            }
-            QHeaderView::section {
-                background-color: #007BFF;
-                color: white;
-                font-weight: bold;
-                padding: 10px;
-                border: none;
-            }
-            QTableWidget::item {
-                padding: 8px;
-            }
-        """)
+        self.add_placeholder_header()  # Add placeholder header row
         layout.addWidget(self.scan_table)
 
         # Form Layout for Scan Request
@@ -151,6 +114,102 @@ class Scans(QWidget):
 
         self.load_scan_requests()
         self.setLayout(layout)
+        self.apply_theme(self.current_theme)  # Apply default theme
+
+    def add_placeholder_header(self):
+        """Add a placeholder row to simulate a duplicated header."""
+        self.scan_table.insertRow(0)  # Insert a new row at the top
+        for col in range(self.scan_table.columnCount()):
+            header_text = self.scan_table.horizontalHeaderItem(col).text()  # Get header text
+            item = QTableWidgetItem(header_text)  # Create a QTableWidgetItem with the header text
+            item.setFlags(Qt.NoItemFlags)  # Make the placeholder row non-editable
+            item.setBackground(QColor("#007BFF"))  # Set background color to match the header
+            item.setForeground(QColor("white"))  # Set text color to white
+            self.scan_table.setItem(0, col, item)  # Add the item to the table
+
+    def apply_theme(self, theme):
+        """Apply light or dark theme to the application."""
+        self.current_theme = theme
+        if theme == "dark":
+            self.setStyleSheet("""
+                QWidget {
+                    background-color: #2C3E50;
+                    color: #ECF0F1;
+                }
+                QLabel {
+                    font-size: 18px;
+                    font-weight: bold;
+                    color: #ECF0F1;
+                    padding: 10px;
+                }
+                QLineEdit, QComboBox {
+                    background-color: #34495E;
+                    color: #ECF0F1;
+                    border: 1px solid #555;
+                    font-size: 14px;
+                    padding: 8px;
+                    border-radius: 5px;
+                }
+                QTableWidget {
+                    background-color: #34495E;
+                    color: #ECF0F1;
+                    alternate-background-color: #2C3E50;
+                    border: 1px solid #555;
+                    border-radius: 5px;
+                }
+                QHeaderView::section {
+                    background-color: #007BFF;
+                    color: white;
+                    font-weight: bold;
+                    padding: 10px;
+                    border: none;
+                }
+                QTableWidget::item {
+                    padding: 8px;
+                }
+            """)
+        else:
+            self.setStyleSheet("""
+                QWidget {
+                    background-color: #F4F6F7;
+                    font-family: Arial, sans-serif;
+                }
+                QLabel {
+                    font-size: 18px;
+                    font-weight: bold;
+                    color: #2C3E50;
+                    padding: 10px;
+                }
+                QLineEdit, QComboBox {
+                    background-color: white;
+                    border: 1px solid #D5DBDB;
+                    font-size: 14px;
+                    padding: 8px;
+                    border-radius: 5px;
+                }
+                QTableWidget {
+                    background-color: white;
+                    border: 1px solid #D5DBDB;
+                    font-size: 14px;
+                    alternate-background-color: #F8F9F9;
+                    border-radius: 5px;
+                }
+                QHeaderView::section {
+                    background-color: #007BFF;
+                    color: white;
+                    font-weight: bold;
+                    padding: 10px;
+                    border: none;
+                }
+                QTableWidget::item {
+                    padding: 8px;
+                }
+            """)
+
+    def toggle_theme(self):
+        """Toggle between light and dark themes."""
+        new_theme = "dark" if self.current_theme == "light" else "light"
+        self.apply_theme(new_theme)
 
     def button_style(self):
         """Return CSS for the buttons."""
@@ -193,15 +252,18 @@ class Scans(QWidget):
 
     def populate_table(self, scans):
         """Fills the table with scan data."""
-        self.scan_table.setRowCount(len(scans))
+        self.scan_table.setRowCount(0)  # Clear existing data
+        self.add_placeholder_header()  # Add placeholder header row
+
         for row, scan in enumerate(scans):
-            self.scan_table.setItem(row, 0, QTableWidgetItem(str(scan["patient_id"])))
-            self.scan_table.setItem(row, 1, QTableWidgetItem(str(scan["requested_by"])))
-            self.scan_table.setItem(row, 2, QTableWidgetItem(scan["scan_type"]))
-            self.scan_table.setItem(row, 3, QTableWidgetItem(scan["status"]))
+            self.scan_table.insertRow(row + 1)  # Insert rows below the placeholder header
+            self.scan_table.setItem(row + 1, 0, QTableWidgetItem(str(scan["patient_id"])))
+            self.scan_table.setItem(row + 1, 1, QTableWidgetItem(str(scan["requested_by"])))
+            self.scan_table.setItem(row + 1, 2, QTableWidgetItem(scan["scan_type"]))
+            self.scan_table.setItem(row + 1, 3, QTableWidgetItem(scan["status"]))
             if scan["status"] == "Completed":
-                self.scan_table.setItem(row, 4, QTableWidgetItem(scan["results"]))
-                self.scan_table.setItem(row, 5, QTableWidgetItem(scan["additional_notes"]))
+                self.scan_table.setItem(row + 1, 4, QTableWidgetItem(scan["results"]))
+                self.scan_table.setItem(row + 1, 5, QTableWidgetItem(scan["additional_notes"]))
 
     def filter_scans(self):
         """Filters scan requests based on the search query."""

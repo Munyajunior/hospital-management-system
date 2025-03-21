@@ -13,8 +13,12 @@ def fetch_data(self, api_url, auth_token=None, params=None):
             return response.json()
         elif response.status_code == 403:
                 QMessageBox.critical(self,"Error", f"Access forbidden. You don't have permission. {response.text}")
+                self.close()
+                return
         elif response.status_code == 401:
                 QMessageBox.critical(self,"Error", f"Unauthorized. Please log in again.\n {response.text}")
+                self.close()
+                return
         else:
                 QMessageBox.critical(self,"Error", f"Failed to fetch data. Error {response.text}")
     except Exception as e:
@@ -33,8 +37,12 @@ def post_data(self, api_url, data, auth_token=None):
             return response.json()
         elif response.status_code == 403:
                 QMessageBox.critical(self,"Error", f"Access forbidden. You don't have permission. {response.text}")
+                self.close()
+                return
         elif response.status_code == 401:
                 QMessageBox.critical(self,"Error", f"Unauthorized. Please log in again.\n {response.text}")
+                self.close()
+                return
         else:
             QMessageBox.critical(self, "Error", f"Failed to post data {response.text}")
             return False
@@ -52,9 +60,12 @@ def update_data(self, api_url, data, auth_token=None):
             return response.json()
         elif response.status_code == 403:
                 QMessageBox.critical(self,"Error", f"Access forbidden. You don't have permission. {response.text}")
+                self.close()
+                return
         elif response.status_code == 401:
                 QMessageBox.critical(self,"Error", f"Unauthorized. Please log in again.\n {response.text}")
                 self.close()
+                return
         else:
             QMessageBox.critical(self, "Error", f"Failed to update data {response.text}")
             return False
@@ -74,8 +85,12 @@ def delete_data(self, api_url, auth_token=None, params=None):
             return True 
         elif response.status_code == 403:
             QMessageBox.critical(self, "Error", f"Access forbidden. You don't have permission. {response.text}")
+            self.close()
+            return
         elif response.status_code == 401:
             QMessageBox.critical(self,"Error", f"Unauthorized. Please log in again.\n {response.text}")
+            self.close()
+            return
         else:
             QMessageBox.critical(self, "Error", f"Failed to delete data. Error {response.text}")
         return False

@@ -90,7 +90,6 @@ class ForgotPasswordPage(QWidget):
                 os.getenv("FORGOT_PASSWORD_RESET_URL"),
                 json={"email": email}
             )
-            print(response.status_code, response.text) #Debugging Line
 
             if response.status_code == 200:
                 QMessageBox.information(self, "Success", "A reset link has been sent to your email.")

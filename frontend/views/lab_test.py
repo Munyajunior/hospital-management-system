@@ -1,11 +1,10 @@
 import os
-import requests
-from PySide6.QtWidgets import (QApplication,
-    QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
+from PySide6.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
     QMessageBox, QComboBox, QLineEdit, QTextEdit, QHeaderView, QFormLayout, QHBoxLayout
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QColor
 from utils.api_utils import fetch_data, post_data
 
 
@@ -21,12 +20,13 @@ class LabTests(QWidget):
         self.user_role = user_role
         self.user_id = user_id
         self.token = token
+        self.current_theme = "light"  # Default theme
         if self.user_role in ["doctor", "admin"]:
             screen = QApplication.primaryScreen()
             screen_geometry = screen.availableGeometry()
             max_width = screen_geometry.width() * 0.8  # 80% of screen width
             max_height = screen_geometry.height() * 0.8  # 80% of screen height
-            
+
             self.resize(int(max_width), int(max_height))  # Set window size
             self.setMinimumSize(900, 600)  # Set a reasonable minimum size
             self.init_ui()
@@ -36,25 +36,7 @@ class LabTests(QWidget):
 
     def init_ui(self):
         self.setWindowTitle("Request Lab Test")
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #F4F6F7;
-                font-family: Arial, sans-serif;
-            }
-            QLabel {
-                font-size: 18px;
-                font-weight: bold;
-                color: #2C3E50;
-                padding: 10px;
-            }
-            QComboBox, QLineEdit, QTextEdit {
-                background-color: white;
-                border: 1px solid #D5DBDB;
-                font-size: 14px;
-                padding: 8px;
-                border-radius: 5px;
-            }
-        """)
+        self.apply_theme(self.current_theme)  # Apply default theme
 
         layout = QVBoxLayout()
         layout.setSpacing(15)
@@ -75,17 +57,15 @@ class LabTests(QWidget):
         search_layout = QHBoxLayout()
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("🔍 Search by Patient ID, Test Type, or Status...")
-        self.search_input.setStyleSheet("""
-            QLineEdit {
-                background-color: white;
-                border: 1px solid #D5DBDB;
-                border-radius: 5px;
-                padding: 8px;
-                font-size: 14px;
-            }
-        """)
         self.search_input.textChanged.connect(self.filter_lab_tests)
         search_layout.addWidget(self.search_input)
+
+        # Theme Toggle Button
+        self.theme_toggle_button = QPushButton("🌙 Toggle Theme")
+        self.theme_toggle_button.setStyleSheet(self.button_style())
+        self.theme_toggle_button.clicked.connect(self.toggle_theme)
+        search_layout.addWidget(self.theme_toggle_button)
+
         layout.addLayout(search_layout)
 
         # Lab Test Requests Table
@@ -93,25 +73,7 @@ class LabTests(QWidget):
         self.lab_test_table.setColumnCount(5)
         self.lab_test_table.setHorizontalHeaderLabels(["Patient", "Doctor", "Test Type", "Status", "Additional Notes"])
         self.lab_test_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.lab_test_table.setStyleSheet("""
-            QTableWidget {
-                background-color: white;
-                border: 1px solid #D5DBDB;
-                font-size: 14px;
-                alternate-background-color: #F8F9F9;
-                border-radius: 5px;
-            }
-            QHeaderView::section {
-                background-color: #007BFF;
-                color: white;
-                font-weight: bold;
-                padding: 10px;
-                border: none;
-            }
-            QTableWidget::item {
-                padding: 8px;
-            }
-        """)
+        self.add_placeholder_header()  # Add placeholder header row
         layout.addWidget(self.lab_test_table)
 
         # Form Layout for Lab Test Request
@@ -156,6 +118,102 @@ class LabTests(QWidget):
         self.load_lab_tests()
         self.setLayout(layout)
 
+    def add_placeholder_header(self):
+        """Add a placeholder row to simulate a duplicated header."""
+        self.lab_test_table.insertRow(0)  # Insert a new row at the top
+        for col in range(self.lab_test_table.columnCount()):
+            header_text = self.lab_test_table.horizontalHeaderItem(col).text()  # Get header text
+            item = QTableWidgetItem(header_text)  # Create a QTableWidgetItem with the header text
+            item.setFlags(Qt.NoItemFlags)  # Make the placeholder row non-editable
+            item.setBackground(QColor("#007BFF"))  # Set background color to match the header
+            item.setForeground(QColor("white"))  # Set text color to white
+            self.lab_test_table.setItem(0, col, item)  # Add the item to the table
+
+    def apply_theme(self, theme):
+        """Apply light or dark theme to the application."""
+        self.current_theme = theme
+        if theme == "dark":
+            self.setStyleSheet("""
+                QWidget {
+                    background-color: #2C3E50;
+                    color: #ECF0F1;
+                }
+                QLabel {
+                    font-size: 18px;
+                    font-weight: bold;
+                    background-color: #2C3E50;
+                    color: #ECF0F1;
+                    padding: 10px;
+                }
+                QLineEdit, QTextEdit, QComboBox {
+                    background-color: #34495E;
+                    color: #ECF0F1;
+                    border: 1px solid #555;
+                    font-size: 14px;
+                    padding: 8px;
+                    border-radius: 5px;
+                }
+                QTableWidget {
+                    background-color: #34495E;
+                    color: #ECF0F1;
+                    alternate-background-color: #2C3E50;
+                    border: 1px solid #555;
+                    border-radius: 5px;
+                }
+                QHeaderView::section {
+                    background-color: #007BFF;
+                    color: white;
+                    font-weight: bold;
+                    padding: 10px;
+                    border: none;
+                }
+                QTableWidget::item {
+                    padding: 8px;
+                }
+            """)
+        else:
+            self.setStyleSheet("""
+                QWidget {
+                    background-color: #F4F6F7;
+                    font-family: Arial, sans-serif;
+                }
+                QLabel {
+                    font-size: 18px;
+                    font-weight: bold;
+                    color: #2C3E50;
+                    padding: 10px;
+                }
+                QLineEdit, QTextEdit, QComboBox {
+                    background-color: white;
+                    border: 1px solid #D5DBDB;
+                    font-size: 14px;
+                    padding: 8px;
+                    border-radius: 5px;
+                }
+                QTableWidget {
+                    background-color: white;
+                    border: 1px solid #D5DBDB;
+                    font-size: 14px;
+                    alternate-background-color: #F8F9F9;
+                    border-radius: 5px;
+                }
+                QHeaderView::section {
+                    background-color: #007BFF;
+                    color: white;
+                    font-weight: bold;
+                    padding: 10px;
+                    border: none;
+                }
+                QTableWidget::item {
+                    padding: 8px;
+                }
+            """)
+
+    def toggle_theme(self):
+        """Toggle between light and dark themes."""
+        new_theme = "dark" if self.current_theme == "light" else "light"
+        self.apply_theme(new_theme)
+
     def button_style(self):
         """Return CSS for the buttons."""
         return """
@@ -195,13 +253,16 @@ class LabTests(QWidget):
 
     def populate_table(self, lab_tests):
         """Fills the table with lab test data."""
-        self.lab_test_table.setRowCount(len(lab_tests))
+        self.lab_test_table.setRowCount(0)  # Clear existing data
+        self.add_placeholder_header()  # Add placeholder header row
+
         for row, lab_test in enumerate(lab_tests):
-            self.lab_test_table.setItem(row, 0, QTableWidgetItem(str(lab_test["patient_id"])))
-            self.lab_test_table.setItem(row, 1, QTableWidgetItem(str(lab_test["requested_by"])))
-            self.lab_test_table.setItem(row, 2, QTableWidgetItem(lab_test["test_type"]))
-            self.lab_test_table.setItem(row, 3, QTableWidgetItem(lab_test["status"]))
-            self.lab_test_table.setItem(row, 4, QTableWidgetItem(lab_test.get("additional_notes", "")))
+            self.lab_test_table.insertRow(row + 1)  # Insert rows below the placeholder header
+            self.lab_test_table.setItem(row + 1, 0, QTableWidgetItem(str(lab_test["patient_id"])))
+            self.lab_test_table.setItem(row + 1, 1, QTableWidgetItem(str(lab_test["requested_by"])))
+            self.lab_test_table.setItem(row + 1, 2, QTableWidgetItem(lab_test["test_type"]))
+            self.lab_test_table.setItem(row + 1, 3, QTableWidgetItem(lab_test["status"]))
+            self.lab_test_table.setItem(row + 1, 4, QTableWidgetItem(lab_test.get("additional_notes", "")))
 
     def filter_lab_tests(self):
         """Filters lab test requests based on the search query."""

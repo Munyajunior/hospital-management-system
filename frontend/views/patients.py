@@ -3,7 +3,7 @@ import requests
 from PySide6.QtWidgets import (QApplication,
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTableWidget,
     QTableWidgetItem, QMessageBox, QLineEdit, QComboBox, QInputDialog,
-    QDateEdit, QCheckBox
+    QDateEdit, QCheckBox, QHeaderView
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
@@ -113,6 +113,7 @@ class PatientManagement(QWidget):
         self.patient_table.horizontalHeader().setStretchLastSection(True)
         self.patient_table.setAlternatingRowColors(True)
         main_layout.addWidget(self.patient_table, stretch=1)
+        self.duplicate_header()
 
         # Buttons Layout
         button_layout = QHBoxLayout()
@@ -153,12 +154,30 @@ class PatientManagement(QWidget):
         api_url = os.getenv("DOCTOR_LIST_URL")
         doctors = fetch_data(self, api_url, self.token)
         self.doctor_dict = {doctor["id"]: doctor["full_name"] for doctor in doctors} if doctors else {}
+        
+    def duplicate_header(self):
+        """Adds a duplicate header at the bottom of the table."""
+        self.patient_table.setRowCount(self.patient_table.rowCount() + 1)
+        for col in range(self.patient_table.columnCount()):
+            item = QTableWidgetItem(self.patient_table.horizontalHeaderItem(col).text())
+            item.setBackground(Qt.gray)
+            item.setForeground(Qt.white)
+            self.patient_table.setItem(self.patient_table.rowCount() - 1, col, item)
 
     def populate_table(self, patients):
         """Populate table with patient data, displaying doctor names instead of just IDs"""
-        self.patient_table.setRowCount(len(patients))
+        self.patient_table.setRowCount(0)  # Clear all rows
+        self.patient_table.insertRow(0)  # Insert a new row at the top for the duplicate header
 
-        for row, patient in enumerate(patients):
+        # Add the duplicate header at row 0
+        for col in range(self.patient_table.columnCount()):
+            item = QTableWidgetItem(self.patient_table.horizontalHeaderItem(col).text())
+            item.setBackground(Qt.gray)
+            item.setForeground(Qt.white)
+            self.patient_table.setItem(0, col, item)
+
+        for row, patient in enumerate(patients, start=1):
+            self.patient_table.insertRow(row)
             self.patient_table.setItem(row, 0, QTableWidgetItem(str(patient["id"])))
             self.patient_table.setItem(row, 1, QTableWidgetItem(patient["full_name"]))
             self.patient_table.setItem(row, 2, QTableWidgetItem(str(patient["date_of_birth"])))
@@ -326,9 +345,7 @@ class PatientRegistrationForm(QWidget):
         if doctors:
             for doctor in doctors:
                 self.doctor_input.addItem(f"{doctor['full_name']} (ID: {doctor['id']})", doctor["id"])
-        # else:
-        #     QMessageBox.warning(self, "Warning", "No doctors found or failed to fetch doctor data.")
-        # return
+       
 
         
 
