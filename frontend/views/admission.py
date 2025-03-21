@@ -350,6 +350,7 @@ class AdmissionManagement(QMainWindow):
             "Patient", "Status", "Condition Evolution", "Medications", "Drips", "Treatment Plan", "Updated By", "Updated At"
         ])
         self.icu_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.icu_table.setMinimumHeight(200)
         self.icu_table.horizontalHeader().setStretchLastSection(True)
         self.icu_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.icu_table.horizontalHeader().setTextElideMode(Qt.ElideRight)
@@ -436,6 +437,7 @@ class AdmissionManagement(QMainWindow):
             "Patient", "Status", "Condition Evolution", "Medications", "Treatment Plan", "Updated By", "Updated At"
         ])
         self.inpatient_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.inpatient_table.setMinimumHeight(200)
         self.inpatient_table.horizontalHeader().setStretchLastSection(True)
         self.inpatient_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.inpatient_table.horizontalHeader().setTextElideMode(Qt.ElideRight)
@@ -594,6 +596,7 @@ class AdmissionManagement(QMainWindow):
         self.existing_department_table.setColumnCount(3)
         self.existing_department_table.setHorizontalHeaderLabels(["ID", "Name", "Category"])
         self.existing_department_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.existing_department_table.setMinimumHeight(200)
         self.existing_department_table.horizontalHeader().setStretchLastSection(True)
         self.existing_department_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.existing_department_table.horizontalHeader().setTextElideMode(Qt.ElideRight)
@@ -619,6 +622,8 @@ class AdmissionManagement(QMainWindow):
         refresh_button.clicked.connect(self.load_existing_departments)
         table_layout.addWidget(refresh_button)
 
+        self.load_existing_departments()
+        
         table_group.setLayout(table_layout)
         layout.addWidget(table_group)
 
@@ -662,6 +667,7 @@ class AdmissionManagement(QMainWindow):
         self.existing_ward_table.setColumnCount(3)
         self.existing_ward_table.setHorizontalHeaderLabels(["ID", "Name", "Department"])
         self.existing_ward_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.existing_ward_table.setMinimumHeight(200)
         self.existing_ward_table.horizontalHeader().setStretchLastSection(True)
         self.existing_ward_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.existing_ward_table.horizontalHeader().setTextElideMode(Qt.ElideRight)
@@ -690,6 +696,8 @@ class AdmissionManagement(QMainWindow):
         table_group.setLayout(table_layout)
         layout.addWidget(table_group)
 
+        self.load_existing_wards()
+        
         self.ward_tab.setLayout(QVBoxLayout())
         self.ward_tab.layout().addWidget(scroll_area)
 
@@ -730,6 +738,7 @@ class AdmissionManagement(QMainWindow):
         self.existing_bed_table.setColumnCount(3)
         self.existing_bed_table.setHorizontalHeaderLabels(["ID", "Bed Number", "Ward"])
         self.existing_bed_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.existing_bed_table.setMinimumHeight(200)
         self.existing_bed_table.horizontalHeader().setStretchLastSection(True)
         self.existing_bed_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.existing_bed_table.horizontalHeader().setTextElideMode(Qt.ElideRight)
@@ -758,6 +767,8 @@ class AdmissionManagement(QMainWindow):
         table_group.setLayout(table_layout)
         layout.addWidget(table_group)
 
+        self.load_existing_beds()
+        
         self.bed_tab.setLayout(QVBoxLayout())
         self.bed_tab.layout().addWidget(scroll_area)
 
@@ -907,18 +918,28 @@ class AdmissionManagement(QMainWindow):
 
     def populate_icu_table(self, icu_patients):
         """Populates the ICU table with fetched data."""
-        if icu_patients:
-            self.icu_table.setRowCount(len(icu_patients))
-            for row, patient in enumerate(icu_patients):
-                self.icu_table.setItem(row, 0, QTableWidgetItem(patient["patient_name"]))
-                self.icu_table.setItem(row, 1, QTableWidgetItem(patient["status"]))
-                self.icu_table.setItem(row, 2, QTableWidgetItem(patient["condition_evolution"]))
-                self.icu_table.setItem(row, 3, QTableWidgetItem(patient["medications"]))
-                self.icu_table.setItem(row, 4, QTableWidgetItem(patient["drips"]))
-                self.icu_table.setItem(row, 5, QTableWidgetItem(patient["treatment_plan"]))
-                self.icu_table.setItem(row, 6, QTableWidgetItem(patient["updated_by"]))
-                self.icu_table.setItem(row, 7, QTableWidgetItem(patient["updated_at"]))
-            self.icu_table.resizeColumnsToContents()
+        self.icu_table.setRowCount(0)
+        self.icu_table.insertRow(0)
+        
+        # Add duplicate header at the top
+        for col in range(self.icu_table.columnCount()):
+            item = QTableWidgetItem(self.icu_table.horizontalHeaderItem(col).text())
+            item.setBackground(Qt.gray)
+            item.setForeground(Qt.white)
+            self.icu_table.setItem(0, col, item)
+        
+        # Populate the table with data
+        for row, patient in enumerate(icu_patients, start=1):
+            self.icu_table.insertRow(row)
+            self.icu_table.setItem(row, 0, QTableWidgetItem(patient["patient_name"]))
+            self.icu_table.setItem(row, 1, QTableWidgetItem(patient["status"]))
+            self.icu_table.setItem(row, 2, QTableWidgetItem(patient["condition_evolution"]))
+            self.icu_table.setItem(row, 3, QTableWidgetItem(patient["medications"]))
+            self.icu_table.setItem(row, 4, QTableWidgetItem(patient["drips"]))
+            self.icu_table.setItem(row, 5, QTableWidgetItem(patient["treatment_plan"]))
+            self.icu_table.setItem(row, 6, QTableWidgetItem(patient["updated_by"]))
+            self.icu_table.setItem(row, 7, QTableWidgetItem(patient["updated_at"]))
+        self.icu_table.resizeColumnsToContents()
 
     def populate_admitted_table(self, admitted_patients):
         """Populates the admitted patients table with fetched data, including names for IDs."""
@@ -973,17 +994,27 @@ class AdmissionManagement(QMainWindow):
 
     def populate_inpatient_table(self, inpatients):
         """Populates the Inpatient table with fetched data."""
-        if inpatients:
-            self.inpatient_table.setRowCount(len(inpatients))
-            for row, patient in enumerate(inpatients):
-                self.inpatient_table.setItem(row, 0, QTableWidgetItem(patient["patient_name"]))
-                self.inpatient_table.setItem(row, 1, QTableWidgetItem(patient["status"]))
-                self.inpatient_table.setItem(row, 2, QTableWidgetItem(patient["condition_evolution"]))
-                self.inpatient_table.setItem(row, 3, QTableWidgetItem(patient["medications"]))
-                self.inpatient_table.setItem(row, 4, QTableWidgetItem(patient["treatment_plan"]))
-                self.inpatient_table.setItem(row, 5, QTableWidgetItem(patient["updated_by"]))
-                self.inpatient_table.setItem(row, 6, QTableWidgetItem(patient["updated_at"]))
-            self.inpatient_table.resizeColumnsToContents()
+        self.inpatient_table.setRowCount(0)
+        self.inpatient_table.insertRow(0)
+        
+        # Add duplicate header at the top
+        for col in range(self.inpatient_table.columnCount()):
+            item = QTableWidgetItem(self.inpatient_table.horizontalHeaderItem(col).text())
+            item.setBackground(Qt.gray)
+            item.setForeground(Qt.white)
+            self.inpatient_table.setItem(0, col, item)
+        
+        # Populate the table with data
+        for row, patient in enumerate(inpatients, start=1):
+            self.inpatient_table.insertRow(row)
+            self.inpatient_table.setItem(row, 0, QTableWidgetItem(patient["patient_name"]))
+            self.inpatient_table.setItem(row, 1, QTableWidgetItem(patient["status"]))
+            self.inpatient_table.setItem(row, 2, QTableWidgetItem(patient["condition_evolution"]))
+            self.inpatient_table.setItem(row, 3, QTableWidgetItem(patient["medications"]))
+            self.inpatient_table.setItem(row, 4, QTableWidgetItem(patient["treatment_plan"]))
+            self.inpatient_table.setItem(row, 5, QTableWidgetItem(patient["updated_by"]))
+            self.inpatient_table.setItem(row, 6, QTableWidgetItem(patient["updated_at"]))
+        self.inpatient_table.resizeColumnsToContents()
 
     def load_departments(self):
         """Fetches and populates the dropdown with departments."""
@@ -1106,13 +1137,23 @@ class AdmissionManagement(QMainWindow):
 
     def populate_existing_departments(self, departments):
         """Populates the existing department table with fetched data."""
-        if departments:
-            self.existing_department_table.setRowCount(len(departments))
-            for row, department in enumerate(departments):
-                self.existing_department_table.setItem(row, 0, QTableWidgetItem(str(department["id"])))
-                self.existing_department_table.setItem(row, 1, QTableWidgetItem(department["name"]))
-                self.existing_department_table.setItem(row, 2, QTableWidgetItem(department["category"]))
-            self.existing_department_table.resizeColumnsToContents()
+        self.existing_department_table.setRowCount(0)
+        self.existing_department_table.insertRow(0)
+        
+        # Add duplicate header at the top
+        for col in range(self.existing_department_table.columnCount()):
+            item = QTableWidgetItem(self.existing_department_table.horizontalHeaderItem(col).text())
+            item.setBackground(Qt.gray)
+            item.setForeground(Qt.white)
+            self.existing_department_table.setItem(0, col, item)
+        
+        # Populate the table with data
+        for row, department in enumerate(departments, start=1):
+            self.existing_department_table.insertRow(row)
+            self.existing_department_table.setItem(row, 0, QTableWidgetItem(str(department["id"])))
+            self.existing_department_table.setItem(row, 1, QTableWidgetItem(department["name"]))
+            self.existing_department_table.setItem(row, 2, QTableWidgetItem(department["category"]))
+        self.existing_department_table.resizeColumnsToContents()
 
     def load_existing_wards(self):
         """Fetches and displays existing wards."""
@@ -1124,13 +1165,23 @@ class AdmissionManagement(QMainWindow):
 
     def populate_existing_wards(self, wards):
         """Populates the existing ward table with fetched data."""
-        if wards:
-            self.existing_ward_table.setRowCount(len(wards))
-            for row, ward in enumerate(wards):
-                self.existing_ward_table.setItem(row, 0, QTableWidgetItem(str(ward["id"])))
-                self.existing_ward_table.setItem(row, 1, QTableWidgetItem(ward["name"]))
-                self.existing_ward_table.setItem(row, 2, QTableWidgetItem(str(ward["department_id"])))
-            self.existing_ward_table.resizeColumnsToContents()
+        self.existing_ward_table.setRowCount(0)
+        self.existing_ward_table.insertRow(0)
+        
+        # Add duplicate header at the top
+        for col in range(self.existing_ward_table.columnCount()):
+            item = QTableWidgetItem(self.existing_ward_table.horizontalHeaderItem(col).text())
+            item.setBackground(Qt.gray)
+            item.setForeground(Qt.white)
+            self.existing_ward_table.setItem(0, col, item)
+        
+        # Populate the table with data
+        for row, ward in enumerate(wards, start=1):
+            self.existing_ward_table.insertRow(row)
+            self.existing_ward_table.setItem(row, 0, QTableWidgetItem(str(ward["id"])))
+            self.existing_ward_table.setItem(row, 1, QTableWidgetItem(ward["name"]))
+            self.existing_ward_table.setItem(row, 2, QTableWidgetItem(str(ward["department_id"])))
+        self.existing_ward_table.resizeColumnsToContents()
 
     def load_existing_beds(self):
         """Fetches and displays existing beds."""
@@ -1142,13 +1193,23 @@ class AdmissionManagement(QMainWindow):
 
     def populate_existing_beds(self, beds):
         """Populates the existing bed table with fetched data."""
-        if beds:
-            self.existing_bed_table.setRowCount(len(beds))
-            for row, bed in enumerate(beds):
-                self.existing_bed_table.setItem(row, 0, QTableWidgetItem(str(bed["id"])))
-                self.existing_bed_table.setItem(row, 1, QTableWidgetItem(str(bed["bed_number"])))
-                self.existing_bed_table.setItem(row, 2, QTableWidgetItem(str(bed["ward_id"])))
-            self.existing_bed_table.resizeColumnsToContents()
+        self.existing_bed_table.setRowCount(0)
+        self.existing_bed_table.insertRow(0)
+        
+        # Add duplicate header at the top
+        for col in range(self.existing_bed_table.columnCount()):
+            item = QTableWidgetItem(self.existing_bed_table.horizontalHeaderItem(col).text())
+            item.setBackground(Qt.gray)
+            item.setForeground(Qt.white)
+            self.existing_bed_table.setItem(0, col, item)
+        
+        # Populate the table with data
+        for row, bed in enumerate(beds, start=1):
+            self.existing_bed_table.insertRow(row)
+            self.existing_bed_table.setItem(row, 0, QTableWidgetItem(str(bed["id"])))
+            self.existing_bed_table.setItem(row, 1, QTableWidgetItem(str(bed["bed_number"])))
+            self.existing_bed_table.setItem(row, 2, QTableWidgetItem(str(bed["ward_id"])))
+        self.existing_bed_table.resizeColumnsToContents()
 
     def show_error(self, error_message):
         """Displays an error message in the main thread."""
