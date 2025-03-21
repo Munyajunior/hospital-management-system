@@ -1,14 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
+from models.patient import Patient
+from models.admission import PatientAdmission, Bed, Ward, Department, Inpatient, ICUPatient
+from models.user import User
 from schemas.patients import PatientCreate, PatientCreateResponse, PatientResponse, PatientUpdate
 from schemas.admission import AdmissionCategory
-from models.patient import Patient
-from models.user import User
-from models.admission import PatientAdmission, Bed
 from core.database import get_db
 from utils.security import hash_password, generate_password
-from utils.email_util import send_password_email  
+from utils.email_util import send_password_email
 from core.dependencies import RoleChecker
 
 router = APIRouter(prefix="/patients", tags=["Patients"])
@@ -16,12 +16,23 @@ router = APIRouter(prefix="/patients", tags=["Patients"])
 staff_only = RoleChecker(["admin", "nurse", "receptionist"])
 doctor_or_nurse = RoleChecker(["doctor", "nurse", "admin"])
 
-@router.post("/", response_model=PatientCreateResponse)
-async def create_patient(patient: PatientCreate, db: Session = Depends(get_db), current_user: User = Depends(staff_only)):
+@router.post("/", response_model=PatientCreateResponse, status_code=status.HTTP_201_CREATED)
+async def create_patient(
+    patient: PatientCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(staff_only)
+):
+    """
+    Register a new patient. If it's an emergency, automatically assign an available bed
+    in the selected ward and admit the patient.
+    """
     # Check if the email is already registered
-    existing_user = db.query(Patient).filter(Patient.email == patient.email).first()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+    existing_patient = db.query(Patient).filter(Patient.email == patient.email).first()
+    if existing_patient:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered."
+        )
 
     # Generate password and hash it
     password = generate_password()
@@ -41,18 +52,65 @@ async def create_patient(patient: PatientCreate, db: Session = Depends(get_db), 
 
     # Automatically admit the patient if it's an emergency
     if patient.emergency:
-        # Find an available bed
-        bed = db.query(Bed).filter(Bed.is_occupied == False).first()
+        # Validate category, department, and ward
+        if not patient.category or not patient.department_id or not patient.ward_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Category, department, and ward are required for emergency admission."
+            )
+
+        # Validate category
+        if patient.category not in [AdmissionCategory.INPATIENT, AdmissionCategory.ICU]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid category for emergency admission. Must be 'Inpatient' or 'ICU'."
+            )
+
+        # Validate department
+        department = db.query(Department).filter(Department.id == patient.department_id).first()
+        if not department:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Department not found."
+            )
+
+        # Validate ward
+        ward = db.query(Ward).filter(Ward.id == patient.ward_id).first()
+        if not ward:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Ward not found."
+            )
+
+        # Ensure the ward belongs to the selected department
+        if ward.department_id != department.id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ward does not belong to the selected department."
+            )
+
+        # Find an available bed in the selected ward
+        bed = db.query(Bed).filter(
+            Bed.ward_id == ward.id,
+            Bed.is_occupied == False
+        ).first()
+
         if not bed:
-            raise HTTPException(status_code=400, detail="No available beds for emergency admission")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No available beds in the selected ward."
+            )
 
         # Create an admission record
         admission_data = {
             "patient_id": new_patient.id,
-            "category": AdmissionCategory.INPATIENT,
+            "category": patient.category,
+            "department_id": department.id,
+            "ward_id": ward.id,
             "bed_id": bed.id,
             "assigned_doctor_id": patient.assigned_doctor_id,
-            "admitted_by": current_user.id
+            "admitted_by": current_user.id,
+            "status": "Admitted"
         }
         new_admission = PatientAdmission(**admission_data)
         db.add(new_admission)
@@ -60,11 +118,37 @@ async def create_patient(patient: PatientCreate, db: Session = Depends(get_db), 
         # Mark the bed as occupied
         bed.is_occupied = True
         db.commit()
+         # If the category is ICU, create an ICU patient record
+        if admission_data.category == AdmissionCategory.ICU:
+            icu_patient = ICUPatient(
+                patient_id=admission_data.patient_id,
+                admission_id=new_admission.id,
+                status="Critical",  
+                updated_by=current_user.id
+            )
+            db.add(icu_patient)
+            db.commit()
+            db.refresh(icu_patient)
+
+        # If the category is Inpatient, create an Inpatient record
+        elif admission_data.category == AdmissionCategory.INPATIENT:
+            inpatient = Inpatient(
+                patient_id=admission_data.patient_id,
+                admission_id=new_admission.id,
+                status="Stable",  # Default status
+                updated_by=current_user.id
+            )
+            db.add(inpatient)
+            db.commit()
+            db.refresh(inpatient)
 
     # Send the generated password to the patient's email
     email_sent = await send_password_email(new_patient.email, password)
     if not email_sent:
-        raise HTTPException(status_code=500, detail="Failed to send password to email")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send password to email."
+        )
 
     return {**new_patient.__dict__, "password": password}
 
@@ -82,7 +166,7 @@ def get_patient(patient_id: int, db: Session = Depends(get_db), user: User = Dep
 
 
 @router.put("/{patient_id}", response_model=PatientResponse)
-def update_patient(patient_id: int, patient_data: PatientUpdate, db: Session = Depends(get_db),
+async def update_patient(patient_id: int, patient_data: PatientUpdate, db: Session = Depends(get_db),
                    user: User = Depends(doctor_or_nurse)):
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
     if not patient:
@@ -97,7 +181,7 @@ def update_patient(patient_id: int, patient_data: PatientUpdate, db: Session = D
 
 
 @router.put("/{patient_id}/assign-category/{category}", response_model=PatientResponse)
-def update_patient_category(patient_id: int, category: str, db: Session = Depends(get_db),
+async def update_patient_category(patient_id: int, category: str, db: Session = Depends(get_db),
                             user: User = Depends(doctor_or_nurse)):
     if category not in ["outpatient", "inpatient", "ICU"]:
         raise HTTPException(status_code=400, detail="Invalid category")
@@ -112,7 +196,7 @@ def update_patient_category(patient_id: int, category: str, db: Session = Depend
     return patient 
 
 @router.put("/{patient_id}/assign/{doctor_id}", response_model=PatientResponse)
-def assign_patient_to_doctor(patient_id: int, doctor_id: int, db: Session = Depends(get_db),
+async def assign_patient_to_doctor(patient_id: int, doctor_id: int, db: Session = Depends(get_db),
                              user: User = Depends(staff_only)):
     patient = db.query(Patient).filter(Patient.id == patient_id).first()
     doctor = db.query(User).filter(User.id == doctor_id, User.role == "doctor").first()
