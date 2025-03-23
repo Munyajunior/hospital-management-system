@@ -8,7 +8,7 @@ class PredictiveAnalytics:
     def __init__(self, data):
         self.data = data
 
-    def predict_patient_admissions(self):
+    async def predict_patient_admissions(self):
         if len(self.data) < 10:  # Ensure enough data points
             raise ValueError("Not enough data to train ARIMA model")
 
@@ -17,7 +17,7 @@ class PredictiveAnalytics:
         forecast = model_fit.forecast(steps=7)  # Predict next 7 days
         return forecast
 
-    def calculate_no_show_rate(self):
+    async def calculate_no_show_rate(self):
         """Calculate the no-show rate based on appointment data."""
         if self.data.empty:
             raise ValueError("No appointment data provided")
@@ -44,7 +44,7 @@ class AnomalyDetection:
     def __init__(self, data):
         self.data = data
 
-    def detect_anomalies_in_vitals(self):
+    async def detect_anomalies_in_vitals(self):
         """Detect anomalies in patient vitals using Isolation Forest."""
         scaler = StandardScaler()
         scaled_data = scaler.fit_transform(self.data[['blood_pressure', 'heart_rate', 'temperature']])
@@ -56,7 +56,7 @@ class NLPProcessor:
     def __init__(self):
         self.summarizer = pipeline("summarization")
 
-    def summarize_text(self, text):
+    async def summarize_text(self, text):
         """Summarize patient notes or medical records."""
         summary = self.summarizer(text, max_length=50, min_length=25, do_sample=False)
         return summary[0]['summary_text']

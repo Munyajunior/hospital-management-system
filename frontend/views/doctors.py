@@ -272,6 +272,12 @@ class DoctorRegistrationForm(QWidget):
         self.contact_number.setPlaceholderText("Enter Contact Number")
         self.contact_number.setStyleSheet(self.input_style())
         form_layout.addRow("Contact Number:", self.contact_number)
+        
+        # Address 
+        self.address = QLineEdit()
+        self.address.setPlaceholderText("Enter Address")
+        self.address.setStyleSheet(self.input_style())
+        form_layout.addRow("Address:", self.address)
 
         # Email Input
         self.email_input = QLineEdit()
@@ -320,11 +326,12 @@ class DoctorRegistrationForm(QWidget):
         name = self.name_input.text().strip()
         specialization = self.specialization_input.currentText()
         contact = self.contact_number.text().strip()
+        address = self.address.text().strip()
         email = self.email_input.text().strip()
         password = self.password_input.text().strip()
 
         # Input Validation
-        if not name or not specialization or not contact or not email or not password:
+        if not name or not specialization or not contact or not email or not password or not address:
             QMessageBox.warning(self, "Validation Error", "All fields are required!")
             return
 
@@ -341,6 +348,7 @@ class DoctorRegistrationForm(QWidget):
             "full_name": name,
             "specialization": specialization,
             "contact_number": contact,
+            "address": address,
             "email": email,
             "password": password
         }

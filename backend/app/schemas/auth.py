@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field
-
+from typing import Optional
 class UserBase(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=100)
     email: EmailStr
@@ -30,9 +30,10 @@ class TokenData(BaseModel):
     
 
 class AllUserResponse(UserResponse):
-   pass
-
-
+    address: Optional[str] = None
+    contact_number: Optional[str] = None
+    
+   
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str

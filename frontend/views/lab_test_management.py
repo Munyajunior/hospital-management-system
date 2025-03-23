@@ -43,7 +43,7 @@ class LabTestManagement(QWidget):
         self.role = user_role
         self.user_id = user_id
         self.token = auth_token
-        self.settings = QSettings("MyOrg", "LabTestManagement")
+        self.settings = QSettings("Laboratory", "LabTestManagement")
         self.init_ui()
 
     def init_ui(self):
@@ -104,12 +104,12 @@ class LabTestManagement(QWidget):
 
         # Create a model for the table
         self.model = QStandardItemModel()
-        self.model.setHorizontalHeaderLabels(["Patient", "Doctor", "Test Type", "Status", "Results", "Additional Notes", "Action"])
+        self.model.setHorizontalHeaderLabels(["Test ID", "Patient", "Doctor", "Test Type", "Status", "Results", "Additional Notes", "Action"])
         self.lab_test_table.setModel(self.model)
 
         # Set custom delegate for the "Action" column
         self.button_delegate = ButtonDelegate(self)
-        self.lab_test_table.setItemDelegateForColumn(6, self.button_delegate)
+        self.lab_test_table.setItemDelegateForColumn(7, self.button_delegate)
 
         # Add a placeholder row to simulate a duplicated header
         self.add_placeholder_header()
@@ -249,7 +249,7 @@ class LabTestManagement(QWidget):
     def populate_table(self, lab_tests):
         """Fills the lab test requests table with data."""
         self.model.clear()  # Clear existing data
-        self.model.setHorizontalHeaderLabels(["Patient", "Doctor", "Test Type", "Status", "Results", "Additional Notes", "Action"])
+        self.model.setHorizontalHeaderLabels(["Test ID","Patient", "Doctor", "Test Type", "Status", "Results", "Additional Notes", "Action"])
 
         # Add the placeholder header row
         self.add_placeholder_header()
@@ -257,6 +257,7 @@ class LabTestManagement(QWidget):
         # Populate the table with data
         for request in lab_tests:
             row = [
+                QStandardItem(str(request["id"])),
                 QStandardItem(str(request["patient_id"])),
                 QStandardItem(str(request["requested_by"])),
                 QStandardItem(request["test_type"]),
@@ -270,10 +271,10 @@ class LabTestManagement(QWidget):
     def process_button_clicked(self, index):
         """Handle button click in the 'Action' column."""
         request_id = self.model.item(index.row(), 0).text()  # Get request ID from the first column
-        patient_id = self.model.item(index.row(), 0).text()
-        requested_by = self.model.item(index.row(), 1).text()
-        test_type = self.model.item(index.row(), 2).text()
-        status = self.model.item(index.row(), 3).text()
+        patient_id = self.model.item(index.row(), 1).text()
+        requested_by = self.model.item(index.row(), 2).text()
+        test_type = self.model.item(index.row(), 3).text()
+        status = self.model.item(index.row(), 4).text()
         self.show_request_process(request_id, patient_id, requested_by, test_type, status)
 
     def show_request_process(self, request_id, patient_id, requested_by, test_type, status):
@@ -309,16 +310,15 @@ class LabTestManagement(QWidget):
             "status": "In Progress",
             "results": "Processing lab Test(s), please be patient..."
         }
-
+        print(f"{data}")
         status = update_data(self, api_url, data, self.token)
 
         if not status:
             QMessageBox.warning(self, "Error", "Failed to update Lab Test status.")
             return
 
-        self.load_lab_test_requests()
         QMessageBox.information(self, "Success", "Lab Test status updated to 'In Progress'.")
-
+        self.load_lab_test_requests()
     def update_scan_request(self, test_id):
         """Opens the update scan window."""
         self.update_scan = UpdateRequestedLab(test_id, self.token)
@@ -326,7 +326,7 @@ class LabTestManagement(QWidget):
 
 
 class UpdateRequestedLab(QDialog):  # Changed to QDialog
-    def __init__(self, test_id, token):
+    def __init__(self,  test_id, token):
         super().__init__()
         self.test_id = test_id
         self.token = token
@@ -340,8 +340,13 @@ class UpdateRequestedLab(QDialog):  # Changed to QDialog
 
         self.results_input = QTextEdit()
         self.results_input.setPlaceholderText("Enter Results of Lab Tests")
-        self.results_input.setStyleSheet("font-size: 14px; padding: 8px;")
+        self.results_input.setStyleSheet("font-size: 14px; padding: 4px;")
         layout.addWidget(self.results_input)
+        
+        self.additional_notes = QTextEdit()
+        self.additional_notes.setPlaceholderText("Enter Additional Notes")
+        self.additional_notes.setStyleSheet("font-size: 14px; padding: 4px;")
+        layout.addWidget(self.additional_notes)
 
         self.update_button = QPushButton("✅ Update Test")
         self.update_button.setStyleSheet("""
@@ -356,6 +361,8 @@ class UpdateRequestedLab(QDialog):  # Changed to QDialog
     def update_test(self):
         """Handles Test update logic."""
         results = self.results_input.toPlainText().strip()
+        additional_notes = self.additional_notes.toPlainText().strip()
+        
         if not results:
             QMessageBox.warning(self, "Error", "Results cannot be empty.")
             return
@@ -363,7 +370,8 @@ class UpdateRequestedLab(QDialog):  # Changed to QDialog
         api_url = f"{os.getenv('LAB_TESTS_URL')}{self.test_id}/update"
         data = {
             "status": "Completed",  
-            "results": results 
+            "results": results,
+            "additional_notes": additional_notes
         }
 
         response = update_data(self, api_url, data, self.token)

@@ -38,6 +38,8 @@ def create_doctor(doctor: DoctorCreate, db: Session = Depends(get_db), user: Use
     new_user = User(
         full_name=doctor.full_name,
         email=doctor.email,
+        contact_number=doctor.contact_number,
+        address=doctor.address,
         hashed_password=hash_password(doctor.password),
         role="doctor"
     )
@@ -51,8 +53,8 @@ def create_doctor(doctor: DoctorCreate, db: Session = Depends(get_db), user: Use
         full_name=doctor.full_name,
         specialization=doctor.specialization,
         contact_number=doctor.contact_number,
-        email=doctor.email,
-        hashed_password=hash_password(doctor.password)
+        address=doctor.address,
+        email=doctor.email
     )
     db.add(new_doctor)
     db.commit()

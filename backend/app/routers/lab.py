@@ -61,7 +61,7 @@ def get_lab_test(test_id: int, db: Session = Depends(get_db), user: User = Depen
 
 
 # update a specific lab test
-@router.put("/{test_id}/in_progress", response_model=LabTestResponse)
+@router.put("/{test_id}/in-progress", response_model=LabTestResponse)
 def update_lab_test(
     test_id: int, 
     update_data: LabTestUpdate, 
@@ -72,11 +72,18 @@ def update_lab_test(
     if not lab_test:
         raise HTTPException(status_code=404, detail="Lab test not found")
 
-    lab_test.status = update_data.status
-    if update_data.status == LabTestStatus.IN_PROGRESS and update_data.results:
-        lab_test.results = update_data.results
     
+    if update_data.status == LabTestStatus.IN_PROGRESS:
+        lab_test.status = LabTestStatus.IN_PROGRESS
+        if update_data.results:
+            lab_test.results = update_data.results
+        else:
+            raise HTTPException(status_code=400, detail="Results is expected")
+    else:
+        raise HTTPException(status_code=400, detail="Invalid status value. Expected 'In Progress'")
+            
     db.commit()
+    
     db.refresh(lab_test)
     return lab_test
 
@@ -95,6 +102,7 @@ def update_lab_test(
     lab_test.status = update_data.status
     if update_data.status == LabTestStatus.COMPLETED and update_data.results:
         lab_test.results = update_data.results
+        lab_test.additional_notes = update_data.additional_notes
         lab_test.completed_date = func.now()
 
     db.commit()

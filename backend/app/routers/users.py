@@ -47,7 +47,7 @@ def delete_user(user_id: int, db: Session = Depends(get_db), _: User = Depends(a
     db.commit()
     return user
     
-@router.put("{user_id}/is_active", response_model=UserResponse)
+@router.put("/{user_id}/is_active", response_model=UserResponse)
 def activate_deactivate_user(user_id: int, active:IsActive, db: Session = Depends(get_db), _: User = Depends(admin_only)):
     """Activate or Deactivate a user"""
     user = db.query(User).filter(User.id == user_id).first()
@@ -61,7 +61,7 @@ def activate_deactivate_user(user_id: int, active:IsActive, db: Session = Depend
     return user
 
 
-@router.put("/{user_id}/Update", response_model=UserResponse)
+@router.put("/{user_id}/update", response_model=UserResponse)
 def update_user_login(user_id: int,update: UserUpdate,db: Session = Depends(get_db), _: User = Depends(admin_only)):
     """Update a user."""
     user = db.query(User).filter(User.id == user_id).first()

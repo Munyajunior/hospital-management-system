@@ -3,10 +3,11 @@ from sqlalchemy.orm import Session
 import os
 from typing import List
 from datetime import timedelta
-from schemas.auth import (UserCreate, UserResponse, Token, LoginRequest, AllUserResponse, 
-                          ChangePasswordRequest, ResetPasswordRequest, ForgotPasswordRequest, IsActive)
+from schemas.auth import (UserCreate, UserResponse, Token, LoginRequest,  
+                          ChangePasswordRequest, ResetPasswordRequest, ForgotPasswordRequest)
 from models.user import User
 from models.patient import Patient
+from models.doctor import Doctor
 from utils.security import hash_password, verify_password, create_access_token, create_reset_token, verify_reset_token
 from utils.email_util import send_reset_email
 from core.database import get_db
@@ -33,8 +34,24 @@ def register_user(user: UserCreate, db: Session = Depends(get_db),
         role=user.role
     )
     db.add(new_user)
-    db.commit()
     db.refresh(new_user)
+    
+    if user.role == "doctor":
+        existing_doctor = db.query(Doctor).filter(Doctor.email == user.email).first()
+        if existing_doctor:
+            raise HTTPException(status_code=400, detail="A doctor with this email already exists")
+        
+        new_doctor = Doctor(
+            id=new_user.id,
+            full_name=user.full_name,
+            email=user.email
+        )
+        db.add(new_doctor)
+        db.refresh(new_doctor)
+        db.commit()
+        
+    db.commit()
+    
     return new_user
 
 @router.post("/login", response_model=Token)

@@ -1,9 +1,10 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, 
-    QTableWidgetItem, QMessageBox, QHBoxLayout, QComboBox, 
+    QTableWidgetItem, QMessageBox, QHBoxLayout, QComboBox, QToolButton,
     QLineEdit, QHeaderView, QApplication,QGroupBox, QFormLayout
 )
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon
 from utils.api_utils import fetch_data, post_data, delete_data, update_data
 import os
 
@@ -112,6 +113,14 @@ class UserManagement(QWidget):
         self.password_input.setPlaceholderText("Enter password")
         self.password_input.setEchoMode(QLineEdit.Password)
         form_layout.addWidget(self.password_input)
+
+        # Toggle Password Visibility Button
+        self.toggle_password_button = QToolButton()
+        self.toggle_password_button.setIcon(QIcon("assets/icons/eye-crossed.png"))  # Default icon for hidden password
+        self.toggle_password_button.setCheckable(True)  # Make the button toggleable
+        self.toggle_password_button.clicked.connect(self.toggle_password_visibility)
+        form_layout.addWidget(self.toggle_password_button)
+
         
         self.role_select = QComboBox()
         self.role_select.addItems(["select", "doctor", "nurse", "pharmacist", "lab_technician", "radiologist", "admin", "icu"])
@@ -128,14 +137,45 @@ class UserManagement(QWidget):
         update_group = QGroupBox("Update User")
         update_layout = QFormLayout()
 
-        self.email_input = QLineEdit()
-        self.email_input.setPlaceholderText("Enter new email")
-        update_layout.addRow("New Email:", self.email_input)
+        self.new_email_input = QLineEdit()
+        self.new_email_input.setPlaceholderText("Enter new email")
+        update_layout.addRow("New Email:", self.new_email_input)
 
-        self.password_input = QLineEdit()
-        self.password_input.setPlaceholderText("Enter new password")
-        self.password_input.setEchoMode(QLineEdit.Password)
-        update_layout.addRow("New Password:", self.password_input)
+        password_layout = QHBoxLayout()
+
+        self.new_password_input = QLineEdit()
+        self.new_password_input.setPlaceholderText("Enter password")
+        self.new_password_input.setEchoMode(QLineEdit.Password)
+        password_layout.addWidget(self.new_password_input)
+
+        # Toggle Password Visibility Button
+        self.toggle_password_button = QToolButton()
+        self.toggle_password_button.setStyleSheet("""
+            QToolButton {
+                background-color: transparent;
+                color: #4CAF5F;
+                border: none;
+                border-radius: 5px;
+                font-size: 14px;
+                text-decoration: underline;
+                padding: 5px;
+            }
+            QToolButton:checked{
+                background-color: #f44336;
+            }
+            QToolButton:hover {
+                background-color: #45a049;
+            }
+            QToolButton:pressed {
+                background-color: #367c39;
+            }
+        """)
+        self.toggle_password_button.setIcon(QIcon("assets/icons/eye-crossed.png"))  # Default icon for hidden password
+        self.toggle_password_button.setCheckable(True)  # Make the button toggleable
+        self.toggle_password_button.clicked.connect(self.toggle_password_visibility)
+        password_layout.addWidget(self.toggle_password_button)
+
+        update_layout.addRow("Password:", password_layout)
         
         self.update_user_button = QPushButton("Update User")
         self.update_user_button.clicked.connect(self.update_user_info)
@@ -143,7 +183,7 @@ class UserManagement(QWidget):
         
         update_group.setLayout(update_layout)
         layout.addWidget(update_group)
-
+    
     def update_user_info(self):
         """Handles updating a user."""
         selected_row = self.user_table.currentRow()
@@ -152,8 +192,8 @@ class UserManagement(QWidget):
             return
 
         user_id = int(self.user_table.item(selected_row, 0).text())
-        new_email = self.email_input.text().strip()
-        new_password = self.password_input.text().strip()
+        new_email = self.new_email_input.text().strip()
+        new_password = self.new_password_input.text().strip()
 
         if not new_email or "@" not in new_email:
             QMessageBox.warning(self, "Input Error", "Please enter a valid email address.")
@@ -169,9 +209,9 @@ class UserManagement(QWidget):
 
         if response:
             QMessageBox.information(self, "Success", "User updated successfully.")
-            self.email_input.clear()
-            self.password_input.clear()
-            self.load_users()  # Refresh the table
+            self.new_email_input.clear()
+            self.new_password_input.clear()
+            self.load_users() 
         else:
             QMessageBox.critical(self, "Error", "Failed to update User.")
 
@@ -288,3 +328,17 @@ class UserManagement(QWidget):
             self.load_users()  # Refresh the user table
         else:
             QMessageBox.critical(self, "Error", "Failed to update user status.")
+    
+    def toggle_password_visibility(self):
+        """Toggles the visibility of the password field."""
+        if self.toggle_password_button.isChecked():
+            # Show password
+            self.password_input.setEchoMode(QLineEdit.Normal)
+            self.new_password_input.setEchoMode(QLineEdit.Normal)
+            self.toggle_password_button.setIcon(QIcon("assets/icons/eye.png"))  # Icon for visible password
+        else:
+            # Hide password
+            self.password_input.setEchoMode(QLineEdit.Password)
+            self.new_password_input.setEchoMode(QLineEdit.Password)
+            self.toggle_password_button.setIcon(QIcon("assets/icons/eye-crossed.png"))  # Icon for hidden password
+        
