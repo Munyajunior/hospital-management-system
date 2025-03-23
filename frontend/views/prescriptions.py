@@ -1,10 +1,11 @@
 import os
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem, QApplication,
-    QMessageBox, QComboBox, QTextEdit, QHBoxLayout, QHeaderView, QScrollArea, QFormLayout, QLineEdit, QListWidget
+    QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem, QApplication, QSizePolicy, QScrollArea,
+    QMessageBox, QComboBox, QTextEdit, QHBoxLayout, QHeaderView, QGroupBox, QFormLayout, QLineEdit, QListWidget
 )
 from utils.api_utils import fetch_data, post_data
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon
 
 
 class Prescriptions(QWidget):
@@ -49,16 +50,46 @@ class Prescriptions(QWidget):
         title_layout.addWidget(self.toggle_theme_button)
         self.layout.addLayout(title_layout)
 
-        # Scrollable Prescription Table
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(True)
+        # Scroll Area for Table and Search
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_widget = QWidget()
+        scroll_area.setWidget(scroll_widget)
+        scroll_layout = QVBoxLayout(scroll_widget)
 
+        # Group Prescription Table
+        table_group = QGroupBox("Patients Prescriptions")
+        table_layout = QVBoxLayout()
+
+        # Search Bar
+        self.prescription_search_input = QLineEdit()
+        self.prescription_search_input.setPlaceholderText("Search Prescriptions...")
+        self.prescription_search_input.textChanged.connect(self.filter_prescription_patients)
+        table_layout.addWidget(self.prescription_search_input)
+
+        # Prescription Table
         self.prescription_table = QTableWidget()
         self.prescription_table.setColumnCount(6)
         self.prescription_table.setHorizontalHeaderLabels(["Patient", "Doctor", "Medication", "Dosage", "Instructions", "Status"])
-        self.prescription_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.scroll_area.setWidget(self.prescription_table)
-        self.layout.addWidget(self.scroll_area)
+        self.prescription_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.prescription_table.setMinimumHeight(300)
+        self.prescription_table.horizontalHeader().setStretchLastSection(True)
+        self.prescription_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.prescription_table.verticalHeader().setVisible(False)  # Hide row numbers
+        self.prescription_table.setEditTriggers(QTableWidget.NoEditTriggers)  # Make table read-only
+        table_layout.addWidget(self.prescription_table, stretch=1)
+
+        # Refresh Button
+        refresh_button = QPushButton("Refresh")
+        refresh_button.setIcon(QIcon("assets/icons/refresh.png"))
+        refresh_button.clicked.connect(self.load_prescriptions)
+        table_layout.addWidget(refresh_button)
+
+        table_group.setLayout(table_layout)
+        scroll_layout.addWidget(table_group)
+
+        # Add the scroll area to the main layout
+        self.layout.addWidget(scroll_area)
 
         # Patient Selection
         self.patient_dropdown = QComboBox()
@@ -170,6 +201,18 @@ class Prescriptions(QWidget):
             QMessageBox.information(self, "No Prescriptions", "No prescriptions available.")
             return
         self.populate_table(prescriptions)
+
+    def filter_prescription_patients(self):
+        """Filter patients Prescriptions based on search."""
+        search_text = self.prescription_search_input.text().lower()
+        for row in range(self.prescription_table.rowCount()):
+            match = False
+            for col in range(self.prescription_table.columnCount()):
+                item = self.prescription_table.item(row, col)
+                if item and search_text in item.text().lower():
+                    match = True
+                    break
+            self.prescription_table.setRowHidden(row, not match)
 
     def populate_table(self, prescriptions):
         """Fills the table with prescription data."""

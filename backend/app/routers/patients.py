@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from models.patient import Patient
 from models.admission import PatientAdmission, Bed, Ward, Department, Inpatient, ICUPatient
 from models.user import User
@@ -153,8 +153,12 @@ async def create_patient(
     return {**new_patient.__dict__, "password": password}
 
 @router.get("/", response_model=List[PatientResponse])
-def get_patients(db: Session = Depends(get_db), user: User = Depends(doctor_or_nurse)):
-    return db.query(Patient).all()
+def get_patients( emergency: Optional[bool] = Query(None), db: Session = Depends(get_db), user: User = Depends(doctor_or_nurse)):
+    query = db.query(Patient)
+    if emergency:
+        query = db.query(Patient).filter(Patient.emergency == emergency)
+    patient = query.all()
+    return patient
 
 
 @router.get("/{patient_id}", response_model=PatientResponse)

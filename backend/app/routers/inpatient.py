@@ -23,7 +23,7 @@ def create_inpatient_patient(in_patient: InpatientCreate, db: Session = Depends(
 @router.put("/patients/{in_patient_id}", response_model=InpatientResponse)
 def update_in_patient(in_patient_id: int, updates: InpatientCreate, db: Session = Depends(get_db), user: User = Depends(nurse_or_doctor)):
     """Update an ICU patient record."""
-    in_patient = db.query(Inpatient).filter(Inpatient.id == in_patient_id).first()
+    in_patient = db.query(Inpatient).filter(Inpatient.admission_id == in_patient_id).first()
     if not in_patient:
         raise HTTPException(status_code=404, detail="IN_PATIENT patient not found")
 

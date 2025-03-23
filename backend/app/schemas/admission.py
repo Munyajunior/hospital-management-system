@@ -72,7 +72,6 @@ class ICUPatientResponse(ICUPatientBase):
 
 class InpatientBase(BaseModel):
     patient_id: int
-    admission_id: int
     status: Optional[str] = "Stable"
     condition_evolution: Optional[str] = None
     medications: Optional[str] = None
@@ -152,6 +151,18 @@ class PatientVitalsCreate(PatientVitalsBase):
 class PatientVitalsResponse(PatientVitalsBase):
     id: int
     recorded_by: int
+    recorded_at: datetime
+    
+
+    class Config:
+        from_attributes = True
+
+class PatientVitalsResponseTable(BaseModel):
+    patient_name: str
+    recorded_by_name: str
+    blood_pressure: float
+    heart_rate: float
+    temperature: float
     recorded_at: datetime
 
     class Config:

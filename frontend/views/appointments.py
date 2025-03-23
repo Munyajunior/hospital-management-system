@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (QApplication,
     QCalendarWidget,  QMenu, QFileDialog, QLineEdit, QDialog
 )
 from PySide6.QtCore import Qt, QSize, QTimer, QThread, QDate
-
+from fpdf import FPDF
 from utils.api_utils import fetch_data, post_data, update_data, delete_data
 
 
@@ -20,14 +20,14 @@ class EmailThread(QThread):
         self.subject = subject
         self.body = body
 
-    def run(self):
+    async def run(self):
         """Send email using Mailgun API."""
         try:
             response = requests.post(
                 f"https://api.mailgun.net/v3/{os.getenv('MAILGUN_DOMAIN')}/messages",
                 auth=("api", os.getenv("MAILGUN_API_KEY")),
                 data={
-                    "from": f"Hospital Management System <postmaster@{os.getenv('MAILGUN_DOMAIN')}>",
+                    "from": f"Hospital Management System <noreply@{os.getenv('MAILGUN_DOMAIN')}>",
                     "to": self.recipient,
                     "subject": self.subject,
                     "html": self.body
@@ -418,7 +418,7 @@ class ManageAppointments(QWidget):
             QMessageBox.critical(self, "Error", "Failed to delete appointment.")
 
     def send_notification(self, patient_id, doctor_id, datetime_str, reason, status):
-        """Send email notifications to patient and doctor using Mailgun."""
+        """Send professional email notifications to patient and doctor using Mailgun."""
         # Fetch patient email
         patient_email = self.get_patient_email(patient_id)
         if not patient_email:
@@ -431,19 +431,96 @@ class ManageAppointments(QWidget):
             print("Failed to fetch doctor email.")
             return
 
-        subject = f"Appointment {status}"
+        # Email subject
+        subject = f"Appointment {status} - Hospital Management System"
         body = f"""
-            <h2>Appointment {status}</h2>
-            <p><strong>Date/Time:</strong> {datetime_str}</p>
-            <p><strong>Reason:</strong> {reason}</p>
-            <p><strong>Status:</strong> {status}</p>
+        <html>
+        <head>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    background-color: #f4f4f4;
+                    color: #333;
+                    margin: 0;
+                    padding: 0;
+                }}
+                .email-container {{
+                    max-width: 600px;
+                    margin: 20px auto;
+                    padding: 20px;
+                    background-color: #fff;
+                    border-radius: 8px;
+                    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                }}
+                .header {{
+                    text-align: center;
+                    padding-bottom: 20px;
+                    border-bottom: 1px solid #ddd;
+                }}
+                .header h1 {{
+                    color: #0073e6;
+                    margin: 0;
+                }}
+                .content {{
+                    padding: 20px 0;
+                }}
+                .content p {{
+                    margin: 10px 0;
+                    line-height: 1.6;
+                }}
+                .footer {{
+                    text-align: center;
+                    padding-top: 20px;
+                    border-top: 1px solid #ddd;
+                    font-size: 12px;
+                    color: #777;
+                }}
+                .footer a {{
+                    color: #0073e6;
+                    text-decoration: none;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="email-container">
+                <div class="header">
+                    <h1>Hospital Management System</h1>
+                </div>
+                <div class="content">
+                    <h2>Appointment {status}</h2>
+                    <p><strong>Date/Time:</strong> {datetime_str}</p>
+                    <p><strong>Reason:</strong> {reason}</p>
+                    <p><strong>Status:</strong> {status}</p>
+                    <p>Thank you for using our services. If you have any questions or need further assistance, please contact us at <a href="mailto:support@hospital.com">support@hospital.com</a>.</p>
+                </div>
+                <div class="footer">
+                    <p>&copy; 2023 Hospital Management System. All rights reserved.</p>
+                    <p><a href="https://www.hospital.com">Visit our website</a></p>
+                </div>
+            </div>
+        </body>
+        </html>
         """
 
-        # Send to patient
-        EmailThread(patient_email, subject, body).start()
+        # Store EmailThread objects as instance variables
+        self.patient_email_thread =  EmailThread(patient_email, subject, body)
+        self.doctor_email_thread = EmailThread(doctor_email, subject, body)
 
-        # Send to doctor
-        EmailThread(doctor_email, subject, body).start()
+        # Start the threads
+        self.patient_email_thread.start()
+        self.doctor_email_thread.start()
+
+    def closeEvent(self, event):
+        """Ensure all threads are finished before closing the application."""
+        if hasattr(self, 'patient_email_thread') and self.patient_email_thread.isRunning():
+            self.patient_email_thread.quit()
+            self.patient_email_thread.wait()
+
+        if hasattr(self, 'doctor_email_thread') and self.doctor_email_thread.isRunning():
+            self.doctor_email_thread.quit()
+            self.doctor_email_thread.wait()
+
+        event.accept()
 
     def get_patient_email(self, patient_id):
         """Fetch patient email from the database."""
@@ -525,8 +602,6 @@ class ManageAppointments(QWidget):
 
     def export_to_pdf(self, file_path):
         """Export appointments to PDF."""
-        from fpdf import FPDF
-
         appointments = fetch_data(self, os.getenv('APPOINTMENTS_URL'), self.token)
         if not appointments:
             return

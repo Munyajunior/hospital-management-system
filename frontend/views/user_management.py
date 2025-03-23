@@ -1,10 +1,10 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, 
     QTableWidgetItem, QMessageBox, QHBoxLayout, QComboBox, 
-    QLineEdit, QHeaderView, QApplication
+    QLineEdit, QHeaderView, QApplication,QGroupBox, QFormLayout
 )
 from PySide6.QtCore import Qt
-from utils.api_utils import fetch_data, post_data, delete_data
+from utils.api_utils import fetch_data, post_data, delete_data, update_data
 import os
 
 class UserManagement(QWidget):
@@ -71,20 +71,31 @@ class UserManagement(QWidget):
         layout.addWidget(self.title_label)
 
         self.user_table = QTableWidget()
-        self.user_table.setColumnCount(5)
-        self.user_table.setHorizontalHeaderLabels(["User ID", "Name", "Role", "Is Active","Actions"])
+        self.user_table.setColumnCount(6)
+        self.user_table.setHorizontalHeaderLabels(["User ID", "Name", "Role", "Is Active","Activate/Deactivate", "Delete"])
         self.user_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         layout.addWidget(self.user_table)
+        self.duplicate_header()
 
         if self.role == "admin":  
             self.add_user_section(layout)
+            self.update_user_section(layout)
 
         self.refresh_button = QPushButton("Refresh Users")
         self.refresh_button.clicked.connect(self.load_users)
         layout.addWidget(self.refresh_button)
 
         self.setLayout(layout)
-
+        
+    def duplicate_header(self):
+        """Adds a duplicate header at the bottom of the table."""
+        self.user_table.setRowCount(self.user_table.rowCount() + 1)
+        for col in range(self.user_table.columnCount()):
+            item = QTableWidgetItem(self.user_table.horizontalHeaderItem(col).text())
+            item.setBackground(Qt.gray)
+            item.setForeground(Qt.white)
+            self.user_table.setItem(self.user_table.rowCount() - 1, col, item)
+            
     def add_user_section(self, layout):
         """Admin-only section for adding new users."""
         form_layout = QHBoxLayout()
@@ -111,25 +122,97 @@ class UserManagement(QWidget):
         form_layout.addWidget(self.add_user_button)
 
         layout.addLayout(form_layout)
+        
+    def update_user_section(self , layout):
+        """Change user's Login information."""
+        update_group = QGroupBox("Update User")
+        update_layout = QFormLayout()
+
+        self.email_input = QLineEdit()
+        self.email_input.setPlaceholderText("Enter new email")
+        update_layout.addRow("New Email:", self.email_input)
+
+        self.password_input = QLineEdit()
+        self.password_input.setPlaceholderText("Enter new password")
+        self.password_input.setEchoMode(QLineEdit.Password)
+        update_layout.addRow("New Password:", self.password_input)
+        
+        self.update_user_button = QPushButton("Update User")
+        self.update_user_button.clicked.connect(self.update_user_info)
+        update_layout.addRow(self.update_user_button)
+        
+        update_group.setLayout(update_layout)
+        layout.addWidget(update_group)
+
+    def update_user_info(self):
+        """Handles updating a user."""
+        selected_row = self.user_table.currentRow()
+        if selected_row < 1:  # Skip the header row
+            QMessageBox.warning(self, "Selection Error", "Please select a user from the table.")
+            return
+
+        user_id = int(self.user_table.item(selected_row, 0).text())
+        new_email = self.email_input.text().strip()
+        new_password = self.password_input.text().strip()
+
+        if not new_email or "@" not in new_email:
+            QMessageBox.warning(self, "Input Error", "Please enter a valid email address.")
+            return
+        if not new_password or len(new_password) < 8:
+            QMessageBox.warning(self, "Input Error", "Password must be at least 8 characters long.")
+            return
+            
+        api_url = os.getenv("USER_URL") + f"{user_id}/update"
+        data = {"email": new_email,
+                "password": new_password}
+        response = update_data(self, api_url, data, self.token)
+
+        if response:
+            QMessageBox.information(self, "Success", "User updated successfully.")
+            self.email_input.clear()
+            self.password_input.clear()
+            self.load_users()  # Refresh the table
+        else:
+            QMessageBox.critical(self, "Error", "Failed to update User.")
 
     def load_users(self):
-        """Fetches user data from the backend API"""
-        api_url = os.getenv("USER_LIST_URL")
-        users =  fetch_data(self, api_url, self.token)
+        """Fetches user data from the backend API."""
+        api_url = os.getenv("USER_URL")
+        users = fetch_data(self, api_url, self.token)
         if users:
-            self.user_table.setRowCount(len(users))
-            for row, user in enumerate(users):
+            # Clear the table and add a row for the duplicate header
+            self.user_table.setRowCount(0)  # Clear all rows
+            self.user_table.insertRow(0)  # Insert a new row at the top for the duplicate header
+
+            # Add the duplicate header at row 0
+            for col in range(self.user_table.columnCount()):
+                item = QTableWidgetItem(self.user_table.horizontalHeaderItem(col).text())
+                item.setBackground(Qt.gray)
+                item.setForeground(Qt.white)
+                self.user_table.setItem(0, col, item)
+
+            # Populate the table with data starting from row 1
+            for row, user in enumerate(users, start=1):  # Start from row 1
+                self.user_table.insertRow(row)
                 self.user_table.setItem(row, 0, QTableWidgetItem(str(user["id"])))
                 self.user_table.setItem(row, 1, QTableWidgetItem(user["full_name"]))
                 self.user_table.setItem(row, 2, QTableWidgetItem(user["role"]))
                 self.user_table.setItem(row, 3, QTableWidgetItem(str(user["is_active"])))
 
                 if self.role == "admin":
+                    # Activate/Deactivate Button
+                    activate_deactivate_button = QPushButton("Deactivate" if user["is_active"] else "Activate")
+                    activate_deactivate_button.setStyleSheet("background-color: #ffc107; color: white; border-radius: 5px;")
+                    activate_deactivate_button.clicked.connect(
+                        lambda _, u_id=user["id"], u_active=str(user["is_active"]).lower(): self.update_user(u_id, u_active)
+                    )
+                    self.user_table.setCellWidget(row, 4, activate_deactivate_button)
+
+                    # Delete Button
                     delete_button = QPushButton("Delete")
                     delete_button.setStyleSheet("background-color: red; color: white; border-radius: 5px;")
                     delete_button.clicked.connect(lambda _, u_id=user["id"]: self.delete_user(u_id))
-                    self.user_table.setCellWidget(row, 4, delete_button)
-
+                    self.user_table.setCellWidget(row, 5, delete_button)
         else:
             QMessageBox.critical(self, "Error", "Failed to load user data.")
 
@@ -149,7 +232,10 @@ class UserManagement(QWidget):
         if "@" not in email:
             QMessageBox.warning(self, "Input Error", "Please Enter a valid email Address.")
             return
-
+        if len(password) < 8:
+            QMessageBox.warning(self, "Input Error", "Password must be at least 8 characters long.")
+            return
+            
         api_url = os.getenv("ADD_USER_URL")
         data = {
             "full_name": full_name, 
@@ -170,11 +256,35 @@ class UserManagement(QWidget):
 
     def delete_user(self, user_id):
         """Handles user deletion (Admin only)."""
-        base_url = os.getenv("USER_LIST_URL")
-        api_url = f"{base_url}/{user_id}"
+        base_url = os.getenv("USER_URL")
+        api_url = f"{base_url}{user_id}"
         response = delete_data(self, api_url, self.token)
         if response:
             QMessageBox.information(self, "Success", "User deleted successfully.")
             self.load_users()
         else:
             QMessageBox.critical(self, "Error", "Failed to delete user.")
+            
+    def update_user(self, user_id, is_active):
+        """Handles user activation/deactivation (Admin only)."""
+        base_url = os.getenv("USER_URL")
+        api_url = f"{base_url}{user_id}/is_active"
+
+        # Convert is_active to a boolean
+        is_active_bool = is_active.lower() == "true"  # Convert string to boolean
+
+        # Toggle the is_active status
+        new_status = not is_active_bool
+
+        # Prepare the data for the API request
+        data = {"is_active": new_status}
+
+        # Send the update request
+        response = update_data(self, api_url, data, self.token)
+
+        if response:
+            message = "User activated successfully." if new_status else "User deactivated successfully."
+            QMessageBox.information(self, "Success", message)
+            self.load_users()  # Refresh the user table
+        else:
+            QMessageBox.critical(self, "Error", "Failed to update user status.")

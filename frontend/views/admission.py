@@ -509,13 +509,53 @@ class AdmissionManagement(QMainWindow):
         scroll_widget = QWidget()
         scroll_area.setWidget(scroll_widget)
         layout = QVBoxLayout(scroll_widget)
+        
+        # VItals Table
+        table_group = QGroupBox("Patients Vitals")
+        table_layout = QVBoxLayout()
 
+        self.vital_table = QTableWidget()
+        self.vital_table.setColumnCount(6)
+        self.vital_table.setHorizontalHeaderLabels([
+            "Patient", "Blood Pressure", "Heart Rate", "Temperature", "Updated By", "Updated At"
+        ])
+        self.vital_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.vital_table.setMinimumHeight(200)
+        self.vital_table.horizontalHeader().setStretchLastSection(True)
+        self.vital_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.vital_table.horizontalHeader().setTextElideMode(Qt.ElideRight)
+        table_layout.addWidget(self.vital_table)
+
+        # Add duplicate header at the top
+        self.vital_table.insertRow(0)
+        for col in range(self.vital_table.columnCount()):
+            item = QTableWidgetItem(self.vital_table.horizontalHeaderItem(col).text())
+            item.setBackground(Qt.gray)
+            item.setForeground(Qt.white)
+            self.vital_table.setItem(0, col, item)
+
+        # Search Bar
+        self.vital_search_input = QLineEdit()
+        self.vital_search_input.setPlaceholderText("Search Vitals...")
+        self.vital_search_input.textChanged.connect(self.filter_vitals)
+        table_layout.addWidget(self.vital_search_input)
+
+        # Refresh Button
+        refresh_button = QPushButton("Refresh")
+        refresh_button.setIcon(QIcon("assets/icons/refresh.png"))
+        refresh_button.clicked.connect(self.load_vitals)
+        table_layout.addWidget(refresh_button)
+
+        table_group.setLayout(table_layout)
+        layout.addWidget(table_group)
+        
+        self.load_vitals()
         # Vitals Form
         form_group = QGroupBox("Update Vitals")
         form_layout = QFormLayout()
 
         self.patient_dropdown_vitals = QComboBox()
-        self.load_patients()
+        self.load_admissions()
         form_layout.addRow("Patient:", self.patient_dropdown_vitals)
 
         self.blood_pressure_input = QLineEdit()
@@ -808,7 +848,18 @@ class AdmissionManagement(QMainWindow):
                     match = True
                     break
             self.inpatient_table.setRowHidden(row, not match)
+    def filter_vitals(self):
+        """Filters the vitals table based on the search input."""
+        search_text = self.vital_search_input.text().strip().lower()
 
+        for row in range(self.vital_table.rowCount()):
+            match = False
+            for col in range(self.vital_table.columnCount()):
+                item = self.vital_table.item(row, col)
+                if item and search_text in item.text().lower():
+                    match = True
+                    break
+            self.vital_table.setRowHidden(row, not match)
     def filter_departments(self):
         """Filters departments based on search input."""
         search_text = self.department_search_input.text().lower()
@@ -849,7 +900,7 @@ class AdmissionManagement(QMainWindow):
     def load_patients(self):
         """Fetches and populates the dropdown with patients using threading."""
         try:
-            patients = fetch_data(self, os.getenv("PATIENT_LIST_URL"), self.token)
+            patients = fetch_data(self, os.getenv("PATIENT_LIST_URL")+ "?emergency=false", self.token)
             self.populate_patient_dropdowns(patients)
         except Exception as e:
             self.show_error(str(e))
@@ -858,15 +909,15 @@ class AdmissionManagement(QMainWindow):
         """Populates patient dropdowns with fetched data."""
         if patients:
             self.patient_dropdown.clear()
-            self.patient_dropdown_vitals.clear()
             for patient in patients:
                 self.patient_dropdown.addItem(patient["full_name"], patient["id"])
-                self.patient_dropdown_vitals.addItem(patient["full_name"], patient["id"])
+                
 
     def load_admissions(self):
         """Fetches and populates the dropdown with admissions."""
         try:
-            admissions = fetch_data(self, os.getenv("ADMISSION_LIST_URL"), self.token)
+            # Fetch admissions with status "Admitted"
+            admissions = fetch_data(self, os.getenv("ADMISSION_LIST_URL") + "?status=Admitted", self.token)
             self.populate_admission_dropdown(admissions)
         except Exception as e:
             self.show_error(str(e))
@@ -875,23 +926,27 @@ class AdmissionManagement(QMainWindow):
         """Populates the admission dropdown with fetched data."""
         if admissions:
             self.admission_dropdown.clear()
+            self.patient_dropdown_vitals.clear()
             for admission in admissions:
-                self.admission_dropdown.addItem(f"Admission {admission['id']}", admission["id"])
+                # Display patient name and admission ID
+                self.admission_dropdown.addItem(
+                    f"{admission['patient_name']} (Admission ID: {admission['id']})",admission['id'])
+                self.patient_dropdown_vitals.addItem(f"{admission['patient_name']} (Admission ID: {admission['id']})",admission['id'])
 
     def load_admitted_icu(self):
         """Fetches and displays ICU admissions."""
         try:
-            admissions = fetch_data(self, os.getenv("GET_ICU_PATIENTS_URL"), self.token)
-            self.populate_icu_admitted(admissions)
+            admissions = fetch_data(self, os.getenv("ADMISSION_LIST_URL") + "?category=ICU", self.token)
+            self.populate_icu_admitted_dropdown(admissions)
         except Exception as e:
             self.show_error(str(e))
 
-    def populate_icu_admitted(self, admissions):
+    def populate_icu_admitted_dropdown(self, icu_patients):
         """Populates the ICU admitted dropdown with fetched data."""
-        if admissions:
+        if icu_patients:
             self.patient_dropdown_icu.clear()
-            for admission in admissions:
-                self.patient_dropdown_icu.addItem(f"Admission {admission['id']}", admission["id"])
+            for admission in icu_patients:
+                self.patient_dropdown_icu.addItem(f"{admission['patient_name']} (Admission {admission['id']})", admission["id"])
 
     def load_icu_patients(self):
         """Fetches and displays ICU patients."""
@@ -906,8 +961,6 @@ class AdmissionManagement(QMainWindow):
         try:
             # Fetch admitted patients data from the API
             admitted_patients = fetch_data(self, os.getenv("ADMITTED_PATIENT_URL"), self.token)
-            # Check if data was fetched successfully
-            print("Admissions fetched:", admitted_patients)
             if admitted_patients:
                 self.populate_admitted_table(admitted_patients)
             else:
@@ -972,17 +1025,17 @@ class AdmissionManagement(QMainWindow):
     def load_admitted_inpatient(self):
         """Fetches and displays Inpatient admissions."""
         try:
-            in_patients = fetch_data(self, os.getenv("GET_INPATIENTS_URL"), self.token)
-            self.populate_inpatient_admitted(in_patients)
+            in_patients = fetch_data(self, os.getenv("ADMISSION_LIST_URL") + "?category=Inpatient", self.token)
+            self.populate_inpatient_admitted_dropdown(in_patients)
         except Exception as e:
             self.show_error(str(e))
 
-    def populate_inpatient_admitted(self, in_patients):
+    def populate_inpatient_admitted_dropdown(self, in_patients):
         """Populates the Inpatient admitted dropdown with fetched data."""
         if in_patients:
             self.patient_dropdown_inpatient.clear()
             for patient in in_patients:
-                self.patient_dropdown_inpatient.addItem(f"Admission {patient['id']}", patient["id"])
+                self.patient_dropdown_inpatient.addItem(f"{patient['patient_name']} (Admission {patient['id']})", patient["id"])
 
     def load_inpatients(self):
         """Fetches and displays inpatients."""
@@ -1015,7 +1068,38 @@ class AdmissionManagement(QMainWindow):
             self.inpatient_table.setItem(row, 5, QTableWidgetItem(patient["updated_by"]))
             self.inpatient_table.setItem(row, 6, QTableWidgetItem(patient["updated_at"]))
         self.inpatient_table.resizeColumnsToContents()
-
+        
+    def load_vitals(self):
+        """Fetches and displays vitals."""
+        try:
+            vitals = fetch_data(self, os.getenv("GET_VITALS_URL"), self.token)
+            self.populate_vital_table(vitals)
+        except Exception as e:
+            self.show_error(str(e))
+    
+    def populate_vital_table(self, vitals):
+        """Populates the vital table with fetched data."""
+        self.vital_table.setRowCount(0)
+        self.vital_table.insertRow(0)
+        
+        # Add duplicate header at the top
+        for col in range(self.vital_table.columnCount()):
+            item = QTableWidgetItem(self.vital_table.horizontalHeaderItem(col).text())
+            item.setBackground(Qt.gray)
+            item.setForeground(Qt.white)
+            self.vital_table.setItem(0, col, item)
+        
+        # Populate the table with data
+        for row, patient in enumerate(vitals, start=1):
+            self.vital_table.insertRow(row)
+            self.vital_table.setItem(row, 0, QTableWidgetItem(patient.get("patient_name","")))
+            self.vital_table.setItem(row, 1, QTableWidgetItem(str(patient.get("blood_pressure",""))))
+            self.vital_table.setItem(row, 2, QTableWidgetItem(str(patient.get("heart_rate",""))))
+            self.vital_table.setItem(row, 3, QTableWidgetItem(str(patient.get("temperature",""))))
+            self.vital_table.setItem(row, 4, QTableWidgetItem(patient.get("recorded_by_name")))
+            self.vital_table.setItem(row, 5, QTableWidgetItem(patient.get("recorded_at")))
+        self.vital_table.resizeColumnsToContents()
+    
     def load_departments(self):
         """Fetches and populates the dropdown with departments."""
         try:
@@ -1297,10 +1381,10 @@ class AdmissionManagement(QMainWindow):
     def update_inpatient(self):
         """Updates inpatient details."""
         patient_id = self.patient_dropdown_inpatient.currentData()
-        status = self.status_input_inpatient.currentText()
-        condition_evolution = self.condition_evolution_input_inpatient.toPlainText()
-        medications = self.medications_input_inpatient.toPlainText()
-        treatment_plan = self.treatment_plan_input_inpatient.toPlainText()
+        status = self.status_input_inpatient.currentText().strip()
+        condition_evolution = self.condition_evolution_input_inpatient.toPlainText().strip()
+        medications = self.medications_input_inpatient.toPlainText().strip()
+        treatment_plan = self.treatment_plan_input_inpatient.toPlainText().strip()
 
         if not patient_id:
             QMessageBox.warning(self, "Validation Error", "Please select a patient.")
@@ -1420,6 +1504,7 @@ class AdmissionManagement(QMainWindow):
         self.load_patients()
         self.load_admissions()
         self.load_icu_patients()
+        self.load_vitals()
         self.load_admitted_patient()
         self.load_inpatients()
         self.load_existing_departments()

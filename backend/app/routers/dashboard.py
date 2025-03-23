@@ -5,7 +5,7 @@ from datetime import datetime
 from models.user import User
 from sqlalchemy import func
 from models.patient import Patient
-from models.appointment import Appointment
+from models.appointment import Appointment, AppointmentStatus
 from models.lab import LabTest, LabTestStatus
 from models.radiology import RadiologyScan, RadiologyScanStatus
 from models.pharmacy import Prescription, PrescriptionStatus
@@ -25,6 +25,8 @@ def get_dashboard_metrics(db: Session = Depends(get_db), user: User = Depends(st
     total_patients = db.query(func.count(Patient.id)).scalar()
     # Total Appointments
     total_appointments = db.query(func.count(Appointment.id)).scalar()
+    # Pending Appointments
+    pending_appointments = db.query(func.count(Appointment.id)).filter(Appointment.status == AppointmentStatus.PENDING).scalar()
     # Total Lab Tests
     total_lab_tests = db.query(func.count(LabTest.id)).scalar()
     # Total Scans
@@ -37,6 +39,10 @@ def get_dashboard_metrics(db: Session = Depends(get_db), user: User = Depends(st
     pending_lab_tests = db.query(func.count(LabTest.id)).filter(LabTest.status == LabTestStatus.PENDING).scalar()
     # Pending Scans
     pending_scans = db.query(func.count(RadiologyScan.id)).filter(RadiologyScan.status == RadiologyScanStatus.PENDING).scalar()
+    # In Progress Scan
+    scans_in_progress = db.query(func.count(RadiologyScan.id)).filter(RadiologyScan.status == RadiologyScanStatus.IN_PROGRESS).scalar()
+    # Lab Test In Progress
+    lab_tests_in_progress = db.query(func.count(LabTest.id)).filter(LabTest.status == LabTestStatus.IN_PROGRESS).scalar()
     # Total Billing Transactions
     total_billing_transactions = db.query(func.count(Billing.id)).scalar()
 
@@ -80,12 +86,15 @@ def get_dashboard_metrics(db: Session = Depends(get_db), user: User = Depends(st
         "total_scans": total_scans,
         "pending_lab_tests": pending_lab_tests,
         "Pending_scans": pending_scans,
+        "scans_in_progress":scans_in_progress,
+        "lab_tests_in_progress":lab_tests_in_progress,
         "total_billing_transactions": total_billing_transactions,
         "patient_distribution": patient_distribution,
         "appointments_data": appointments_data,
         "admissions_data": admissions_data,
         "total_admissions": total_admissions,
         "total_prescription": total_prescriptions,
+        "pending_appointments":pending_appointments,
         "pending_prescriptions": pending_prescriptions,
     }
  
@@ -93,10 +102,12 @@ def get_dashboard_metrics(db: Session = Depends(get_db), user: User = Depends(st
 def get_doctor_dashboard_metrics(doctor_id: int, db: Session = Depends(get_db), user: User = Depends(staff_only)):
     """Fetch doctor specific metrics for the dashboard."""
     my_patients = db.query(func.count(Patient.id)).filter(Patient.assigned_doctor_id == doctor_id).scalar()
-    my_appointments = db.query(func.count(Appointment.id)).filter(Appointment.doctor_id == doctor_id).scalar()
+    my_pending_appointments = db.query(func.count(Appointment.id)).filter(Appointment.doctor_id == doctor_id, Appointment.status == AppointmentStatus.PENDING).scalar()
+    my_confirmed_appointments = db.query(func.count(Appointment.id)).filter(Appointment.doctor_id == doctor_id, Appointment.status == AppointmentStatus.CONFIRMED).scalar()
     
     
     return {
         "my_patients": my_patients,
-        "my_appointments": my_appointments,
+        "my_pending_appointments": my_pending_appointments,
+        "my_confirmed_appointments": my_confirmed_appointments
     }

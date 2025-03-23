@@ -1,7 +1,5 @@
 from statsmodels.tsa.arima.model import ARIMA
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
-from sklearn.neighbors import LocalOutlierFactor
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
 from transformers import pipeline

@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QApplication,
-    QPushButton, QTextEdit, QMessageBox, QHBoxLayout, QLineEdit, QHeaderView
+    QPushButton, QTextEdit, QMessageBox, QHBoxLayout, QLineEdit, QHeaderView, QSizePolicy
 )
 from PySide6.QtCore import Qt
 from utils.api_utils import fetch_data, update_data
@@ -54,11 +54,13 @@ class RadiologyManagement(QWidget):
         # Scan Requests Table
         self.scan_table = QTableWidget()
         self.scan_table.setColumnCount(8)
+        self.scan_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.scan_table.setHorizontalHeaderLabels(
             ["ID", "Patient", "Requested By", "Scan Type", "Status", "Results", "Notes", "Actions"]
         )
+        self.scan_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.scan_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.layout.addWidget(self.scan_table)
+        self.layout.addWidget(self.scan_table, stretch=1)
 
         # Add a duplicate header at the bottom of the table
         self.duplicate_header()
@@ -208,8 +210,7 @@ class RadiologyManagement(QWidget):
         """Opens the update scan window."""
         self.update_scan = UpdateRequestedScan(scan_id, self.token)
         self.update_scan.show()
-        self.load_scan_requests()
-
+        
     def toggle_theme(self):
         """Toggles between light and dark themes."""
         self.is_dark_theme = not self.is_dark_theme
@@ -234,6 +235,7 @@ class RadiologyManagement(QWidget):
                 }
                 QLineEdit {
                     background-color: #34495E;
+                    font-size:14px;
                     color: #ECF0F1;
                     border: 1px solid #5D6D7E;
                 }
@@ -322,7 +324,8 @@ class UpdateRequestedScan(QWidget):
         response = update_data(self, api_url, data, self.token)
 
         if response:
-            QMessageBox.information(self, "Success", "Scan updated successfully.")
+            QMessageBox.information(self, "Success", "Scan updated successfully.")            
+            self.load_scan_requests()
             self.close()
         else:
             QMessageBox.warning(self, "Error", "Failed to update scan.")

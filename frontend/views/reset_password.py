@@ -39,10 +39,13 @@ class ResetPasswordPage(QWidget):
         confirm_password = self.confirm_password_input.text()
 
         if not password or not confirm_password:
-            QMessageBox.warning(self, "Error", "Please enter and confirm your password!")
+            QMessageBox.warning(self, "Input Error", "Please enter and confirm your password!")
             return
         if password != confirm_password:
-            QMessageBox.warning(self, "Error", "Passwords do not match!")
+            QMessageBox.warning(self, "Input Error", "Passwords do not match!")
+            return
+        if len(password) < 8:
+            QMessageBox.warning(self, "Input Error", "Password must be at least 8 characters long!")
             return
 
         try:

@@ -70,10 +70,10 @@ def update_radiology_scan_status(scan_id: int, update: RadiologyScanUpdate, db: 
         raise HTTPException(status_code=404, detail="Radiology scan not found")
 
     # Ensure the status is a valid enum value
-    if update.status != RadiologyScanStatus.IN_PROGRESS:
+    if update.status not in RadiologyScanStatus.IN_PROGRESS:
         raise HTTPException(status_code=400, detail="Invalid status value. Expected 'In Progress'")
 
-    radiology_scan.status = update.status
+    radiology_scan.status = RadiologyScanStatus.IN_PROGRESS
     if update.results:
         radiology_scan.results = update.results
         
@@ -97,6 +97,8 @@ def update_radiology_scan(scan_id: int, update: RadiologyScanUpdate, db: Session
     if update.status == RadiologyScanStatus.COMPLETED and update.results:
         radiology_scan.results = update.results
         radiology_scan.completed_date = func.now()
+    else:
+        raise HTTPException(status_code=400, detail="Results Missing!!! please Enter Results")
     
     db.commit()
     db.refresh(radiology_scan)

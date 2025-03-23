@@ -332,8 +332,8 @@ class DoctorRegistrationForm(QWidget):
             QMessageBox.warning(self, "Validation Error", "Please enter a valid email!")
             return
 
-        if len(password) < 6:
-            QMessageBox.warning(self, "Validation Error", "Password must be at least 6 characters long!")
+        if len(password) < 8:
+            QMessageBox.warning(self, "Validation Error", "Password must be at least 8 characters long!")
             return
 
         api_url = os.getenv("REGISTER_DOCTOR_URL")

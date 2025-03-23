@@ -43,3 +43,10 @@ class ResetPasswordRequest(BaseModel):
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
+
+class IsActive(BaseModel):
+    is_active: bool
+    
+class UserUpdate(BaseModel):
+    password: str
+    email: EmailStr

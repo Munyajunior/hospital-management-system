@@ -240,7 +240,7 @@ class LabTests(QWidget):
             for patient in patients:
                 self.patient_dropdown.addItem(patient["full_name"], patient["id"])
         else:
-            QMessageBox.critical(self, "Error", "Failed to fetch patients.")
+            QMessageBox.critical(self, "Error", "Failed to fetch patients.", QMessageBox.Ok)
 
     def load_lab_tests(self):
         """Fetches and displays lab test requests."""

@@ -84,7 +84,7 @@ def admit_patient(admission_data: AdmissionCreate, db: Session = Depends(get_db)
 
 
 @router.put("/{admission_id}/discharge", response_model=AdmissionResponse)
-def discharge_patient(admission_id: int, db: Session = Depends(get_db), user: User = Depends(nurse_or_doctor)):
+async def discharge_patient(admission_id: int, db: Session = Depends(get_db), user: User = Depends(nurse_or_doctor)):
     """Discharge a patient and free their assigned bed."""
     admission = db.query(PatientAdmission).filter(PatientAdmission.id == admission_id).first()
     
@@ -157,9 +157,5 @@ async def list_admissions(
     if patient_id:
         query = query.filter(PatientAdmission.patient_id == patient_id)
 
-    # Debug: Print the generated SQL query
-    print("Generated SQL Query:", str(query))
-
     admissions = query.all()
-    print("Admissions fetched from database:", admissions)
     return admissions

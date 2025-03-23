@@ -112,38 +112,40 @@ class Dashboard(QWidget):
         # Define metrics for each role
         self.role_metrics = {
             "admin": [
-                {"title": "Total Patients", "value": "0", "icon": "assets/icons/patient.png", "api_key": "total_patients"},
-                {"title": "Total Lab Tests", "value": "0", "icon": "assets/icons/lab.png", "api_key": "total_lab_tests"},
-                {"title": "Total Scans", "value": "0", "icon": "assets/icons/scan.png", "api_key": "total_scans"},
-                {"title": "Total Prescriptions", "value": "0", "icon": "assets/icons/prescription.png", "api_key": "total_prescriptions"},
-                {"title": "Appointments", "value": "0", "icon": "assets/icons/date.png", "api_key": "total_appointments"},
+                {"title": "All Patients", "value": "0", "icon": "assets/icons/patient.png", "api_key": "total_patients"},
+                {"title": "All Lab Tests", "value": "0", "icon": "assets/icons/lab.png", "api_key": "total_lab_tests"},
+                {"title": "All Scans", "value": "0", "icon": "assets/icons/radiation.png", "api_key": "total_scans"},
+                {"title": "All Prescriptions", "value": "0", "icon": "assets/icons/prescription.png", "api_key": "total_prescriptions"},
+                {"title": " All Appointments", "value": "0", "icon": "assets/icons/date.png", "api_key": "total_appointments"},
                 {"title": "Billing Transactions", "value": "0", "icon": "assets/icons/payment.png", "api_key": "total_billing_transactions"},
-                {"title": "Predicted Admissions", "value": "0", "icon": "assets/icons/admissions.png", "api_key": "predicted_admissions"},
+                {"title": "Predicted Admissions", "value": "0", "icon": "assets/icons/ai.png", "api_key": "predicted_admissions"},
             ],
             "doctor": [
                 {"title": "My Patients", "value": "0", "icon": "assets/icons/patient.png", "api_key": "my_patients"},
-                {"title": "My Appointments", "value": "0", "icon": "assets/icons/date.png", "api_key": "my_appointments"},
+                {"title": "My Confirmed Appointments", "value": "0", "icon": "assets/icons/date.png", "api_key": "my_confirmed_appointments"},
+                {"title": "My Pending Appointments", "value": "0", "icon": "assets/icons/pending_appointment.png", "api_key":"my_pending_appointments"},
                 {"title": "No-Show Rate", "value": "0%", "icon": "assets/icons/absence.png", "api_key": "no_show_rate"},
-                {"title": "Predicted Admissions", "value": "0", "icon": "assets/icons/admission.png", "api_key": "predicted_admissions"},
+                {"title": "Predicted Admissions", "value": "0", "icon": "assets/icons/ai.png", "api_key": "predicted_admissions"},
             ],
             "nurse":[
-                {"title": "Total Admissions", "value": "0", "icon": "assets/icons/admission.png", "api_key": "total_admissions"},
-                {"title": "Total Admissions", "value": "0", "icon": "assets/icons/date.png", "api_key":"total_appointments"},
-                {"title": "Predicted Admissions", "value": "0", "icon": "assets/icons/admissions.png", "api_key": "predicted_admissions"},
+                {"title": "All Admissions", "value": "0", "icon": "assets/icons/admission.png", "api_key": "total_admissions"},
+                {"title": "All Appointments", "value": "0", "icon": "assets/icons/date.png", "api_key":"total_appointments"},
+                {"title": "Pending Appointments", "value": "0", "icon": "assets/icons/pending_appointment.png", "api_key":"pending_appointments"},
+                {"title": "Predicted Admissions", "value": "0", "icon": "assets/icons/ai.png", "api_key": "predicted_admissions"},
             ],
             "pharmacist": [
-                {"title": "Total Prescriptions", "value": "0", "icon": "assets/icons/prescription.png", "api_key": "total_prescriptions"},
-                {"title": "Pending Prescriptions", "value": "0", "icon": "assets/icons/prescription.png", "api_key": "pending_prescriptions"},
+                {"title": "All Prescriptions", "value": "0", "icon": "assets/icons/prescription.png", "api_key": "total_prescriptions"},
+                {"title": "Pending Prescriptions", "value": "0", "icon": "assets/icons/hourglass.png", "api_key": "pending_prescriptions"},
             ],
             "lab_technician":[
-                {"title": "Total Lab Tests", "value": "0", "icon": "assets/icons/lab.png", "api_key": "total_lab_tests"},
-                {"title": "Pending Lab Tests", "value": "0", "icon": "assets/icons/result.png", "api_key": "pending_lab_tests"},
-                {"title": "Lab Tests In Progress", "value": "0", "icon": "assets/icons/result.png", "api_key": "lab_tests_in_progress"},
+                {"title": "All Lab Tests", "value": "0", "icon": "assets/icons/lab.png", "api_key": "total_lab_tests"},
+                {"title": "Pending Lab Tests", "value": "0", "icon": "assets/icons/hourglass.png", "api_key": "pending_lab_tests"},
+                {"title": "Lab Tests In Progress", "value": "0", "icon": "assets/icons/process.png", "api_key": "lab_tests_in_progress"},
             ],
             "radiologist": [
-                {"title": "Total Scans", "value": "0", "icon": "assets/icons/scan.png", "api_key": "total_scans"},
-                {"title": "Pending Scans", "value": "0", "icon": "assets/icons/result.png", "api_key": "pending_scans"},
-                {"title": "Scans In Progress", "value": "0", "icon": "assets/icons/result.png", "api_key": "scans_in_progress"},
+                {"title": "All Scans", "value": "0", "icon": "assets/icons/radiation.png", "api_key": "total_scans"},
+                {"title": "Pending Scans", "value": "0", "icon": "assets/icons/radiograph.png", "api_key": "pending_scans"},
+                {"title": "Scans In Progress", "value": "0", "icon": "assets/icons/radioactive.png", "api_key": "scans_in_progress"},
             ]
         }
                              

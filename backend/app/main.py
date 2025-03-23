@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware  
 from routers import (auth, patients, doctors, pharmacy, 
-                     lab, radiology, icu, appointment, admissions, 
+                     lab, radiology, icu, appointment, admissions,users, 
                      medical_record, admissions, beds, departments, wards, inpatient, patient_vitals,
                      dashboard, billing, ai_routes)
 from core.database import Base, engine
@@ -37,6 +37,7 @@ app.include_router(patient_vitals.router)
 app.include_router(dashboard.router)
 app.include_router(billing.router)
 app.include_router(ai_routes.router)
+app.include_router(users.router)
 
 
 @app.get("/")

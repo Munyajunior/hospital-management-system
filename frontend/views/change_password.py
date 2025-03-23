@@ -119,6 +119,9 @@ class ChangePasswordWindow(QMainWindow):
         if not current_password or not new_password or not confirm_password:
             QMessageBox.warning(self, "Error", "All fields are required!")
             return
+        if current_password == new_password:
+            QMessageBox.warning(self, "Error", "Your New Password Cannot be same as your old password")
+            return
 
         if new_password != confirm_password:
             QMessageBox.warning(self, "Error", "New passwords do not match!")

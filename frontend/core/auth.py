@@ -21,20 +21,12 @@ class AuthHandler:
                 
                 return True, "Login successful!", role, user_id, token
             elif response.status_code == 401:
-                # Handle invalid credentials
                 return False, "Invalid credentials. Please try again.", None, None, None
+            elif response.status_code == 403:
+                return False, "Your Access has been Rebuked, See the Administration for more information", None, None, None
             else:
                 return False, "An error occurred. Please try again later.", None, None, None
         except requests.exceptions.RequestException as e:
             return False, f"Unable to connect to the server: {str(e)}", None, None, None
 
-    def save_token(self, token, role, user_id):
-        with open("auth_token.txt", "w") as file:
-            file.write(token)
-        with open("role.txt", "w") as file:  
-            file.write(role)
-        with open("user_id.txt", "w") as file:  
-            file.write(user_id)
-
-
-
+   
