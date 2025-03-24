@@ -776,7 +776,16 @@ class PatientRecordUpdateWindow(QWidget):
             "scan_results": self.scan_results_text.toPlainText().strip(),
             "notes": self.notes_text.toPlainText().strip(),
             "scans_requested": self.scan_requested_text.toPlainText().strip(),
-            "lab_tests_results": self.lab_tests_results_text.toPlainText().strip()
+            "lab_tests_results": self.lab_tests_results_text.toPlainText().strip(),
+            "append":{"medical_history":True,
+                      "diagnosis":True,
+                      "treatment_plan":True,
+                      "prescription":True,
+                      "lab_tests_requested":True,
+                      "scan_results":True,
+                      "notes":True,
+                      "scans_requested":True,
+                      "lab_tests_results":True}
         }
 
         success = update_data(self, api_url, _data, self.token)

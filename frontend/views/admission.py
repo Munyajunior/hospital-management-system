@@ -951,7 +951,7 @@ class AdmissionManagement(QMainWindow):
     def load_icu_patients(self):
         """Fetches and displays ICU patients."""
         try:
-            icu_patients = fetch_data(self, os.getenv("GET_ICU_PATIENTS_URL"), self.token)
+            icu_patients = fetch_data(self, os.getenv("ICU_PATIENT_URL"), self.token)
             self.populate_icu_table(icu_patients)
         except Exception as e:
             self.show_error(str(e))
@@ -1040,7 +1040,7 @@ class AdmissionManagement(QMainWindow):
     def load_inpatients(self):
         """Fetches and displays inpatients."""
         try:
-            inpatients = fetch_data(self, os.getenv("GET_INPATIENTS_URL"), self.token)
+            inpatients = fetch_data(self, os.getenv("INPATIENT_URL"), self.token)
             self.populate_inpatient_table(inpatients)
         except Exception as e:
             self.show_error(str(e))
@@ -1060,7 +1060,7 @@ class AdmissionManagement(QMainWindow):
         # Populate the table with data
         for row, patient in enumerate(inpatients, start=1):
             self.inpatient_table.insertRow(row)
-            self.inpatient_table.setItem(row, 0, QTableWidgetItem(patient["patient_name"]))
+            self.inpatient_table.setItem(row, 0, QTableWidgetItem(patient["patient_id"]))
             self.inpatient_table.setItem(row, 1, QTableWidgetItem(patient["status"]))
             self.inpatient_table.setItem(row, 2, QTableWidgetItem(patient["condition_evolution"]))
             self.inpatient_table.setItem(row, 3, QTableWidgetItem(patient["medications"]))
@@ -1360,8 +1360,7 @@ class AdmissionManagement(QMainWindow):
             QMessageBox.warning(self, "Validation Error", "Please select a patient.")
             return
 
-        base_url = os.getenv("UPDATE_ICU_PATIENT_URL")
-        api_url = f"{base_url}{patient_id}"
+        api_url = os.getenv("ICU_PATIENT_URL")
         data = {
             "patient_id": patient_id,
             "status": status,
@@ -1370,7 +1369,7 @@ class AdmissionManagement(QMainWindow):
             "drips": drips,
             "treatment_plan": treatment_plan
         }
-        response = update_data(self, api_url, data, self.token)
+        response = post_data(self, api_url, data, self.token)
 
         if response:
             QMessageBox.information(self, "Success", "ICU patient updated successfully.")
@@ -1390,8 +1389,7 @@ class AdmissionManagement(QMainWindow):
             QMessageBox.warning(self, "Validation Error", "Please select a patient.")
             return
 
-        base_url = os.getenv("UPDATE_INPATIENT_URL")
-        api_url = f"{base_url}{patient_id}"
+        api_url = os.getenv("INPATIENT_URL")
         data = {
             "patient_id": patient_id,
             "status": status,
@@ -1399,7 +1397,7 @@ class AdmissionManagement(QMainWindow):
             "medications": medications,
             "treatment_plan": treatment_plan
         }
-        response = update_data(self, api_url, data, self.token)
+        response = post_data(self, api_url, data, self.token)
 
         if response:
             QMessageBox.information(self, "Success", "Inpatient updated successfully.")

@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Dict
 
 class MedicalRecordBase(BaseModel):
     diagnosis: Optional[str] = None
@@ -17,7 +17,7 @@ class MedicalRecordCreate(MedicalRecordBase):
     pass
 
 class MedicalRecordUpdate(MedicalRecordCreate):
-    pass
+    append: Optional[Dict[str, bool]] = None  # Flag to indicate whether to append data
 
 class MedicalRecordResponse(MedicalRecordBase):
     id: int

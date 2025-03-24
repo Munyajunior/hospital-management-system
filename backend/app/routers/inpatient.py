@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from models.admission import Inpatient
+from models.admission import Inpatient, PatientAdmission
 from models.user import User
 from typing import List
 from schemas.admission import InpatientCreate, InpatientResponse
@@ -11,14 +11,32 @@ router = APIRouter(prefix="/inpatients", tags=["INPATIENT Management"])
 
 nurse_or_doctor = RoleChecker(["nurse", "doctor", "admin"])
 
+# @router.post("/patients/", response_model=InpatientResponse)
+# def create_inpatient_patient(in_patient: InpatientCreate, db: Session = Depends(get_db), user: User = Depends(nurse_or_doctor)):
+#     """Create a new INPATIENT patient record."""
+#     new_in_patient = Inpatient(**in_patient.model_dump(), updated_by=user.id)
+#     db.add(new_in_patient)
+#     db.commit()
+#     db.refresh(new_in_patient)
+#     return new_in_patient
+
 @router.post("/patients/", response_model=InpatientResponse)
-def create_inpatient_patient(in_patient: InpatientCreate, db: Session = Depends(get_db), user: User = Depends(nurse_or_doctor)):
-    """Create a new INPATIENT patient record."""
-    new_in_patient = Inpatient(**in_patient.model_dump(), updated_by=user.id)
-    db.add(new_in_patient)
+def update_inpatient(inpatient: InpatientCreate,db: Session = Depends(get_db),user: User = Depends(nurse_or_doctor)):
+    """Create a new inpatient record."""
+    # Check if the patient exists
+    patient = db.query(PatientAdmission).filter(PatientAdmission.id == inpatient.patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    # Create a new inpatient record
+    inpatient_data = inpatient.model_dump()
+    inpatient_data["updated_by"] = user.id
+    new_inpatient_record = Inpatient(**inpatient_data)
+    db.add(new_inpatient_record)
     db.commit()
-    db.refresh(new_in_patient)
-    return new_in_patient
+    db.refresh(new_inpatient_record)
+
+    return new_inpatient_record
 
 @router.put("/patients/{in_patient_id}", response_model=InpatientResponse)
 def update_in_patient(in_patient_id: int, updates: InpatientCreate, db: Session = Depends(get_db), user: User = Depends(nurse_or_doctor)):

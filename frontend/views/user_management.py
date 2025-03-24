@@ -152,7 +152,7 @@ class UserManagement(QWidget):
         self.toggle_password_button = QToolButton()
         self.toggle_password_button.setStyleSheet("""
             QToolButton {
-                background-color: transparent;
+                background-color: gray;
                 color: #4CAF5F;
                 border: none;
                 border-radius: 5px;

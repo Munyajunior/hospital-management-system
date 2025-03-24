@@ -49,8 +49,17 @@ def update_medical_record(patient_id: int, updates: MedicalRecordUpdate, db: Ses
     if not record:
         raise HTTPException(status_code=404, detail="Medical record not found")
 
-    for key, value in updates.model_dump(exclude_unset=True).items():
-        setattr(record, key, value)
+    update_data = updates.model_dump(exclude_unset=True)
+    append_flags = update_data.pop('append', {})  # Extract append flags
+
+    for key, value in update_data.items():
+        if value is not None:
+            if append_flags.get(key, False) and getattr(record, key):
+                # Append new data to existing data
+                setattr(record, key, getattr(record, key) + "\n" + value)
+            else:
+                # Overwrite existing data
+                setattr(record, key, value)
 
     db.commit()
     db.refresh(record)
