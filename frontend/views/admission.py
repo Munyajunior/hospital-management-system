@@ -900,7 +900,7 @@ class AdmissionManagement(QMainWindow):
     def load_patients(self):
         """Fetches and populates the dropdown with patients using threading."""
         try:
-            patients = fetch_data(self, os.getenv("PATIENT_LIST_URL")+ "?emergency=false", self.token)
+            patients = fetch_data(self, os.getenv("PATIENT_LIST_URL")+ "?emergency=False", self.token)
             self.populate_patient_dropdowns(patients)
         except Exception as e:
             self.show_error(str(e))
