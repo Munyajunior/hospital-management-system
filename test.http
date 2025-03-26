@@ -37,6 +37,7 @@ content-type: application/json
 ###
 POST http://127.0.0.1:8000/auth/register
 Content-Type: application/json
+Authorization: bearer {}
 {
   "full_name": "khalid",
   "email": "khalid@example.com",

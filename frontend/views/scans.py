@@ -261,9 +261,8 @@ class Scans(QWidget):
             self.scan_table.setItem(row + 1, 1, QTableWidgetItem(str(scan["requested_by"])))
             self.scan_table.setItem(row + 1, 2, QTableWidgetItem(scan["scan_type"]))
             self.scan_table.setItem(row + 1, 3, QTableWidgetItem(scan["status"]))
-            if scan["status"] == "Completed":
-                self.scan_table.setItem(row + 1, 4, QTableWidgetItem(scan["results"]))
-                self.scan_table.setItem(row + 1, 5, QTableWidgetItem(scan["additional_notes"]))
+            self.scan_table.setItem(row + 1, 4, QTableWidgetItem(scan["results"]))
+            self.scan_table.setItem(row + 1, 5, QTableWidgetItem(scan.get("additional_notes", "")))
 
     def filter_scans(self):
         """Filters scan requests based on the search query."""
