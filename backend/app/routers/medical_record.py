@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from models.medical_records import MedicalRecord
 from models.patient import Patient
 from models.user import User
@@ -31,14 +31,32 @@ def create_medical_record(patient_id: int, record_data: MedicalRecordCreate, db:
     db.refresh(new_record)
     return new_record
 
-@router.get("/{patient_id}", response_model=List[MedicalRecordResponse])
-def get_medical_record(patient_id: int, db: Session = Depends(get_db), user: User = Depends(staff_access)):
+@router.get("/", response_model=List[MedicalRecordResponse])
+def get_medical_record(patient_id: Optional[int] = Query(None), db: Session = Depends(get_db), user: User = Depends(staff_access)):
     """Get a patient's medical record. Accessible by doctors, nurses, and admins."""
+    query = (db.query(MedicalRecord.id,MedicalRecord.patient_id,
+                      Patient.full_name.label("patient_name"),
+                      MedicalRecord.created_by,
+                      User.full_name.label("created_by_name"),
+                      MedicalRecord.visit_date,
+                      MedicalRecord.diagnosis,
+                      MedicalRecord.treatment_plan,
+                      MedicalRecord.medical_history,
+                      MedicalRecord.prescription,
+                      MedicalRecord.lab_tests_requested,
+                      MedicalRecord.scans_requested,
+                      MedicalRecord.lab_tests_results,
+                      MedicalRecord.scan_results,
+                      MedicalRecord.notes,
+                      MedicalRecord.created_at,
+                      MedicalRecord.updated_at
+                      ).join(Patient, MedicalRecord.patient_id == Patient.id)
+                       .join(User, MedicalRecord.created_by == User.id)
+             )
+    if patient_id:
+        query = query.filter(MedicalRecord.patient_id == patient_id)
     
-    record = db.query(MedicalRecord).filter(MedicalRecord.patient_id == patient_id).all()
-    if not record:
-        return []
-
+    record = query.all()
     return record
 
 @router.put("/{patient_id}", response_model=MedicalRecordResponse)

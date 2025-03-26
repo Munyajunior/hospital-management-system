@@ -4,6 +4,7 @@ from typing import List, Optional
 from models.patient import Patient
 from models.admission import PatientAdmission, Bed, Ward, Department, Inpatient, ICUPatient
 from models.user import User
+from models.doctor import Doctor
 from schemas.patients import PatientCreate, PatientCreateResponse, PatientResponse, PatientUpdate
 from schemas.admission import AdmissionCategory
 from core.database import get_db
@@ -143,29 +144,39 @@ async def create_patient(
             db.refresh(inpatient)
 
     # Send the generated password to the patient's email
-    email_sent = await send_password_email(new_patient.email, password)
-    if not email_sent:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to send password to email."
-        )
+    # email_sent = await send_password_email(new_patient.email, password)
+    # if not email_sent:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    #         detail="Failed to send password to email."
+    #     )
 
     return {**new_patient.__dict__, "password": password}
 
 @router.get("/", response_model=List[PatientResponse])
-def get_patients( emergency: Optional[bool] = Query(None), db: Session = Depends(get_db), user: User = Depends(doctor_or_nurse)):
-    query = db.query(Patient)
+def get_patients( emergency: Optional[bool] = Query(None), 
+                 patient_id: Optional[int] = Query(None),
+                 db: Session = Depends(get_db), 
+                 user: User = Depends(doctor_or_nurse)):
+    
+    query = (db.query(Patient.id,Patient.full_name,
+                     Patient.date_of_birth,Patient.gender,
+                     Patient.role,Patient.email,
+                     Patient.address, Patient.contact_number, Patient.category, 
+                     Patient.emergency,Patient.assigned_doctor_id,
+                     Doctor.full_name.label("assigned_doctor_name"),
+                     Patient.registered_by,
+                     User.id.label("registered_by_name"),
+                     Patient.created_at
+                     ).join(Doctor,Patient.assigned_doctor_id == Doctor.id)
+                      .join(User, Patient.registered_by == User.id)
+             )
     if emergency:
-        query = db.query(Patient).filter(Patient.emergency == emergency)
+        query = query.filter(Patient.emergency == emergency)
+    if patient_id:
+        query = query.filter(Patient.id == patient_id)
     patient = query.all()
-    return patient
-
-
-@router.get("/{patient_id}", response_model=PatientResponse)
-def get_patient(patient_id: int, db: Session = Depends(get_db), user: User = Depends(doctor_or_nurse)):
-    patient = db.query(Patient).filter(Patient.id == patient_id).first()
-    if not patient:
-        raise HTTPException(status_code=404, detail="Patient not found")
+    
     return patient
 
 

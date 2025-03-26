@@ -17,8 +17,8 @@ class Prescription(Base):
     dosage = Column(String, nullable=False)
     instructions = Column(Text, nullable=False)
     status = Column(Enum(PrescriptionStatus, name="prescription_status"), default=PrescriptionStatus.PENDING, nullable=False)
-    created_at = Column(DateTime, server_default=func.now())
-    dispensed_at = Column(DateTime, onupdate=func.now(), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    dispensed_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relationships
     patient = relationship("Patient", back_populates="prescriptions")
@@ -30,8 +30,8 @@ class DrugCategory(Base):
     __tablename__ = "drug_categories"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False)  # e.g., Analgesics, NSAIDs, Antibiotics
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, onupdate=func.now(), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relationship with Inventory
     drugs = relationship("Inventory", back_populates="category")
@@ -43,8 +43,8 @@ class Inventory(Base):
     drug_name = Column(String, nullable=False, unique=True)
     quantity = Column(Integer, nullable=False)
     category_id = Column(Integer, ForeignKey("drug_categories.id"), nullable=False)  # Link to DrugCategory
-    added_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, onupdate=func.now(), server_default=func.now())
+    added_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relationships
     category = relationship("DrugCategory", back_populates="drugs")

@@ -13,7 +13,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     role = Column(String, nullable=False)  # admin, nurse, doctor, pharmacist, lab, radiology, icu
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
     
 
     # Relationships

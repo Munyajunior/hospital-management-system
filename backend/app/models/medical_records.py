@@ -9,7 +9,7 @@ class MedicalRecord(Base):
     id = Column(Integer, primary_key=True, index=True)
     patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)  # Doctor who created the record
-    visit_date = Column(DateTime, server_default=func.now())
+    visit_date = Column(DateTime(timezone=True), server_default = func.now())
 
     diagnosis = Column(Text, nullable=True)
     treatment_plan = Column(Text, nullable=True)
@@ -20,6 +20,8 @@ class MedicalRecord(Base):
     lab_tests_results = Column(Text, nullable=True)
     scan_results = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default = func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relationships
     patient = relationship("Patient", back_populates="medical_records")
