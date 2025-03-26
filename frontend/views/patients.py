@@ -148,6 +148,7 @@ class PatientManagement(QWidget):
         api_url = os.getenv("PATIENT_LIST_URL")
         patients = fetch_data(self, api_url, self.token)
         self.populate_table(patients)
+        self.load_doctor_list()
 
     def load_doctor_list(self):
         """Fetch all doctors and store them in a dictionary {doctor_id: doctor_name}"""
