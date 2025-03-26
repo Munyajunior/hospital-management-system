@@ -288,8 +288,7 @@ class MedicalRecords(QWidget):
                 # Button to View Patient Record
                 self.medical_record_table.setCellWidget(row + 1, 6, self.create_view_button(patient["id"]))
         else:
-            base_url = os.getenv("MEDICAL_RECORD_URL")
-            api_url = f"{base_url}/"
+            api_url = os.getenv("MEDICAL_RECORD_URL") + "/"
             patients = fetch_data(self, api_url, self.token)
 
             if not patients:
@@ -450,7 +449,7 @@ class PatientRecordWindow(QWidget):
         self.patient_table = QTableWidget()
         self.patient_table.setColumnCount(9)
         self.patient_table.setHorizontalHeaderLabels([
-            "ID", "Medical History", "Diagnosis", "Treatment Plan",
+            "Name", "Medical History", "Diagnosis", "Treatment Plan",
             "Prescription", "Lab Tests", "Radiography", "Notes", "Actions"
         ])
 
@@ -483,8 +482,7 @@ class PatientRecordWindow(QWidget):
 
     def load_assigned_patients(self):
         """Fetch and display patient records."""
-        base_url = os.getenv("MEDICAL_RECORD_URL")
-        api_url = f"{base_url}/{self.patient_id}"
+        api_url = os.getenv("MEDICAL_RECORD_URL") + f"/?patient_id={self.patient_id}"
         patient = fetch_data(self, api_url, self.token)
 
         if not patient:
@@ -500,7 +498,7 @@ class PatientRecordWindow(QWidget):
         self.patient_table.setRowCount(1)
 
         # Fill in patient details
-        self.patient_table.setItem(0, 0, QTableWidgetItem(str(patient.get("id", ""))))
+        self.patient_table.setItem(0, 0, QTableWidgetItem(str(patient.get("patient_name", ""))))
         self.patient_table.setItem(0, 1, QTableWidgetItem(patient.get("medical_history", "")))
         self.patient_table.setItem(0, 2, QTableWidgetItem(patient.get("diagnosis", "")))
         self.patient_table.setItem(0, 3, QTableWidgetItem(patient.get("treatment_plan", "")))
