@@ -115,11 +115,31 @@ class UserManagement(QWidget):
         form_layout.addWidget(self.password_input)
 
         # Toggle Password Visibility Button
-        self.toggle_password_button = QToolButton()
-        self.toggle_password_button.setIcon(QIcon("assets/icons/eye-crossed.png"))  # Default icon for hidden password
-        self.toggle_password_button.setCheckable(True)  # Make the button toggleable
-        self.toggle_password_button.clicked.connect(self.toggle_password_visibility)
-        form_layout.addWidget(self.toggle_password_button)
+        self.toggle_add_user_password_button = QToolButton()
+        self.toggle_add_user_password_button.setStyleSheet("""
+            QToolButton {
+                background-color: gray;
+                color: #4CAF5F;
+                border: none;
+                border-radius: 5px;
+                font-size: 14px;
+                text-decoration: underline;
+                padding: 5px;
+            }
+            QToolButton:checked{
+                background-color: #f44336;
+            }
+            QToolButton:hover {
+                background-color: #45a049;
+            }
+            QToolButton:pressed {
+                background-color: #367c39;
+            }
+        """)
+        self.toggle_add_user_password_button.setIcon(QIcon("assets/icons/eye-crossed.png"))  # Default icon for hidden password
+        self.toggle_add_user_password_button.setCheckable(True)  # Make the button toggleable
+        self.toggle_add_user_password_button.clicked.connect(self.toggle_add_user_password_visibility)
+        form_layout.addWidget(self.toggle_add_user_password_button)
 
         
         self.role_select = QComboBox()
@@ -328,17 +348,26 @@ class UserManagement(QWidget):
             self.load_users()  # Refresh the user table
         else:
             QMessageBox.critical(self, "Error", "Failed to update user status.")
-    
+            
+    def toggle_add_user_password_visibility(self):
+        if self.toggle_add_user_password_button.isChecked():
+            # Show password
+            self.password_input.setEchoMode(QLineEdit.Normal)
+            self.toggle_add_user_password_button.setIcon(QIcon("assets/icons/eye.png"))  # Icon for visible password
+        else:
+            # Hide password
+            self.password_input.setEchoMode(QLineEdit.Password)
+            self.toggle_add_user_password_button.setIcon(QIcon("assets/icons/eye-crossed.png"))  # Icon for hidden password
+        
+        
     def toggle_password_visibility(self):
         """Toggles the visibility of the password field."""
         if self.toggle_password_button.isChecked():
             # Show password
-            self.password_input.setEchoMode(QLineEdit.Normal)
             self.new_password_input.setEchoMode(QLineEdit.Normal)
             self.toggle_password_button.setIcon(QIcon("assets/icons/eye.png"))  # Icon for visible password
         else:
             # Hide password
-            self.password_input.setEchoMode(QLineEdit.Password)
             self.new_password_input.setEchoMode(QLineEdit.Password)
             self.toggle_password_button.setIcon(QIcon("assets/icons/eye-crossed.png"))  # Icon for hidden password
         
