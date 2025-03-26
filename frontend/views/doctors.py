@@ -695,8 +695,7 @@ class PatientRecordUpdateWindow(QWidget):
 
     def load_patient_data(self):
         """Fetch patient details from API and populate fields."""
-        base_url = os.getenv("PATIENT_LIST_URL")
-        api_url = f"{base_url}{self.patient_id}"
+        api_url = os.getenv("PATIENT_LIST_URL") + f"?patient_id={self.patient_id}"
         patient = fetch_data(self, api_url, self.token)
 
         if patient:
