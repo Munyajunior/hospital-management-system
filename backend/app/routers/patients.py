@@ -1,10 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 from typing import List, Optional
 from models.patient import Patient
 from models.admission import PatientAdmission, Bed, Ward, Department, Inpatient, ICUPatient
 from models.user import User
-from models.doctor import Doctor
 from schemas.patients import PatientCreate, PatientCreateResponse, PatientResponse, PatientUpdate
 from schemas.admission import AdmissionCategory
 from core.database import get_db
@@ -143,13 +142,13 @@ async def create_patient(
             db.commit()
             db.refresh(inpatient)
 
-    # Send the generated password to the patient's email
-    # email_sent = await send_password_email(new_patient.email, password)
-    # if not email_sent:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-    #         detail="Failed to send password to email."
-    #     )
+        # Send the generated password to the patient's email
+        email_sent = await send_password_email(new_patient.email, password)
+        if not email_sent:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to send password to email."
+            )
 
     return {**new_patient.__dict__, "password": password}
 
@@ -158,7 +157,7 @@ def get_patients( emergency: Optional[bool] = Query(None),
                  patient_id: Optional[int] = Query(None),
                  db: Session = Depends(get_db), 
                  user: User = Depends(doctor_or_nurse)):
-    
+    Doctor = aliased(User)
     query = (db.query(Patient.id,Patient.full_name,
                      Patient.date_of_birth,Patient.gender,
                      Patient.role,Patient.email,
@@ -168,7 +167,7 @@ def get_patients( emergency: Optional[bool] = Query(None),
                      Patient.registered_by,
                      User.id.label("registered_by_name"),
                      Patient.created_at
-                     ).join(Doctor,Patient.assigned_doctor_id == Doctor.id)
+                     ).outerjoin(Doctor, Patient.assigned_doctor_id == Doctor.id)
                       .join(User, Patient.registered_by == User.id)
              )
     if emergency:
