@@ -7,9 +7,9 @@ from routers import (
     departments, wards, inpatient, patient_vitals, dashboard, 
     billing, ai_routes
 )
-from core.database import Base, async_engine, sync_engine
-from core.cache import init_redis
-import asyncio
+from core.database import Base
+from alembic.config import Config
+from alembic import command
 
 app = FastAPI(title="Hospital Management System")
 
@@ -18,9 +18,11 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["*"], 
     allow_headers=["*"],
-)
+) 
+
+
 
 # Include all routers
 app.include_router(auth.router)
@@ -43,15 +45,12 @@ app.include_router(billing.router)
 app.include_router(ai_routes.router)
 app.include_router(users.router)
 
-@app.lifespan("startup")
-async def startup():
-    # Create database tables
-    async with async_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    
-    # Initialize Redis
-    await init_redis(app)
+
+def run_migrations():
+    alembic_cfg = Config("alembic.ini")
+    command.upgrade(alembic_cfg, "head")
 
 @app.get("/")
 async def root():
+    run_migrations()
     return {"message": "Hospital Management System API"}
