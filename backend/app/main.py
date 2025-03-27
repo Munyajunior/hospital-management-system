@@ -1,15 +1,13 @@
-# main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import (
-    auth, patients, doctors, pharmacy, lab, radiology, icu, 
-    appointment, admissions, users, medical_record, beds, 
-    departments, wards, inpatient, patient_vitals, dashboard, 
-    billing, ai_routes
-)
-from core.database import Base, async_engine, sync_engine
 from core.cache import init_redis
-import asyncio
+from core.database import async_engine, Base
+from routers import (
+    auth, patients, doctors, pharmacy, lab, radiology, 
+    icu, appointment, admissions, users, medical_record,
+    inpatient, patient_vitals, dashboard, billing, ai_routes,
+    beds, departments, wards
+)
 
 app = FastAPI(title="Hospital Management System")
 
@@ -21,6 +19,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Initialize Redis cache on startup
+@app.on_event("startup")
+async def startup():
+    # Initialize database
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    
+    # Initialize Redis cache
+    await init_redis(app)
 
 # Include all routers
 app.include_router(auth.router)
@@ -42,15 +50,6 @@ app.include_router(dashboard.router)
 app.include_router(billing.router)
 app.include_router(ai_routes.router)
 app.include_router(users.router)
-
-@app.lifespan("startup")
-async def startup():
-    # Create database tables
-    async with async_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    
-    # Initialize Redis
-    await init_redis(app)
 
 @app.get("/")
 async def root():

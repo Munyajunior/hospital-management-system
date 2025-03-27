@@ -19,4 +19,16 @@ async def init_redis(app: FastAPI):
     FastAPICache.init(RedisBackend(redis), prefix="hospital-cache")
 
 def cache(expire: int = 60):
-    return FastAPICache.cache(expire=expire)
+    """
+    Custom cache decorator that works with FastAPI-Cache2
+    """
+    def decorator(func):
+        async def wrapper(*args, **kwargs):
+            return await FastAPICache.decorate(
+                expire=expire,
+                namespace=func.__name__,
+                *args,
+                **kwargs
+            )(func)(*args, **kwargs)
+        return wrapper
+    return decorator
