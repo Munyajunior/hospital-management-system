@@ -1,12 +1,12 @@
-import os
-from PySide6.QtWidgets import (QApplication,
-    QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QGroupBox,
+from PySide6.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QGroupBox,
     QHeaderView, QTableWidgetItem, QMessageBox, QLineEdit, QComboBox,
-    QFormLayout, QHBoxLayout, QTextEdit)
+    QFormLayout, QHBoxLayout, QTextEdit
+)
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QColor
 from utils.api_utils import fetch_data, post_data, update_data
-from utils.load_auth_cred import LoadAuthCred
+import os
 
 class DoctorManagement(QWidget):
     def __init__(self, role, user_id, token):
@@ -14,15 +14,50 @@ class DoctorManagement(QWidget):
         self.token = token
         self.user_id = user_id
         self.user_role = role
-        
+
         self.setWindowTitle("Patient Management")
         screen = QApplication.primaryScreen()
         screen_geometry = screen.availableGeometry()
         max_width = screen_geometry.width() * 0.8  # 80% of screen width
         max_height = screen_geometry.height() * 0.8  # 80% of screen height
-        
+
         self.resize(int(max_width), int(max_height))  # Set window size
         self.setMinimumSize(800, 600)  # Set a reasonable minimum size
+        self.setStyleSheet("""
+            QTableWidget {
+                background-color: white;
+                border: 1px solid #dcdcdc;
+                alternate-background-color: #f9f9f9;
+                gridline-color: #dcdcdc;
+                border-radius: 10px;
+            }
+            QTableWidget::item {
+                padding: 8px;
+            }
+            QTableWidget::horizontalHeader {
+                background-color: #3498db;
+                color: white;
+                font-weight: bold;
+                font-size: 14px;
+                border-radius: 5px;
+                padding: 5px;
+            }
+            QTableWidget::horizontalHeader::section {
+                padding-left: 10px;
+                padding-right: 10px;
+                text-align: center;
+            }
+            QLineEdit {
+                padding: 10px;
+                border: 1px solid #dcdcdc;
+                border-radius: 5px;
+                font-size: 14px;
+            }
+            QLineEdit:focus {
+                border: 1px solid #007bff;
+            }
+        """)
+
         self.init_ui()
 
     def init_ui(self):
@@ -30,7 +65,7 @@ class DoctorManagement(QWidget):
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(20)
-        
+
         # Title Label
         self.title_label = QLabel("Doctor Management")
         self.title_label.setAlignment(Qt.AlignCenter)
@@ -46,12 +81,6 @@ class DoctorManagement(QWidget):
         # Search Bar
         self.search_bar = QLineEdit()
         self.search_bar.setPlaceholderText("Search doctors...")
-        self.search_bar.setStyleSheet("""
-            padding: 10px;
-            border: 1px solid #dcdcdc;
-            border-radius: 5px;
-            font-size: 14px;
-        """)
         self.search_bar.textChanged.connect(self.filter_doctors)
         main_layout.addWidget(self.search_bar)
 
@@ -59,36 +88,20 @@ class DoctorManagement(QWidget):
         self.doctor_table = QTableWidget()
         self.doctor_table.setColumnCount(4)
         self.doctor_table.setHorizontalHeaderLabels(["ID", "Name", "Specialization", "Actions"])
-        self.doctor_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        header = self.doctor_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # ID column resizes to content
+        header.setSectionResizeMode(1, QHeaderView.Stretch)  # Name column stretches
+        header.setSectionResizeMode(2, QHeaderView.Stretch)  # Specialization column stretches
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Actions column resizes to content
         self.doctor_table.setAlternatingRowColors(True)
-        self.doctor_table.setStyleSheet("""
-            QTableWidget {
-                background-color: #f8f9fa;
-                gridline-color: #ddd;
-                font-size: 14px;
-                border-radius: 10px;
-            }
-            QTableWidget::item {
-                padding: 10px;
-            }
-            QTableWidget::item:selected {
-                background-color: #007BFF;
-                color: white;
-            }
-            QHeaderView::section {
-                background-color: #007BFF;
-                color: white;
-                font-weight: bold;
-                padding: 10px;
-                border-radius: 5px;
-            }
-        """)
+        self.doctor_table.setStyleSheet("QTableWidget::item { padding: 10px; }")
+        self.add_placeholder_header()  # Add the placeholder header row
         main_layout.addWidget(self.doctor_table)
 
         # Buttons for Admin
         if self.user_role in ["admin", "nurse", "receptionist"]:
             button_layout = QHBoxLayout()
-            
+
             self.refresh_button = QPushButton("Refresh Doctors")
             self.refresh_button.setIcon(QIcon("assets/icons/refresh.png"))
             self.refresh_button.setStyleSheet(self.button_style())
@@ -109,15 +122,34 @@ class DoctorManagement(QWidget):
             QMessageBox.critical(self, "Unauthorized", "You are not authorized to access this page")
             return
         self.setLayout(main_layout)
-        
-    
+
+    def add_placeholder_header(self):
+        """Add a placeholder row to simulate a duplicated header."""
+        self.doctor_table.insertRow(0)  # Insert a new row at the top
+        for col in range(self.doctor_table.columnCount()):
+            header_text = self.doctor_table.horizontalHeaderItem(col).text()  # Get header text
+            item = QTableWidgetItem(header_text)  # Create a QTableWidgetItem with the header text
+            item.setFlags(Qt.NoItemFlags)  # Make the placeholder row non-editable
+            item.setBackground(QColor("#3498db"))  # Set background color to match the header
+            item.setForeground(QColor("white"))  # Set text color to white
+            self.doctor_table.setItem(0, col, item)  # Add the item to the table
+
+    def resizeEvent(self, event):
+        """Handle window resizing to adjust table columns."""
+        super().resizeEvent(event)
+        # Adjust table column widths dynamically
+        table_width = self.doctor_table.width()
+        self.doctor_table.setColumnWidth(0, int(table_width * 0.1))  # ID column: 10% of table width
+        self.doctor_table.setColumnWidth(1, int(table_width * 0.4))  # Name column: 40% of table width
+        self.doctor_table.setColumnWidth(2, int(table_width * 0.4))  # Specialization column: 40% of table width
+        self.doctor_table.setColumnWidth(3, int(table_width * 0.1))  # Actions column: 10% of table width
+
     def load_logged_doctors(self, user_id):
         """Fetch doctor data from API."""
         base_url = os.getenv("DOCTOR_LIST_URL")
         api_url = f"{base_url}{user_id}"
         doctor = fetch_data(self, api_url, self.token)
         self.populate_table(doctor)
-        
 
     def load_doctors(self):
         """Fetch doctor data from API."""
@@ -127,15 +159,18 @@ class DoctorManagement(QWidget):
 
     def populate_table(self, doctors):
         """Populate table with doctor data."""
+        self.doctor_table.setRowCount(0)  # Clear existing data
+        self.add_placeholder_header()  # Add the placeholder header row
+
         if isinstance(doctors, dict):  # If a single doctor object is returned
             doctors = [doctors]  # Convert it into a list
-            
-        self.doctor_table.setRowCount(len(doctors))
+
         for row, doctor in enumerate(doctors):
-            self.doctor_table.setItem(row, 0, QTableWidgetItem(str(doctor["id"])))
-            self.doctor_table.setItem(row, 1, QTableWidgetItem(doctor["full_name"]))
-            self.doctor_table.setItem(row, 2, QTableWidgetItem(doctor["specialization"]))
-            
+            self.doctor_table.insertRow(row + 1)  # Insert rows below the placeholder header
+            self.doctor_table.setItem(row + 1, 0, QTableWidgetItem(str(doctor["id"])))
+            self.doctor_table.setItem(row + 1, 1, QTableWidgetItem(doctor["full_name"]))
+            self.doctor_table.setItem(row + 1, 2, QTableWidgetItem(doctor["specialization"]))
+
             if self.user_role == "doctor":
                 view_patient_button = QPushButton(f"All Doctor {doctor['full_name']} patients")
                 view_patient_button.setStyleSheet(self.button_style(small=True))
@@ -144,16 +179,14 @@ class DoctorManagement(QWidget):
             else:
                 view_patient_button = QPushButton("You Are not a Doctor")
                 view_patient_button.setEnabled(False)
+                view_patient_button.setStyleSheet(self.button_style())
                 view_patient_button.setToolTip("Only Doctor can view Patients")
             # View Patients Button
-            self.doctor_table.setCellWidget(row, 3, view_patient_button)
-            
-        
-       
+            self.doctor_table.setCellWidget(row + 1, 3, view_patient_button)
 
     def view_assigned_patients(self, doctor_id, doctor_name):
         """Open a window to display patients assigned to a doctor."""
-        self.patient_list_window = PatientListWindow(doctor_id, doctor_name)
+        self.patient_list_window = PatientListWindow(doctor_id, doctor_name, self.token)
         self.patient_list_window.show()
 
     def button_style(self, small=False):
@@ -186,16 +219,15 @@ class DoctorManagement(QWidget):
 
     def show_registration_form(self):
         """Show doctor registration form"""
-        self.registration_window = DoctorRegistrationForm(self)
-        self.registration_window.show()
-      
+        self.registration_window = DoctorRegistrationForm(self, self.token, self.user_id)
+        self.registration_window.show()     
 
 class DoctorRegistrationForm(QWidget):
-    def __init__(self, parent):
+    def __init__(self, parent, token, user_id):
         super().__init__()
         self.parent = parent
-        self.token = LoadAuthCred.load_auth_token(self)
-        self.user_id = int(LoadAuthCred.load_user_id(self))
+        self.token = token
+        self.user_id = user_id
         self.init_ui()
 
     def init_ui(self):
@@ -240,6 +272,12 @@ class DoctorRegistrationForm(QWidget):
         self.contact_number.setPlaceholderText("Enter Contact Number")
         self.contact_number.setStyleSheet(self.input_style())
         form_layout.addRow("Contact Number:", self.contact_number)
+        
+        # Address 
+        self.address = QLineEdit()
+        self.address.setPlaceholderText("Enter Address")
+        self.address.setStyleSheet(self.input_style())
+        form_layout.addRow("Address:", self.address)
 
         # Email Input
         self.email_input = QLineEdit()
@@ -288,11 +326,12 @@ class DoctorRegistrationForm(QWidget):
         name = self.name_input.text().strip()
         specialization = self.specialization_input.currentText()
         contact = self.contact_number.text().strip()
+        address = self.address.text().strip()
         email = self.email_input.text().strip()
         password = self.password_input.text().strip()
 
         # Input Validation
-        if not name or not specialization or not contact or not email or not password:
+        if not name or not specialization or not contact or not email or not password or not address:
             QMessageBox.warning(self, "Validation Error", "All fields are required!")
             return
 
@@ -300,8 +339,8 @@ class DoctorRegistrationForm(QWidget):
             QMessageBox.warning(self, "Validation Error", "Please enter a valid email!")
             return
 
-        if len(password) < 6:
-            QMessageBox.warning(self, "Validation Error", "Password must be at least 6 characters long!")
+        if len(password) < 8:
+            QMessageBox.warning(self, "Validation Error", "Password must be at least 8 characters long!")
             return
 
         api_url = os.getenv("REGISTER_DOCTOR_URL")
@@ -309,6 +348,7 @@ class DoctorRegistrationForm(QWidget):
             "full_name": name,
             "specialization": specialization,
             "contact_number": contact,
+            "address": address,
             "email": email,
             "password": password
         }
@@ -387,11 +427,11 @@ class DoctorRegistrationForm(QWidget):
             """
 
 class PatientListWindow(QWidget):
-    def __init__(self, doctor_id, doctor_name):
+    def __init__(self, doctor_id, doctor_name, token):
         super().__init__()
         self.doctor_id = doctor_id
         self.doctor_name = doctor_name
-        self.token = LoadAuthCred.load_auth_token(self)
+        self.token = token
 
         self.setWindowTitle("Assigned Patients")
         self.setGeometry(200, 200, 800, 600)  # Slightly larger window for better spacing
@@ -423,9 +463,9 @@ class PatientListWindow(QWidget):
                 background-color: #0056b3;
             }
             QLineEdit {
-                padding: 8px;
+                padding: 10px;
                 border: 1px solid #dcdcdc;
-                border-radius: 4px;
+                border-radius: 5px;
                 font-size: 14px;
             }
             QLineEdit:focus {
@@ -507,7 +547,7 @@ class PatientListWindow(QWidget):
 
     def open_patient_record(self, patient_id):
         """Open the patient record management window."""
-        self.patient_record_window = PatientRecordUpdateWindow(patient_id)
+        self.patient_record_window = PatientRecordUpdateWindow(patient_id, self.token, self.user_id)
         self.patient_record_window.show()
         self.close()
 
@@ -525,11 +565,11 @@ class PatientListWindow(QWidget):
 
 
 class PatientRecordUpdateWindow(QWidget):
-    def __init__(self, patient_id):
+    def __init__(self, patient_id, token, user_id):
         super().__init__()
         self.patient_id = patient_id
-        self.token = LoadAuthCred.load_auth_token(self)
-        self.doctor_id = LoadAuthCred.load_user_id(self)
+        self.token = token
+        self.doctor_id = user_id
         self.setWindowTitle(f"Patient Record - {patient_id}")
         self.setGeometry(250, 250, 800, 700)  # Slightly larger window for better spacing
         self.init_ui()
@@ -655,8 +695,7 @@ class PatientRecordUpdateWindow(QWidget):
 
     def load_patient_data(self):
         """Fetch patient details from API and populate fields."""
-        base_url = os.getenv("PATIENT_LIST_URL")
-        api_url = f"{base_url}{self.patient_id}"
+        api_url = os.getenv("PATIENT_LIST_URL") + f"?patient_id={self.patient_id}"
         patient = fetch_data(self, api_url, self.token)
 
         if patient:
@@ -736,7 +775,16 @@ class PatientRecordUpdateWindow(QWidget):
             "scan_results": self.scan_results_text.toPlainText().strip(),
             "notes": self.notes_text.toPlainText().strip(),
             "scans_requested": self.scan_requested_text.toPlainText().strip(),
-            "lab_tests_results": self.lab_tests_results_text.toPlainText().strip()
+            "lab_tests_results": self.lab_tests_results_text.toPlainText().strip(),
+            "append":{"medical_history":True,
+                      "diagnosis":True,
+                      "treatment_plan":True,
+                      "prescription":True,
+                      "lab_tests_requested":True,
+                      "scan_results":True,
+                      "notes":True,
+                      "scans_requested":True,
+                      "lab_tests_results":True}
         }
 
         success = update_data(self, api_url, _data, self.token)
@@ -800,10 +848,10 @@ class PatientRecordUpdateWindow(QWidget):
 class LabTests(QWidget):
     """Dialog for requesting lab tests for a patient."""
 
-    def __init__(self, patient_id, token):
+    def __init__(self, patient_id, token ,user_id):
         super().__init__()
         self.patient_id = patient_id
-        self.user_id = LoadAuthCred.load_user_id(self)
+        self.user_id = user_id
         self.token = token
         self.setWindowTitle("Request Lab Test")
         self.setGeometry(300, 300, 400, 300)

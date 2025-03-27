@@ -161,3 +161,4 @@ cython_debug/
 ./auth
 ./files
 ./client_secret.json
+openai.py

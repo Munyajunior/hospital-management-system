@@ -19,8 +19,8 @@ class ICUPatient(Base):
     department = Column(String, nullable = False)
     ward = Column(String, nullable=False)
     bed_number = Column(Integer, nullable=False)
-    admission_date = Column(DateTime, default=func.now())
-    discharge_date = Column(DateTime, onupdate=func.now() ,nullable=True)
+    admission_date = Column(DateTime(timezone=True), server_default=func.now())
+    discharge_date = Column(DateTime(timezone=True), onupdate=func.now())
     status = Column(Enum(ICUStatus,name="icu_status",), default=ICUStatus.ADMITTED)
 
     # Relationships

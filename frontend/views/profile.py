@@ -2,6 +2,7 @@ import os
 from PySide6.QtWidgets import QMessageBox, QWidget, QLabel, QHBoxLayout, QVBoxLayout, QFrame, QPushButton, QMainWindow
 from PySide6.QtGui import QFont, QPixmap, QIcon
 from PySide6.QtCore import Qt
+import sys
 from utils.api_utils import fetch_data
 
 class ProfileWindow(QWidget):  
@@ -15,13 +16,12 @@ class ProfileWindow(QWidget):
     def fetch_user_info(self):
         """Fetch user information from the backend API."""
         base_url = os.getenv("USER_URL")
-        api_url = f"{base_url}/{self.user_id}"
+        api_url = f"{base_url}user/{self.user_id}"
         
         response = fetch_data(self, api_url, self.token)
         if not response:
             QMessageBox.critical(self, "Error", "Failed to fetch user information.")
             return None
-
         return response
 
     def setup_ui(self):
@@ -34,7 +34,7 @@ class ProfileWindow(QWidget):
                 font-family: Arial, sans-serif;
             }
             QLabel {
-                font-size: 16px;
+                font-size: 14px;
                 color: #333;
             }
             QPushButton {
@@ -55,7 +55,7 @@ class ProfileWindow(QWidget):
                 background-color: white;
                 border-radius: 10px;
                 border: 1px solid #dcdcdc;
-                padding: 20px;
+                padding: 15px;
             }
         """)
 
@@ -82,10 +82,21 @@ class ProfileWindow(QWidget):
         user_card_layout = QVBoxLayout()
         user_card_layout.setSpacing(15)
 
+        name_role = (f"{self.user_info.get("role","N/A")}.{self.user_info.get("full_name","N/A")}")
+        
         # Profile Picture
         profile_pic_label = QLabel()
+        welcome_label = QLabel(f"Welcome ")
+        welcome_label.setStyleSheet("""
+                                    border:none;
+                                    font-size:16px;
+                                    font-weight: bold;
+                                    """)
+        welcome_label.setAlignment(Qt.AlignCenter)
         profile_pic_label.setPixmap(QPixmap("assets/icons/profile.png").scaled(80, 80, Qt.KeepAspectRatio, Qt.SmoothTransformation))
+        profile_pic_label.setStyleSheet("font-size:16px;")
         profile_pic_label.setAlignment(Qt.AlignCenter)
+        user_card_layout.addWidget(welcome_label)
         user_card_layout.addWidget(profile_pic_label)
 
         # User Details
@@ -114,7 +125,7 @@ class ProfileWindow(QWidget):
         main_layout.addWidget(footer_label)
 
         # Set the layout directly
-        self.setLayout(main_layout)  # Replace setCentralWidget with setLayout
+        self.setLayout(main_layout)  
 
     def open_change_password(self):
         """Open the Change Password window."""
@@ -125,4 +136,7 @@ class ProfileWindow(QWidget):
     def logout_user(self):
         """Log out the user and close the profile window."""
         QMessageBox.information(self, "Logout", "You have been logged out.")
-        self.close()
+        self.token = None
+        self.user_id = None
+        python = sys.executable
+        os.execl(python, python, "main.py")

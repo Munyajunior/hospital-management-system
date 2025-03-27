@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (
-    QMainWindow, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget, QMessageBox, QHBoxLayout, QFrame
+    QMainWindow, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget, QMessageBox, QHBoxLayout, QFrame, QToolButton
 )
 from PySide6.QtGui import QIcon
 from utils.api_utils import post_data
@@ -72,6 +72,33 @@ class ChangePasswordWindow(QMainWindow):
         self.current_password_input.setPlaceholderText("Enter your current password")
         form_layout.addWidget(self.current_password_label)
         form_layout.addWidget(self.current_password_input)
+               
+        # Toggle Password Visibility Button
+        self.toggle_password_button = QToolButton()
+        self.toggle_password_button.setStyleSheet("""
+            QToolButton {
+                background-color: gray;
+                color: #4CAF5F;
+                border: none;
+                border-radius: 5px;
+                font-size: 14px;
+                text-decoration: underline;
+                padding: 5px;
+            }
+            QToolButton:checked{
+                background-color: #f44336;
+            }
+            QToolButton:hover {
+                background-color: #45a049;
+            }
+            QToolButton:pressed {
+                background-color: #367c39;
+            }
+        """)
+        self.toggle_password_button.setIcon(QIcon("assets/icons/eye-crossed.png"))  # Default icon for hidden password
+        self.toggle_password_button.setCheckable(True)  # Make the button toggleable
+        self.toggle_password_button.clicked.connect(self.toggle_password_visibility)
+        form_layout.addWidget(self.toggle_password_button)
 
         # New Password
         self.new_password_label = QLabel("New Password:")
@@ -80,6 +107,33 @@ class ChangePasswordWindow(QMainWindow):
         self.new_password_input.setPlaceholderText("Enter your new password")
         form_layout.addWidget(self.new_password_label)
         form_layout.addWidget(self.new_password_input)
+        
+        # Toggle Password Visibility Button
+        self.toggle_new_password_button = QToolButton()
+        self.toggle_new_password_button.setStyleSheet("""
+            QToolButton {
+                background-color: gray;
+                color: #4CAF5F;
+                border: none;
+                border-radius: 5px;
+                font-size: 14px;
+                text-decoration: underline;
+                padding: 5px;
+            }
+            QToolButton:checked{
+                background-color: #f44336;
+            }
+            QToolButton:hover {
+                background-color: #45a049;
+            }
+            QToolButton:pressed {
+                background-color: #367c39;
+            }
+        """)
+        self.toggle_new_password_button.setIcon(QIcon("assets/icons/eye-crossed.png"))  # Default icon for hidden password
+        self.toggle_new_password_button.setCheckable(True)  # Make the button toggleable
+        self.toggle_new_password_button.clicked.connect(self.toggle_new_password_visibility)
+        form_layout.addWidget(self.toggle_new_password_button)
 
         # Confirm New Password
         self.confirm_password_label = QLabel("Confirm New Password:")
@@ -119,6 +173,9 @@ class ChangePasswordWindow(QMainWindow):
         if not current_password or not new_password or not confirm_password:
             QMessageBox.warning(self, "Error", "All fields are required!")
             return
+        if current_password == new_password:
+            QMessageBox.warning(self, "Error", "Your New Password Cannot be same as your old password")
+            return
 
         if new_password != confirm_password:
             QMessageBox.warning(self, "Error", "New passwords do not match!")
@@ -138,3 +195,28 @@ class ChangePasswordWindow(QMainWindow):
             self.close()
         else:
             QMessageBox.warning(self, "Error", "Failed to change password. Check your current password.")
+    
+    
+    def toggle_new_password_visibility(self):
+        """Toggles the visibility of the password field."""
+        if self.toggle_new_password_button.isChecked():
+            # Show password
+            self.new_password_input.setEchoMode(QLineEdit.Normal)
+            self.toggle_new_password_button.setIcon(QIcon("assets/icons/eye.png"))  # Icon for visible password
+        else:
+            # Hide password
+            self.new_password_input.setEchoMode(QLineEdit.Password)
+            self.toggle_new_password_button.setIcon(QIcon("assets/icons/eye-crossed.png"))  # Icon for hidden password
+        
+    
+    def toggle_password_visibility(self):
+        """Toggles the visibility of the password field."""
+        if self.toggle_password_button.isChecked():
+            # Show password
+            self.current_password_input.setEchoMode(QLineEdit.Normal)
+            self.toggle_password_button.setIcon(QIcon("assets/icons/eye.png"))  # Icon for visible password
+        else:
+            # Hide password
+            self.current_password_input.setEchoMode(QLineEdit.Password)
+            self.toggle_password_button.setIcon(QIcon("assets/icons/eye-crossed.png"))  # Icon for hidden password
+        

@@ -216,3 +216,14 @@ cd ../../frontend/
 ```
 python main.py
 ```
+
+### Build executable
+
+**Add the register_protocol.py script to your project.**
+
+**Include it in the PyInstaller build:**
+
+```
+bash
+pyinstaller --onefile --add-data "register_protocol.py;." main.py
+```

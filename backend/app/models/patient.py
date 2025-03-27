@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime, Date, Enum, Boolean
+from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime, Enum, Boolean
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from core.database import Base
@@ -9,8 +9,9 @@ class Patient(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     full_name = Column(String, nullable=False)
-    date_of_birth = Column(Date, nullable=False)
+    date_of_birth = Column(DateTime(timezone=True), nullable=False)
     gender = Column(Enum("Male", "Female", "Other", name="gender_enum"), nullable=False)
+    role = Column(String, default="patient" ,nullable=False)
     contact_number = Column(String, nullable=False)
     email = Column(String, unique=True, nullable=False)
     hashed_password = Column(String, nullable=False)  # Authentication for mobile app
@@ -22,7 +23,7 @@ class Patient(Base):
 
     assigned_doctor_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"))
     registered_by = Column(Integer, ForeignKey("users.id"), nullable=False)  # Nurse who registered the patient
-    created_at = Column(Date, server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
     icu_records = relationship("ICUPatient", back_populates="patient", cascade="all, delete-orphan")

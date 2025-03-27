@@ -1,16 +1,36 @@
 from fastapi import FastAPI
-from routers import (auth, patients, doctors, pharmacy, 
-                     lab, radiology, icu, appointment, admissions, 
-                     medical_record, admissions, beds, departments, wards, inpatient, patient_vitals,
-                     dashboard, billing)
-from core.database import Base, engine
-
-# Initialize the database tables
-Base.metadata.create_all(bind=engine)
+from fastapi.middleware.cors import CORSMiddleware
+from core.cache import init_redis
+from core.database import async_engine, Base
+from routers import (
+    auth, patients, doctors, pharmacy, lab, radiology, 
+    icu, appointment, admissions, users, medical_record,
+    inpatient, patient_vitals, dashboard, billing, ai_routes,
+    beds, departments, wards
+)
 
 app = FastAPI(title="Hospital Management System")
 
-# Include authentication routes
+# CORS Configuration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Initialize Redis cache on startup
+@app.on_event("startup")
+async def startup():
+    # Initialize database
+    async with async_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    
+    # Initialize Redis cache
+    await init_redis(app)
+
+# Include all routers
 app.include_router(auth.router)
 app.include_router(patients.router) 
 app.include_router(doctors.router)
@@ -28,7 +48,9 @@ app.include_router(departments.router)
 app.include_router(patient_vitals.router)
 app.include_router(dashboard.router)
 app.include_router(billing.router)
+app.include_router(ai_routes.router)
+app.include_router(users.router)
 
 @app.get("/")
-def root():
+async def root():
     return {"message": "Hospital Management System API"}

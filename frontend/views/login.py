@@ -1,8 +1,8 @@
 import re
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QHBoxLayout
+    QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QToolButton
 )
-from PySide6.QtGui import QFont, QPixmap
+from PySide6.QtGui import QFont, QPixmap, QIcon
 from PySide6.QtCore import Qt, QTimer
 from core.auth import AuthHandler
 from .forgot_password import ForgotPasswordPage
@@ -77,6 +77,34 @@ class LoginScreen(QWidget):
         self.password_input.setEchoMode(QLineEdit.Password)
         self.password_input.setAlignment(Qt.AlignCenter)
         layout.addWidget(self.password_input)
+        
+        # Toggle Password Visibility Button
+        self.toggle_password_button = QToolButton()
+        self.toggle_password_button.setStyleSheet("""
+            QToolButton {
+                background-color: gray;
+                color: #4CAF5F;
+                border: none;
+                border-radius: 5px;
+                font-size: 14px;
+                text-decoration: underline;
+                padding: 5px;
+            }
+            QToolButton:checked{
+                background-color: #f44336;
+            }
+            QToolButton:hover {
+                background-color: #45a049;
+            }
+            QToolButton:pressed {
+                background-color: #367c39;
+            }
+        """)
+        self.toggle_password_button.setIcon(QIcon("assets/icons/eye-crossed.png"))  # Default icon for hidden password
+        self.toggle_password_button.setCheckable(True)  # Make the button toggleable
+        self.toggle_password_button.clicked.connect(self.toggle_password_visibility)
+        layout.addWidget(self.toggle_password_button)
+
 
         # Login Button
         self.login_button = QPushButton("Login")
@@ -132,26 +160,21 @@ class LoginScreen(QWidget):
 
         # Simulate a delay for the login process
         QTimer.singleShot(1500, lambda: self.authenticate(email, password))
-
+        
     def validate_email(self, email):
         """Validate email format using regex."""
         email_regex = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
         return re.match(email_regex, email) is not None
-
+    
     def authenticate(self, email, password):
         """Authenticate user with backend API."""
-        try:
-            success, message, role, user_id, token = self.auth_handler.authenticate(email, password)
-            print(f"Success: {success}, Message: {message}, Role: {role}, Token: {token}, User ID: {user_id}")
-            if success:
-                QMessageBox.information(self, "Login Success", f"Welcome, {role}!")
-                self.on_login_success(role, user_id, token)  # Pass role, token, and user ID
-                self.close()
-            else:
-                QMessageBox.critical(self, "Login Failed", message)
-        except Exception as e:
-            print(f"Error during login success: {e}")
-            QMessageBox.critical(self, "Error", f"An error occurred during login: {e}")
+        success, message, role, user_id, token = self.auth_handler.authenticate(email, password)
+        if success:
+            QMessageBox.information(self, "Login Success", f"Welcome, {role}!")
+            self.on_login_success(role, user_id, token)  # Pass role, token, and user ID
+            self.close()
+        else:
+            QMessageBox.critical(self, "Login Failed", message)
 
         # Re-enable the login button
         self.login_button.setText("Login")
@@ -161,6 +184,17 @@ class LoginScreen(QWidget):
         """Open the Forgot Password window."""
         self.forgot_password_window = ForgotPasswordPage()
         self.forgot_password_window.show()
+        self.close()
     
     
-    
+    def toggle_password_visibility(self):
+        """Toggles the visibility of the password field."""
+        if self.toggle_password_button.isChecked():
+            # Show password
+            self.password_input.setEchoMode(QLineEdit.Normal)
+            self.toggle_password_button.setIcon(QIcon("assets/icons/eye.png"))  # Icon for visible password
+        else:
+            # Hide password
+            self.password_input.setEchoMode(QLineEdit.Password)
+            self.toggle_password_button.setIcon(QIcon("assets/icons/eye-crossed.png"))  # Icon for hidden password
+        

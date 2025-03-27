@@ -3,5 +3,16 @@
         "activityBar.background": "#48250B",
         "titleBar.activeBackground": "#64330F",
         "titleBar.activeForeground": "#FEFBF9"
-    }
+    },
+    "sqltools.connections": [
+        {
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 5432,
+            "driver": "PostgreSQL",
+            "username": "postgres",
+            "database": "hospital_db",
+            "name": "postgresql"
+        }
+    ]
 }

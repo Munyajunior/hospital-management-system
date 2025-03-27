@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem,QApplication,
-    QPushButton, QTextEdit, QMessageBox, QHBoxLayout, QLineEdit, QHeaderView
+    QWidget, QVBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QApplication,
+    QPushButton, QTextEdit, QMessageBox, QHBoxLayout, QLineEdit, QHeaderView, QSizePolicy
 )
 from PySide6.QtCore import Qt
 from utils.api_utils import fetch_data, update_data
@@ -14,6 +14,7 @@ class RadiologyManagement(QWidget):
         self.user_role = user_role
         self.user_id = user_id
         self.token = auth_token
+        self.is_dark_theme = False  # Track theme state
         self.init_ui()
 
     def init_ui(self):
@@ -22,84 +23,67 @@ class RadiologyManagement(QWidget):
         screen_geometry = screen.availableGeometry()
         max_width = screen_geometry.width() * 0.8  # 80% of screen width
         max_height = screen_geometry.height() * 0.8  # 80% of screen height
-        
+
         self.resize(int(max_width), int(max_height))  # Set window size
         self.setMinimumSize(950, 600)  # Set a reasonable minimum size
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #F4F6F7;
-                font-family: Arial, sans-serif;
-            }
-        """)
 
-        layout = QVBoxLayout()
-        layout.setSpacing(15)
-        layout.setContentsMargins(20, 20, 20, 20)
+        self.layout = QVBoxLayout()
+        self.layout.setSpacing(15)
+        self.layout.setContentsMargins(20, 20, 20, 20)
 
-        # Title
+        # Title and Theme Toggle
+        title_layout = QHBoxLayout()
         self.title_label = QLabel("📡 Radiology & Scan Management")
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.title_label.setStyleSheet("""
-            font-size: 24px;
-            font-weight: bold;
-            color: #2C3E50;
-            padding: 15px;
-        """)
-        layout.addWidget(self.title_label)
+        title_layout.addWidget(self.title_label)
+
+        # Initialize the theme toggle button
+        self.toggle_theme_button = QPushButton("🌙 Dark Theme")
+        self.toggle_theme_button.clicked.connect(self.toggle_theme)
+        title_layout.addWidget(self.toggle_theme_button)
+        self.layout.addLayout(title_layout)
 
         # Search Bar
         search_layout = QHBoxLayout()
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("🔍 Search by Patient ID, Scan Type, or Status...")
-        self.search_input.setStyleSheet("""
-            QLineEdit {
-                background-color: white;
-                border: 1px solid #D5DBDB;
-                border-radius: 5px;
-                padding: 8px;
-                font-size: 14px;
-            }
-        """)
         self.search_input.textChanged.connect(self.filter_scan_requests)
         search_layout.addWidget(self.search_input)
-        layout.addLayout(search_layout)
+        self.layout.addLayout(search_layout)
 
         # Scan Requests Table
         self.scan_table = QTableWidget()
         self.scan_table.setColumnCount(8)
+        self.scan_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.scan_table.setHorizontalHeaderLabels(
             ["ID", "Patient", "Requested By", "Scan Type", "Status", "Results", "Notes", "Actions"]
         )
-        self.scan_table.setStyleSheet("""
-            QTableWidget {
-                background-color: white;
-                border: 1px solid #D5DBDB;
-                font-size: 14px;
-                alternate-background-color: #F8F9F9;
-                border-radius: 5px;
-            }
-            QHeaderView::section {
-                background-color: #007BFF;
-                color: white;
-                font-weight: bold;
-                padding: 10px;
-                border: none;
-            }
-            QTableWidget::item {
-                padding: 8px;
-            }
-        """)
+        self.scan_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
         self.scan_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        layout.addWidget(self.scan_table)
+        self.layout.addWidget(self.scan_table, stretch=1)
+
+        # Add a duplicate header at the bottom of the table
+        self.duplicate_header()
 
         # Load Scan Requests Button
         self.load_scans_button = QPushButton("🔄 Load Requested Scans")
         self.load_scans_button.clicked.connect(self.load_scan_requests)
-        self.load_scans_button.setStyleSheet(self.button_style())
-        layout.addWidget(self.load_scans_button)
+        self.layout.addWidget(self.load_scans_button)
+
+        # Apply the initial theme after all UI elements are initialized
+        self.apply_theme()
 
         self.load_scan_requests()
-        self.setLayout(layout)
+        self.setLayout(self.layout)
+
+    def duplicate_header(self):
+        """Adds a duplicate header at the bottom of the table."""
+        self.scan_table.setRowCount(self.scan_table.rowCount() + 1)
+        for col in range(self.scan_table.columnCount()):
+            item = QTableWidgetItem(self.scan_table.horizontalHeaderItem(col).text())
+            item.setBackground(Qt.gray)
+            item.setForeground(Qt.white)
+            self.scan_table.setItem(self.scan_table.rowCount() - 1, col, item)
 
     def load_scan_requests(self):
         """Fetches and displays scan requests."""
@@ -113,8 +97,20 @@ class RadiologyManagement(QWidget):
 
     def populate_table(self, scan_requests):
         """Fills the scan requests table with data."""
-        self.scan_table.setRowCount(len(scan_requests))
-        for row, request in enumerate(scan_requests):
+        # Clear the table and add a row for the duplicate header
+        self.scan_table.setRowCount(0)  # Clear all rows
+        self.scan_table.insertRow(0)  # Insert a new row at the top for the duplicate header
+
+        # Add the duplicate header at row 0
+        for col in range(self.scan_table.columnCount()):
+            item = QTableWidgetItem(self.scan_table.horizontalHeaderItem(col).text())
+            item.setBackground(Qt.gray)
+            item.setForeground(Qt.white)
+            self.scan_table.setItem(0, col, item)
+
+        # Populate the table with data starting from row 1
+        for row, request in enumerate(scan_requests, start=1):  # Start from row 1
+            self.scan_table.insertRow(row)  # Insert a new row for each request
             self.scan_table.setItem(row, 0, QTableWidgetItem(str(request["id"])))
             self.scan_table.setItem(row, 1, QTableWidgetItem(str(request["patient_id"])))
             self.scan_table.setItem(row, 2, QTableWidgetItem(str(request["requested_by"])))
@@ -125,7 +121,6 @@ class RadiologyManagement(QWidget):
 
             # Create "Process Scan" button for each request
             self.scan_table.setCellWidget(row, 7, self.create_view_record_button(request))
-
     def create_view_record_button(self, request):
         """Creates the 'Process Scan' button."""
         button = QPushButton("🛠 Process Scan")
@@ -215,7 +210,73 @@ class RadiologyManagement(QWidget):
         """Opens the update scan window."""
         self.update_scan = UpdateRequestedScan(scan_id, self.token)
         self.update_scan.show()
-        self.load_scan_requests()
+        
+    def toggle_theme(self):
+        """Toggles between light and dark themes."""
+        self.is_dark_theme = not self.is_dark_theme
+        self.apply_theme()
+
+    def apply_theme(self):
+        """Applies the current theme (light or dark)."""
+        if self.is_dark_theme:
+            self.setStyleSheet("""
+                QWidget {
+                    background-color: #2C3E50;
+                    color: #ECF0F1;
+                }
+                QTableWidget {
+                    background-color: #34495E;
+                    color: #ECF0F1;
+                    alternate-background-color: #2C3E50;
+                }
+                QHeaderView::section {
+                    background-color: #007BFF;
+                    color: white;
+                }
+                QLineEdit {
+                    background-color: #34495E;
+                    font-size:14px;
+                    color: #ECF0F1;
+                    border: 1px solid #5D6D7E;
+                }
+                QPushButton {
+                    background-color: #007BFF;
+                    color: white;
+                }
+                QPushButton:hover {
+                    background-color: #0056b3;
+                }
+            """)
+            self.toggle_theme_button.setText("☀️ Light Theme")
+        else:
+            self.setStyleSheet("""
+                QWidget {
+                    background-color: #F4F6F7;
+                    color: #2C3E50;
+                }
+                QTableWidget {
+                    background-color: white;
+                    color: #2C3E50;
+                    alternate-background-color: #F8F9F9;
+                }
+                QHeaderView::section {
+                    background-color: #007BFF;
+                    color: white;
+                }
+                QLineEdit {
+                    background-color: white;
+                    color: #2C3E50;
+                    border: 1px solid #D5DBDB;
+                }
+                QPushButton {
+                    background-color: #007BFF;
+                    color: white;
+                }
+                QPushButton:hover {
+                    background-color: #0056b3;
+                }
+            """)
+            self.toggle_theme_button.setText("🌙 Dark Theme")
 
 
 class UpdateRequestedScan(QWidget):
@@ -256,14 +317,15 @@ class UpdateRequestedScan(QWidget):
 
         api_url = f"{os.getenv('SCANS_URL')}{self.scan_id}/update"
         data = {
-            "status": "Completed",  
-            "results": results 
+            "status": "Completed",
+            "results": results
         }
 
         response = update_data(self, api_url, data, self.token)
 
         if response:
-            QMessageBox.information(self, "Success", "Scan updated successfully.")
+            QMessageBox.information(self, "Success", "Scan updated successfully.")            
+            self.load_scan_requests()
             self.close()
         else:
             QMessageBox.warning(self, "Error", "Failed to update scan.")

@@ -15,8 +15,8 @@ class Billing(Base):
     patient_id = Column(Integer, ForeignKey("patients.id", ondelete="CASCADE"), nullable=False)
     amount = Column(Float, nullable=False)
     status = Column(Enum(BillingStatus), default=BillingStatus.PENDING, nullable=False)
-    created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, onupdate=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relationships
     patient = relationship("Patient", back_populates="bills")

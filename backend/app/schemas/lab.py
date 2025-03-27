@@ -1,12 +1,7 @@
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
-from enum import Enum
-
-class LabTestStatus(str, Enum):
-    PENDING = "Pending"
-    IN_PROGRESS = "In Progress"
-    COMPLETED = "Completed"
+from models.lab import LabTestStatus
 
 class LabTestBase(BaseModel):
     patient_id: int
@@ -14,12 +9,13 @@ class LabTestBase(BaseModel):
 
 class LabTestCreate(LabTestBase):
     requested_by: int
-    additional_notes: str | None = None
+    additional_notes: Optional[str] = None
     
 
 class LabTestUpdate(BaseModel):
     status: LabTestStatus
     results: Optional[str] = None
+    additional_notes: Optional[str] = None
 
 class LabTestResponse(LabTestBase):
     id: int

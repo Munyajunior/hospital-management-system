@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QStackedWidget, QFrame, QApplication, QSizePolicy
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame, QApplication, QSizePolicy
 )
 from PySide6.QtGui import QFont, QPixmap, QPainter, QColor
 from PySide6.QtCore import Qt, QTimer
@@ -62,14 +62,16 @@ class Dashboard(QWidget):
         main_layout.addWidget(self.sidebar)
 
         # Main Content Area
-        self.main_content = QStackedWidget()
+        self.main_content = QWidget()
+        self.main_content.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         main_layout.addWidget(self.main_content)
 
         # Dashboard View
         self.dashboard_view = QWidget()
         self.init_dashboard_view()
-        self.main_content.addWidget(self.dashboard_view)
-        
+        self.current_view = self.dashboard_view
+        self.main_content_layout = QVBoxLayout(self.main_content)
+        self.main_content_layout.addWidget(self.current_view)
 
         # Dictionary to store dynamically loaded views
         self.views = {}
@@ -104,14 +106,57 @@ class Dashboard(QWidget):
         layout.addLayout(header_layout)
 
         # Metrics Section
-        self.metric_labels = {}
+        self.metric_labels = {}  # Stores QLabel widgets
+        self.metric_api_keys = {}  # Maps metric titles to API keys
         metrics_layout = QHBoxLayout()
-        self.add_metric(metrics_layout, "Total Patients", "0", "assets/icons/patient.png")
-        self.add_metric(metrics_layout, "Appointments", "0", "assets/icons/date.png")
-        self.add_metric(metrics_layout, "Pending Lab Tests", "0", "assets/icons/result.png")
-        self.add_metric(metrics_layout, "Billing Transactions", "0", "assets/icons/payment.png")
-        layout.addLayout(metrics_layout)
+        # Define metrics for each role
+        self.role_metrics = {
+            "admin": [
+                {"title": "All Patients", "value": "0", "icon": "assets/icons/patient.png", "api_key": "total_patients"},
+                {"title": "All Lab Tests", "value": "0", "icon": "assets/icons/lab.png", "api_key": "total_lab_tests"},
+                {"title": "All Scans", "value": "0", "icon": "assets/icons/radiation.png", "api_key": "total_scans"},
+                {"title": "All Prescriptions", "value": "0", "icon": "assets/icons/prescription.png", "api_key": "total_prescriptions"},
+                {"title": " All Appointments", "value": "0", "icon": "assets/icons/date.png", "api_key": "total_appointments"},
+                {"title": "Billing Transactions", "value": "0", "icon": "assets/icons/payment.png", "api_key": "total_billing_transactions"},
+                {"title": "Predicted Admissions", "value": "0", "icon": "assets/icons/ai.png", "api_key": "predicted_admissions"},
+            ],
+            "doctor": [
+                {"title": "My Patients", "value": "0", "icon": "assets/icons/patient.png", "api_key": "my_patients"},
+                {"title": "My Confirmed Appointments", "value": "0", "icon": "assets/icons/date.png", "api_key": "my_confirmed_appointments"},
+                {"title": "My Pending Appointments", "value": "0", "icon": "assets/icons/pending_appointment.png", "api_key":"my_pending_appointments"},
+                {"title": "No-Show Rate", "value": "0%", "icon": "assets/icons/absence.png", "api_key": "no_show_rate"},
+                {"title": "Predicted Admissions", "value": "0", "icon": "assets/icons/ai.png", "api_key": "predicted_admissions"},
+            ],
+            "nurse":[
+                {"title": "All Admissions", "value": "0", "icon": "assets/icons/admission.png", "api_key": "total_admissions"},
+                {"title": "All Appointments", "value": "0", "icon": "assets/icons/date.png", "api_key":"total_appointments"},
+                {"title": "Pending Appointments", "value": "0", "icon": "assets/icons/pending_appointment.png", "api_key":"pending_appointments"},
+                {"title": "Predicted Admissions", "value": "0", "icon": "assets/icons/ai.png", "api_key": "predicted_admissions"},
+            ],
+            "pharmacist": [
+                {"title": "All Prescriptions", "value": "0", "icon": "assets/icons/prescription.png", "api_key": "total_prescriptions"},
+                {"title": "Pending Prescriptions", "value": "0", "icon": "assets/icons/hourglass.png", "api_key": "pending_prescriptions"},
+            ],
+            "lab_technician":[
+                {"title": "All Lab Tests", "value": "0", "icon": "assets/icons/lab.png", "api_key": "total_lab_tests"},
+                {"title": "Pending Lab Tests", "value": "0", "icon": "assets/icons/hourglass.png", "api_key": "pending_lab_tests"},
+                {"title": "Lab Tests In Progress", "value": "0", "icon": "assets/icons/process.png", "api_key": "lab_tests_in_progress"},
+            ],
+            "radiologist": [
+                {"title": "All Scans", "value": "0", "icon": "assets/icons/radiation.png", "api_key": "total_scans"},
+                {"title": "Pending Scans", "value": "0", "icon": "assets/icons/radiograph.png", "api_key": "pending_scans"},
+                {"title": "Scans In Progress", "value": "0", "icon": "assets/icons/radioactive.png", "api_key": "scans_in_progress"},
+            ]
+        }
+                             
 
+         # Add metrics based on the user's role
+        for metric in self.role_metrics.get(self.role, []):
+            self.add_metric(metrics_layout, metric["title"], metric["value"], metric["icon"])
+            self.metric_api_keys[metric["title"]] = metric["api_key"]  # Store API key
+        
+        layout.addLayout(metrics_layout)
+        
         # Charts Section
         charts_layout = QHBoxLayout()
         self.pie_chart_series = QPieSeries()
@@ -207,7 +252,7 @@ class Dashboard(QWidget):
         """Initialize data fetching and periodic updates."""
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_dashboard_data)
-        self.timer.start(5000)  # Refresh data every 5 seconds
+        self.timer.start(5000000)  # Refresh data every 5 seconds
         self.update_dashboard_data()  # Initial data fetch
 
     def update_dashboard_data(self):
@@ -215,15 +260,49 @@ class Dashboard(QWidget):
         metrics = fetch_data(self, f"{os.getenv('API_BASE_URL')}/dashboard/metrics", self.auth_token)
         if metrics:
             self.update_metrics(metrics)
+            self.update_doctor_metrics()
             self.update_pie_chart(metrics["patient_distribution"])
-            #self.update_bar_chart(metrics["appointments_data"])
-
+            self.update_bar_chart(metrics["appointments_data"])
+        self.update_ai_metric()
+            
     def update_metrics(self, metrics):
-        """Update the metric labels."""
-        self.metric_labels["Total Patients"].setText(str(metrics["total_patients"]))
-        self.metric_labels["Appointments"].setText(str(metrics["total_appointments"]))
-        self.metric_labels["Pending Lab Tests"].setText(str(metrics["pending_lab_tests"]))
-        self.metric_labels["Billing Transactions"].setText(str(metrics["total_billing_transactions"]))
+        """Update the dashboard metrics dynamically."""
+        for title, value_label in self.metric_labels.items():
+            # Find the corresponding API key for the metric title
+            api_key = self.metric_api_keys.get(title)
+            if api_key and api_key in metrics:
+                value = metrics[api_key]
+                value_label.setText(str(value))
+
+    def update_doctor_metrics(self):
+        """Fetch and update doctor-specific metrics."""
+        metrics = fetch_data(self, f"{os.getenv('API_BASE_URL')}/dashboard/metrics/doctor/{self.user_id}", self.auth_token)
+        if metrics:
+            for title, value_label in self.metric_labels.items():
+                api_key = self.metric_api_keys.get(title)
+                if api_key and api_key in metrics:
+                    value = metrics[api_key]
+                    value_label.setText(str(value))
+
+    def update_ai_metric(self):
+        """Fetch and update AI-driven metrics."""
+        admission_predictions = fetch_data(self, f"{os.getenv('AI_BASE_URL')}/predict-admissions", self.auth_token)
+        if admission_predictions:
+            for title, value_label in self.metric_labels.items():
+                api_key = self.metric_api_keys.get(title)
+                if api_key and api_key in admission_predictions:
+                    value = admission_predictions[api_key]
+                    value_label.setText(str(value))
+        no_show_rate = fetch_data(self, f"{os.getenv('AI_BASE_URL')}/no-show-rate", self.auth_token)
+        if no_show_rate:
+            for title, value_label in self.metric_labels.items():
+                api_key = self.metric_api_keys.get(title)
+                if api_key and api_key in no_show_rate:
+                    value = no_show_rate[api_key]
+                    if title == "No-Show Rate":
+                        value = f"{value * 100:.2f}%"  # Format as percentage
+                    value_label.setText(str(value))
+    
 
     def update_pie_chart(self, patient_distribution):
         """Update the pie chart with patient distribution data."""
@@ -232,12 +311,23 @@ class Dashboard(QWidget):
         self.pie_chart_series.append("Inpatients", patient_distribution["inpatients"])
         self.pie_chart_series.append("ICU", patient_distribution["icu"])
         self.pie_chart_series.append("Emergency", patient_distribution["emergency"])
-
+        
     def update_bar_chart(self, appointments_data):
         """Update the bar chart with appointments data."""
-        #self.bar_chart_set0.replace([appointments_data["completed"]])
-        #self.bar_chart_set1.replace([appointments_data["pending"]])
-
+        # Replace the values in the bar sets
+        self.bar_chart_set0.replace(0, appointments_data["completed"]) 
+        self.bar_chart_set1.replace(0, appointments_data["pending"])   
+        # Refresh the chart to reflect the changes
+        self.bar_chart_view.chart().update()
+    
+    def update_ai_admissions_prediction_metrics(self, metrics):
+        """Update AI-driven metrics."""
+        self.metric_labels["Predicted Admissions"].setText(str(metrics["predicted_admissions"][0]))
+        
+    def update_ai_no_show_rate(self, metrics):
+        """Update AI-driven metrics."""
+        self.metric_labels["No-Show Rate"].setText(f"{metrics['no_show_rate'] * 100:.2f}%")
+   
     def logout_user(self):
         """Log out the user and restart the application."""
         print("Logging out user...")
@@ -249,12 +339,10 @@ class Dashboard(QWidget):
     def switch_module(self, module):
         """Switches between different modules and hides the dashboard when another module is selected."""
         if module == "dashboard":
-            # Ensure the dashboard view is in self.views
-            if "dashboard" not in self.views:
-                self.views["dashboard"] = self.dashboard_view
-            self.main_content.setCurrentWidget(self.views["dashboard"])  # Switch to dashboard view
+            self.current_view.hide()
+            self.current_view = self.dashboard_view
+            self.current_view.show()
         else:
-            # If module isn't in views, create and add it
             if module not in self.views:
                 if module == "patients":
                     self.views[module] = PatientManagement(self.role, self.user_id, self.auth_token)
@@ -283,11 +371,20 @@ class Dashboard(QWidget):
                 elif module == "profile":
                     self.views[module] = ProfileWindow(self.user_id, self.auth_token)
                 elif module == "admission":
-                    self.views[module] = AdmissionManagement(self.role, self.user_id, self.auth_token )
+                    self.views[module] = AdmissionManagement(self.role, self.user_id, self.auth_token)
                 # Add more views here...
 
-                self.main_content.addWidget(self.views[module])
+                self.main_content_layout.addWidget(self.views[module])
 
-            self.main_content.setCurrentWidget(self.views[module])  # Show selected module
+            self.current_view.hide()
+            self.current_view = self.views[module]
+            self.current_view.show()
 
-
+    def resizeEvent(self, event):
+        """Handle window resize events."""
+        super().resizeEvent(event)
+        # Check if the current widget is the dashboard_view
+        if self.current_view == self.dashboard_view:
+            # Resize charts and other components dynamically
+            self.pie_chart_view.setFixedHeight(self.height() * 0.3)
+            self.bar_chart_view.setFixedHeight(self.height() * 0.3)

@@ -2,14 +2,14 @@ from sqlalchemy import Column, Integer, String, ForeignKey, Enum, DateTime, Bool
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from core.database import Base
-import enum
+from enum import Enum as PyEnum
 
-class AdmissionCategory(str, enum.Enum):
+class AdmissionCategory(str, PyEnum):
     OUTPATIENT = "Outpatient"
     INPATIENT = "Inpatient"
     ICU = "ICU"
 
-class AdmissionStatus(str, enum.Enum):
+class AdmissionStatus(str, PyEnum):
     ADMITTED = "Admitted"
     STABLE = "Stable"
     CRITICAL = "Critical"
@@ -26,8 +26,8 @@ class PatientAdmission(Base):
     department_id = Column(Integer, ForeignKey("departments.id", ondelete="SET NULL"))
     ward_id = Column(Integer, ForeignKey("wards.id", ondelete="SET NULL"))
     bed_id = Column(Integer, ForeignKey("beds.id", ondelete="SET NULL"))
-    admission_date = Column(DateTime, default=func.now())
-    discharge_date = Column(DateTime, onupdate=func.now(), nullable=True)
+    admission_date = Column(DateTime(timezone=True), server_default=func.now())
+    discharge_date = Column(DateTime(timezone=True), onupdate=func.now(), nullable=True)
     status = Column(Enum(AdmissionStatus, name="admission_status"), default=AdmissionStatus.ADMITTED)
 
     # Relationships
@@ -54,7 +54,7 @@ class ICUPatient(Base):
     drips = Column(Text, nullable=True)  # Number and type of drips
     treatment_plan = Column(Text, nullable=True)  # Detailed treatment plan
     updated_by = Column(Integer, ForeignKey("users.id"), nullable=False)  # Doctor or nurse who updated the record
-    updated_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relationships
     patient = relationship("Patient", back_populates="icu_records")
@@ -72,7 +72,7 @@ class Inpatient(Base):
     medications = Column(Text, nullable=True)  # List of medications
     treatment_plan = Column(Text, nullable=True)  # Detailed treatment plan
     updated_by = Column(Integer, ForeignKey("users.id"), nullable=False)  # Doctor or nurse who updated the record
-    updated_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
     patient = relationship("Patient", back_populates="inpatient_records")
@@ -120,4 +120,4 @@ class PatientVitals(Base):
     heart_rate = Column(Float, nullable=True)
     temperature = Column(Float, nullable=True)
     recorded_by = Column(Integer, ForeignKey("users.id"), nullable=False)  # Nurse or doctor who recorded the vitals
-    recorded_at = Column(DateTime, default=func.now())
+    recorded_at = Column(DateTime(timezone=True), server_default=func.now())

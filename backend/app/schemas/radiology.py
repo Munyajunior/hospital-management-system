@@ -1,12 +1,8 @@
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
+from models.radiology import RadiologyScanStatus
 from enum import Enum
-
-class RadiologyScanStatus(str, Enum):
-    PENDING = "Pending"
-    IN_PROGRESS = "In Progress"
-    COMPLETED = "Completed"
 
 class RadiologyScanBase(BaseModel):
     patient_id: int
