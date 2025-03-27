@@ -1,155 +1,105 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy.orm import Session
 from typing import List
 from models.appointment import Appointment, AppointmentStatus
 from models.patient import Patient
 from models.user import User
-from schemas.appointment import (
-    AppointmentCreate, AppointmentResponse, 
-    AppointmentUpdate, DoctorAppointmentResponse,
-    AppointmentReschedule
-)
-from core.database import get_async_db
+from schemas.appointment import AppointmentCreate, AppointmentResponse, AppointmentUpdate, DoctorAppointmentResponse,  AppointmentReschedule
+from core.database import get_db
 from core.dependencies import RoleChecker
-from core.cache import cache
 
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
 staff_only = RoleChecker(["doctor","nurse"])
 
-@router.post("/", response_model=AppointmentResponse)
-async def create_appointment(
-    appointment: AppointmentCreate, 
-    db: AsyncSession = Depends(get_async_db), 
-    user: User = Depends(staff_only)
-):
-    """Create appointment with async operations."""
-    async with db.begin():
-        result = await db.execute(
-            select(Patient)
-            .where(Patient.id == appointment.patient_id)
-        )
-        patient = result.scalars().first()
-        if not patient:
-            raise HTTPException(status_code=400, detail="Invalid patient ID")
 
-        new_appointment = Appointment(**appointment.model_dump())
-        db.add(new_appointment)
-        await db.commit()
-        await db.refresh(new_appointment)
-        return new_appointment
+
+# Schedule an appointment
+@router.post("/", response_model=AppointmentResponse)
+def create_appointment(appointment: AppointmentCreate, db: Session = Depends(get_db), user: User = Depends(staff_only)):
+    patient = db.query(Patient).filter(Patient.id == appointment.patient_id).first()
+    if not patient:
+        raise HTTPException(status_code=400, detail="Invalid patient ID")
+
+    new_appointment = Appointment(**appointment.model_dump())
+    db.add(new_appointment)
+    db.commit()
+    db.refresh(new_appointment)
+    return new_appointment
+
+
 
 @router.get("/", response_model=List[AppointmentResponse])
-@cache(expire=120)  # Cache for 2 minutes
-async def get_appointments(
-    db: AsyncSession = Depends(get_async_db), 
-    user: User = Depends(staff_only)
-):
-    """Get all appointments with caching."""
-    result = await db.execute(select(Appointment))
-    appointments = result.scalars().all()
-    return appointments if appointments else []
+def get_appointments(db: Session = Depends(get_db), user: User = Depends(staff_only)):
+    appointments = db.query(Appointment).all()
+    
+    if not appointments:
+        return []  
+    
+    return appointments 
 
+# Get appointments of a specific doctor (with filtering options)
 @router.get("/doctor/{doctor_id}/", response_model=List[DoctorAppointmentResponse])
-@cache(expire=120)  # Cache for 2 minutes
-async def get_doctor_appointments(
-    doctor_id: int, 
-    db: AsyncSession = Depends(get_async_db), 
-    user: User = Depends(staff_only)
-):
-    """Get doctor's appointments with async operations."""
-    result = await db.execute(
-        select(Appointment)
-        .where(Appointment.doctor_id == doctor_id)
-    )
-    appointments = result.scalars().all()
-    return appointments if appointments else []
+def get_appointments(doctor_id: int, db: Session = Depends(get_db), user: User = Depends(staff_only)):
+    appointments = db.query(Appointment).filter(Appointment.doctor_id == doctor_id).all()
+    
+    if not appointments:
+        return []  
+    
+    return appointments  
 
+
+# Get a specific appointment
 @router.get("/{appointment_id}/", response_model=AppointmentResponse)
-@cache(expire=120)  # Cache for 2 minutes
-async def get_appointment(
-    appointment_id: int, 
-    db: AsyncSession = Depends(get_async_db), 
-    user: User = Depends(staff_only)
-):
-    """Get single appointment with caching."""
-    result = await db.execute(
-        select(Appointment)
-        .where(Appointment.id == appointment_id)
-    )
-    appointment = result.scalars().first()
+def get_appointment(appointment_id: int, db: Session = Depends(get_db), user: User = Depends(staff_only)):
+    appointment = db.query(Appointment).filter(Appointment.id == appointment_id).first()
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
     return appointment
 
+# Update appointment status
 @router.put("/{appointment_id}/update", response_model=AppointmentResponse)
-async def update_appointment(
-    appointment_id: int, 
-    update_data: AppointmentUpdate, 
-    db: AsyncSession = Depends(get_async_db), 
-    user: User = Depends(staff_only)
-):
-    """Update appointment with async operations."""
-    async with db.begin():
-        result = await db.execute(
-            select(Appointment)
-            .where(Appointment.id == appointment_id)
-        )
-        appointment = result.scalars().first()
-        if not appointment:
-            raise HTTPException(status_code=404, detail="Appointment not found")
+def update_appointment(appointment_id: int, update_data: AppointmentUpdate, db: Session = Depends(get_db), user: User = Depends(staff_only)):
+    appointment = db.query(Appointment).filter(Appointment.id == appointment_id).first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
 
-        if update_data.status not in AppointmentStatus.__members__.values():
-            raise HTTPException(status_code=400, detail="Invalid status value")
-        
-        appointment.status = update_data.status
-        await db.commit()
-        await db.refresh(appointment)
-        return appointment
+    # Validate status
+    if update_data.status not in AppointmentStatus.__members__.values():
+        raise HTTPException(status_code=400, detail="Invalid status value")
+    
+    appointment.status = update_data.status
+    db.commit()
+    db.refresh(appointment)
+    return appointment
 
+# Reschedule appointment 
 @router.put("/{appointment_id}/reschedule", response_model=AppointmentResponse)
-async def reschedule_appointment(
-    appointment_id: int, 
-    update_data: AppointmentReschedule, 
-    db: AsyncSession = Depends(get_async_db), 
-    user: User = Depends(staff_only)
+def reschedule_appointment(appointment_id: int, update_data: AppointmentReschedule, db: Session = Depends(get_db), 
+                           user: User = Depends(staff_only)
 ):
-    """Reschedule appointment with async operations."""
-    async with db.begin():
-        result = await db.execute(
-            select(Appointment)
-            .where(Appointment.id == appointment_id)
-        )
-        appointment = result.scalars().first()
-        if not appointment:
-            raise HTTPException(status_code=404, detail="Appointment not found")
+    appointment = db.query(Appointment).filter(Appointment.id == appointment_id).first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
 
-        if update_data.status not in AppointmentStatus.__members__.values():
-            raise HTTPException(status_code=400, detail="Invalid status value")
-        
-        appointment.status = update_data.status
-        appointment.datetime = update_data.datetime
-        
-        await db.commit()
-        await db.refresh(appointment)
-        return appointment
+    # Validate status
+    if update_data.status not in AppointmentStatus.__members__.values():
+        raise HTTPException(status_code=400, detail="Invalid status value")
+    
+    appointment.status = update_data.status
+    appointment.datetime = update_data.datetime
+    
+    db.commit()
+    db.refresh(appointment)
+    return appointment
 
+
+# Delete an appointment
 @router.delete("/{appointment_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_appointment(
-    appointment_id: int, 
-    db: AsyncSession = Depends(get_async_db), 
-    user: User = Depends(staff_only)
-):
-    """Delete appointment with async operations."""
-    async with db.begin():
-        result = await db.execute(
-            select(Appointment)
-            .where(Appointment.id == appointment_id)
-        )
-        appointment = result.scalars().first()
-        if not appointment:
-            raise HTTPException(status_code=404, detail="Appointment not found")
+def delete_appointment(appointment_id: int, db: Session = Depends(get_db), user: User = Depends(staff_only)):
+    appointment = db.query(Appointment).filter(Appointment.id == appointment_id).first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
 
-        await db.delete(appointment)
-        await db.commit()
+    db.delete(appointment)
+    db.commit()
