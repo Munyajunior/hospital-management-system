@@ -3,7 +3,7 @@ import requests
 from PySide6.QtWidgets import (QApplication,
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTableWidget,
     QTableWidgetItem, QMessageBox, QLineEdit, QComboBox, QInputDialog,
-    QDateEdit, QCheckBox, QHeaderView
+    QDateEdit, QCheckBox, QHeaderView,QGroupBox
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
@@ -263,6 +263,7 @@ class PatientRegistrationForm(QWidget):
         super().__init__()
         self.parent = parent
         self.token = token  # Load stored token
+        self._category_signal_connected = False  # Initialize connection state
         self.init_ui()
 
     def init_ui(self):
@@ -322,24 +323,54 @@ class PatientRegistrationForm(QWidget):
         self.address.setPlaceholderText("Enter Address")
         layout.addWidget(self.address)
         
+        # Emergency Checkbox
         self.emergency_checkbox = QCheckBox("Emergency Case")
+        self.emergency_checkbox.setStyleSheet("""
+            QCheckBox {
+                padding: 5px;
+                font-weight: bold;
+            }
+            QCheckBox::indicator {
+                width: 20px;
+                height: 20px;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #e74c3c;
+            }
+        """)
         self.emergency_checkbox.stateChanged.connect(self.toggle_emergency_fields)
         layout.addWidget(self.emergency_checkbox)
 
-        # Emergency Fields
+        # Emergency Fields Group
+        self.emergency_group = QGroupBox("Emergency Details")
+        emergency_layout = QVBoxLayout()
+        
+        # Category
+        category_layout = QHBoxLayout()
+        category_layout.addWidget(QLabel("Category:"))
         self.category_input = QComboBox()
         self.category_input.addItems(["Inpatient", "ICU"])
-        self.category_input.setVisible(False)
-        layout.addWidget(self.category_input)
-
+        category_layout.addWidget(self.category_input)
+        emergency_layout.addLayout(category_layout)
+        
+        # Department
+        department_layout = QHBoxLayout()
+        department_layout.addWidget(QLabel("Department:"))
         self.department_input = QComboBox()
-        self.department_input.setVisible(False)
-        layout.addWidget(self.department_input)
-
+        department_layout.addWidget(self.department_input)
+        emergency_layout.addLayout(department_layout)
+        
+        # Ward
+        ward_layout = QHBoxLayout()
+        ward_layout.addWidget(QLabel("Ward:"))
         self.ward_input = QComboBox()
-        self.ward_input.setVisible(False)
-        layout.addWidget(self.ward_input)
-
+        ward_layout.addWidget(self.ward_input)
+        emergency_layout.addLayout(ward_layout)
+        
+        self.emergency_group.setLayout(emergency_layout)
+        self.emergency_group.setVisible(False)  # Initially hidden
+        layout.addWidget(self.emergency_group)
+        
         # Doctor Selection
         self.doctor_input = QComboBox()
         self.load_doctors()
@@ -354,13 +385,25 @@ class PatientRegistrationForm(QWidget):
     def toggle_emergency_fields(self, state):
         """Toggle visibility of emergency-related fields based on checkbox state."""
         is_emergency = state == Qt.Checked
-        self.category_input.setVisible(is_emergency)
-        self.department_input.setVisible(is_emergency)
-        self.ward_input.setVisible(is_emergency)
-
+        self.emergency_group.setVisible(is_emergency)
+        
         if is_emergency:
+            # Load departments when emergency is checked
             self.load_departments()
-            self.category_input.currentIndexChanged.connect(self.load_wards)
+            
+            # Connect signal if not already connected
+            if not self._category_signal_connected:
+                self.category_input.currentIndexChanged.connect(self.load_wards)
+                self._category_signal_connected = True
+        else:
+            # Disconnect signal if connected
+            if self._category_signal_connected:
+                try:
+                    self.category_input.currentIndexChanged.disconnect(self.load_wards)
+                except RuntimeError:
+                    pass  # Ignore if already disconnected
+                finally:
+                    self._category_signal_connected = False
 
     def load_doctors(self):
         """Fetch list of doctors from API and populate the combo box."""
