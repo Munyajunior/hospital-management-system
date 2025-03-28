@@ -1472,6 +1472,7 @@ class AdmissionManagement(QMainWindow):
         if response:
             QMessageBox.information(self, "Success", "Ward created successfully.")
             self.load_existing_wards()
+            self.load_departments_for_ward()
         else:
             QMessageBox.critical(self, "Error", "Failed to create ward.")
 
@@ -1494,6 +1495,7 @@ class AdmissionManagement(QMainWindow):
         if response:
             QMessageBox.information(self, "Success", "Bed created successfully.")
             self.load_beds()
+            self.load_wards_for_bed()
         else:
             QMessageBox.critical(self, "Error", "Failed to create bed.")
 
