@@ -329,47 +329,50 @@ class PatientRegistrationForm(QWidget):
             QCheckBox {
                 padding: 5px;
                 font-weight: bold;
+                color: red;  /* Make it obvious */
             }
             QCheckBox::indicator {
                 width: 20px;
                 height: 20px;
             }
-            QCheckBox::indicator:checked {
-                background-color: #e74c3c;
-            }
         """)
         self.emergency_checkbox.stateChanged.connect(self.toggle_emergency_fields)
         layout.addWidget(self.emergency_checkbox)
+        print("Checkbox initialized")  # Debug print
 
-        # Emergency Fields Group
-        self.emergency_group = QGroupBox("Emergency Details")
+        # Emergency Group Box - simplified and made more visible
+        self.emergency_group = QGroupBox("EMERGENCY DETAILS (Should appear below)")
+        self.emergency_group.setStyleSheet("""
+            QGroupBox {
+                border: 2px solid red;
+                border-radius: 5px;
+                margin-top: 10px;
+                font-weight: bold;
+                color: red;
+            }
+        """)
         emergency_layout = QVBoxLayout()
         
         # Category
-        category_layout = QHBoxLayout()
-        category_layout.addWidget(QLabel("Category:"))
         self.category_input = QComboBox()
         self.category_input.addItems(["Inpatient", "ICU"])
-        category_layout.addWidget(self.category_input)
-        emergency_layout.addLayout(category_layout)
+        emergency_layout.addWidget(QLabel("Category:"))
+        emergency_layout.addWidget(self.category_input)
         
-        # Department
-        department_layout = QHBoxLayout()
-        department_layout.addWidget(QLabel("Department:"))
+        # Department 
         self.department_input = QComboBox()
-        department_layout.addWidget(self.department_input)
-        emergency_layout.addLayout(department_layout)
+        emergency_layout.addWidget(QLabel("Department:"))
+        emergency_layout.addWidget(self.department_input)
         
         # Ward
-        ward_layout = QHBoxLayout()
-        ward_layout.addWidget(QLabel("Ward:"))
         self.ward_input = QComboBox()
-        ward_layout.addWidget(self.ward_input)
-        emergency_layout.addLayout(ward_layout)
+        emergency_layout.addWidget(QLabel("Ward:"))
+        emergency_layout.addWidget(self.ward_input)
         
         self.emergency_group.setLayout(emergency_layout)
-        self.emergency_group.setVisible(False)  # Initially hidden
+        self.emergency_group.setVisible(False)  # Start hidden
         layout.addWidget(self.emergency_group)
+        print("Emergency group initialized")  # Debug print
         
         # Doctor Selection
         self.doctor_input = QComboBox()
@@ -383,27 +386,38 @@ class PatientRegistrationForm(QWidget):
         self.setLayout(layout)
         
     def toggle_emergency_fields(self, state):
-        """Toggle visibility of emergency-related fields based on checkbox state."""
+        print(f"Checkbox state changed to: {state}")  # Debug print
         is_emergency = state == Qt.Checked
+        
+        # Make absolutely sure the group exists
+        if not hasattr(self, 'emergency_group'):
+            print("ERROR: emergency_group doesn't exist!")
+            return
+            
+        print(f"Setting emergency_group visibility to: {is_emergency}")
         self.emergency_group.setVisible(is_emergency)
         
         if is_emergency:
-            # Load departments when emergency is checked
+            print("Loading departments...")  # Debug print
             self.load_departments()
             
-            # Connect signal if not already connected
             if not self._category_signal_connected:
+                print("Connecting category signal...")  # Debug print
                 self.category_input.currentIndexChanged.connect(self.load_wards)
                 self._category_signal_connected = True
         else:
-            # Disconnect signal if connected
             if self._category_signal_connected:
+                print("Disconnecting category signal...")  # Debug print
                 try:
                     self.category_input.currentIndexChanged.disconnect(self.load_wards)
                 except RuntimeError:
-                    pass  # Ignore if already disconnected
+                    print("Warning: Failed to disconnect signal")  # Debug print
                 finally:
                     self._category_signal_connected = False
+
+        # Force UI update
+        self.update()
+        print("UI update forced")  # Debug print
 
     def load_doctors(self):
         """Fetch list of doctors from API and populate the combo box."""
