@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from models.user import User
+from models.patient import Patient
 from schemas.auth import UserResponse, IsActive, UserUpdate, AllUserResponse
 from core.database import get_db
 from core.dependencies import RoleChecker, get_current_active_user
@@ -36,6 +37,26 @@ def get_user_by_id(user_id: int, db: Session = Depends(get_db), current_user: Us
         raise HTTPException(status_code=404, detail="User not found")
 
     return user
+
+
+@router.get("/patient/{patient_id}", response_model=UserResponse)
+def get_user_by_id(patient_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+    """
+    Fetch a user by their ID.
+    Only the user themselves or an admin can access this endpoint.
+    """
+    # Check if the current user is the same as the requested user or an admin
+    if current_user.id != patient_id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="You are not authorized to access this user's information")
+
+    # Fetch the user from the database
+    user = db.query(Patient).filter(Patient.id == patient_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return user
+
+
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_user(user_id: int, db: Session = Depends(get_db), _: User = Depends(admin_only)):

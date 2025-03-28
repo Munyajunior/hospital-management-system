@@ -25,14 +25,14 @@ def create_department(department_data: DepartmentCreate, db: Session = Depends(g
 
 
 @router.get("/", response_model=List[DepartmentResponse])
-def list_departments(db: Session = Depends(get_db), user: User = Depends(doctor_or_nurse)):
+def list_departments(db: Session = Depends(get_db), _: User = Depends(doctor_or_nurse)):
     """Retrieve a list of all departments."""
     departments = db.query(Department).all()
     return departments
 
 
 @router.get("/{department_id}", response_model=DepartmentResponse)
-def get_department(department_id: int, db: Session = Depends(get_db), user: User = Depends(doctor_or_nurse)):
+def get_department(department_id: int, db: Session = Depends(get_db), _: User = Depends(doctor_or_nurse)):
     """Retrieve a single department by ID."""
     department = db.query(Department).filter(Department.id == department_id).first()
     if not department:
@@ -41,7 +41,7 @@ def get_department(department_id: int, db: Session = Depends(get_db), user: User
 
 
 @router.put("/{department_id}", response_model=DepartmentResponse)
-def update_department(department_id: int, department_data: DepartmentCreate, db: Session = Depends(get_db), user: User = Depends(doctor_or_nurse)):
+def update_department(department_id: int, department_data: DepartmentCreate, db: Session = Depends(get_db), _: User = Depends(doctor_or_nurse)):
     """Update a department's details."""
     department = db.query(Department).filter(Department.id == department_id).first()
     if not department:
@@ -56,7 +56,7 @@ def update_department(department_id: int, department_data: DepartmentCreate, db:
 
 
 @router.delete("/{department_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_department(department_id: int, db: Session = Depends(get_db), user: User = Depends(doctor_or_nurse)):
+def delete_department(department_id: int, db: Session = Depends(get_db), _: User = Depends(doctor_or_nurse)):
     """Delete a department."""
     department = db.query(Department).filter(Department.id == department_id).first()
     if not department:

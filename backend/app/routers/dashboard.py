@@ -99,7 +99,7 @@ def get_dashboard_metrics(db: Session = Depends(get_db), user: User = Depends(st
     }
  
 @router.get("/metrics/doctor/{doctor_id}", response_model=Dict[str, Any])
-def get_doctor_dashboard_metrics(doctor_id: int, db: Session = Depends(get_db), user: User = Depends(staff_only)):
+def get_doctor_dashboard_metrics(doctor_id: int, db: Session = Depends(get_db), _: User = Depends(staff_only)):
     """Fetch doctor specific metrics for the dashboard."""
     my_patients = db.query(func.count(Patient.id)).filter(Patient.assigned_doctor_id == doctor_id).scalar()
     my_pending_appointments = db.query(func.count(Appointment.id)).filter(Appointment.doctor_id == doctor_id, Appointment.status == AppointmentStatus.PENDING).scalar()
@@ -108,6 +108,22 @@ def get_doctor_dashboard_metrics(doctor_id: int, db: Session = Depends(get_db), 
     
     return {
         "my_patients": my_patients,
+        "my_pending_appointments": my_pending_appointments,
+        "my_confirmed_appointments": my_confirmed_appointments
+    }
+    
+@router.get("/metrics/patient/{patient_id}", response_model=Dict[str, Any])
+def get_doctor_dashboard_metrics(patient_id: int, db: Session = Depends(get_db), _: User = Depends(staff_only)):
+    """Fetch doctor specific metrics for the dashboard."""
+    pending_prescriptions = db.query(func.count(Prescription.id)).filter(Prescription.status == PrescriptionStatus.PENDING, Prescription.patient_id == patient_id).scalar()
+    dispensed_prescriptions = db.query(func.count(Prescription.id)).filter(Prescription.status == PrescriptionStatus.DISPENSED, Prescription.patient_id == patient_id).scalar()
+    my_pending_appointments = db.query(func.count(Appointment.id)).filter(Appointment.patient_id == patient_id, Appointment.status == AppointmentStatus.PENDING).scalar()
+    my_confirmed_appointments = db.query(func.count(Appointment.id)).filter(Appointment.patient_id == patient_id, Appointment.status == AppointmentStatus.CONFIRMED).scalar()
+    
+    
+    return {
+        "pending_prescriptions": pending_prescriptions,
+        "dispensed_prescriptions": dispensed_prescriptions,
         "my_pending_appointments": my_pending_appointments,
         "my_confirmed_appointments": my_confirmed_appointments
     }
