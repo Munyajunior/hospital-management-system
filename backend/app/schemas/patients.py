@@ -23,7 +23,7 @@ class PatientResponse(PatientBase):
     registered_by: int
     category: str
     emergency: bool
-    
+    is_active: bool
 class PatientCreateResponse(PatientBase):
     id: int
     assigned_doctor_id: Optional[int] = None
@@ -31,5 +31,6 @@ class PatientCreateResponse(PatientBase):
     category: str
     emergency: bool
     password: str
+    is_active: bool
     class Config:
         from_attributes = True
