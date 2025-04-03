@@ -1244,6 +1244,7 @@ class AdmissionManagement(QMainWindow):
         try:
             wards = fetch_data(self, os.getenv("WARD_LIST_URL"), self.token)
             self.populate_existing_wards(wards)
+            self.load_departments_for_ward()
         except Exception as e:
             self.show_error(str(e))
 
@@ -1272,6 +1273,7 @@ class AdmissionManagement(QMainWindow):
         try:
             beds = fetch_data(self, os.getenv("BED_LIST_URL"), self.token)
             self.populate_existing_beds(beds)
+            self.load_wards_for_bed()
         except Exception as e:
             self.show_error(str(e))
 
@@ -1494,7 +1496,7 @@ class AdmissionManagement(QMainWindow):
 
         if response:
             QMessageBox.information(self, "Success", "Bed created successfully.")
-            self.load_beds()
+            self.load_existing_beds()
             self.load_wards_for_bed()
         else:
             QMessageBox.critical(self, "Error", "Failed to create bed.")
