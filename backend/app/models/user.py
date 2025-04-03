@@ -1,7 +1,10 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, LargeBinary
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from core.database import Base
+import base64
+
+
 
 class User(Base):
     __tablename__ = "users"
@@ -13,10 +16,21 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     role = Column(String, nullable=False)  # admin, nurse, doctor, pharmacist, lab, radiology, icu
     is_active = Column(Boolean, default=True)
+    profile_picture = Column(LargeBinary, nullable=True)  # Store binary image data
+    profile_picture_type = Column(String, nullable=True)  # Store image MIME type
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
-
     # Relationships
     appointments = relationship("Appointment", back_populates="doctor", foreign_keys="[Appointment.doctor_id]")  
     patients = relationship("Patient", back_populates="assigned_doctor", foreign_keys="[Patient.assigned_doctor_id]")
-    #inventory = relationship("Inventory", back_populates="added_by", foreign_keys="[Inventory.added_by]")
+
+    def set_profile_picture(self, image_data: bytes, content_type: str):
+        """Store profile picture in the database."""
+        self.profile_picture = image_data
+        self.profile_picture_type = content_type
+
+    def get_profile_picture_base64(self):
+        """Get profile picture as base64 encoded string."""
+        if self.profile_picture and self.profile_picture_type:
+            return f"data:{self.profile_picture_type};base64,{base64.b64encode(self.profile_picture).decode('utf-8')}"
+        return None
