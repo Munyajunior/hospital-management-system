@@ -1,5 +1,8 @@
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
+from datetime import datetime
+
+
 class UserBase(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=100)
     email: EmailStr
@@ -11,7 +14,13 @@ class UserCreate(UserBase):
 class UserResponse(UserBase):
     id: int
     is_active: bool
-
+    created_at: datetime
+    profile_picture: Optional[str] = None # URL to access the image
+    contact_number: str
+    address: str
+    date_of_birth: Optional[datetime] = None
+    
+    
     class Config:
         from_attributes = True
         
@@ -51,3 +60,16 @@ class IsActive(BaseModel):
 class UserUpdate(BaseModel):
     password: str
     email: EmailStr
+    
+class ProfileUpdateResponse(BaseModel):
+    id: int
+    full_name: str
+    email: EmailStr
+    address: str
+    contact_number: str
+    date_of_birth: datetime
+    profile_picture_url: Optional[str] = None
+    profile_picture: str
+    
+    class Config:
+        from_attributes = True
