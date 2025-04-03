@@ -369,7 +369,7 @@ class Dashboard(QWidget):
                 elif module == "billing":
                     self.views[module] = Billing(self.role, self.user_id, self.auth_token)
                 elif module == "profile":
-                    self.views[module] = ProfileWindow(self.user_id, self.auth_token)
+                    self.views[module] = ProfileWindow(self.role ,self.user_id, self.auth_token)
                 elif module == "admission":
                     self.views[module] = AdmissionManagement(self.role, self.user_id, self.auth_token)
                 # Add more views here...
