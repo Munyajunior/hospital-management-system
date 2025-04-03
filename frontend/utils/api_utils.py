@@ -50,10 +50,26 @@ def post_data(self, api_url, data, auth_token=None):
         QMessageBox.critical(self, "Error", f"An error occurred: {e}")
         return False
 
-def update_data(self, api_url, data, auth_token=None):
+def update_data(self, api_url, data, auth_token=None, files=None):
     headers = {"Authorization": f"Bearer {auth_token}"} if auth_token else {}
     try:
-        response = requests.put(api_url, json=data, headers=headers)
+        if files:
+            # Prepare multipart form data
+            form_data = {}
+            for key, value in data.items():
+                form_data[key] = (None, str(value))
+            
+            # Add files to the form data
+            for file_name, file_data in files.items():
+                form_data[file_name] = (file_data[0], file_data[1], file_data[2])
+            
+            response = requests.put(
+                api_url,
+                files=form_data,
+                headers=headers
+            )
+        else:
+            response = requests.put(api_url, json=data, headers=headers)
         print("Backend response:", response.status_code, response.text)  # Debugging line
         
         if response.status_code in [200, 201]:
