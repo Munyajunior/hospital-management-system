@@ -165,6 +165,7 @@ def get_patients( emergency: Optional[bool] = Query(None),
                      Patient.emergency,Patient.assigned_doctor_id,
                      Doctor.full_name.label("assigned_doctor_name"),
                      Patient.registered_by,
+                     Patient.is_active,
                      User.id.label("registered_by_name"),
                      Patient.created_at
                      ).outerjoin(Doctor, Patient.assigned_doctor_id == Doctor.id)
