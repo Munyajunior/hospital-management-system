@@ -189,12 +189,23 @@ class ChangePasswordWindow(QMainWindow):
         api_url = os.getenv("CHANGE_PASSWORD_URL")
         data = {"current_password": current_password, "new_password": new_password}
         
+        # Show loading state
+        self.submit_button.setText("Changing...")
+        self.submit_button.setEnabled(False)
+        
         response = post_data(self, api_url, data, self.token)
         if response:
+            self.current_password_input.clear()
+            self.new_password_input.clear()
+            self.confirm_password_input.clear()
+            self.submit_button.setText("Change Password")
+            self.submit_button.setEnabled(True)
             QMessageBox.information(self, "Success", "Password changed successfully!")
             self.close()
         else:
             QMessageBox.warning(self, "Error", "Failed to change password. Check your current password.")
+            self.submit_button.setText("Change Password")
+            self.submit_button.setEnabled(True)
     
     
     def toggle_new_password_visibility(self):

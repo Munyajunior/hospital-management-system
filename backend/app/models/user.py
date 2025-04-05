@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, LargeBinary
+from sqlalchemy import Column, Integer, String, DateTime, Boolean, LargeBinary, Text
+import json
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from core.database import Base
@@ -19,7 +20,11 @@ class User(Base):
     profile_picture = Column(LargeBinary, nullable=True)  # Store binary image data
     profile_picture_type = Column(String, nullable=True)  # Store image MIME type
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+    settings = Column(Text, nullable=True)  # Store JSON settings
+    security_questions = Column(Text, nullable=True)  # Store JSON security questions
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now(), default=func.now())
+
+   
     # Relationships
     appointments = relationship("Appointment", back_populates="doctor", foreign_keys="[Appointment.doctor_id]")  
     patients = relationship("Patient", back_populates="assigned_doctor", foreign_keys="[Patient.assigned_doctor_id]")
@@ -34,3 +39,21 @@ class User(Base):
         if self.profile_picture and self.profile_picture_type:
             return f"data:{self.profile_picture_type};base64,{base64.b64encode(self.profile_picture).decode('utf-8')}"
         return None
+
+    def get_settings(self):
+        """Get parsed settings dictionary"""
+        if not self.settings:
+            return {}
+        try:
+            return json.loads(self.settings)
+        except:
+            return {}
+
+    def get_security_questions(self):
+        """Get parsed security questions"""
+        if not self.security_questions:
+            return []
+        try:
+            return json.loads(self.security_questions)
+        except:
+            return []

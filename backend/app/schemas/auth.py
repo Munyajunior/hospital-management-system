@@ -20,7 +20,6 @@ class UserResponse(UserBase):
     address: str
     date_of_birth: Optional[datetime] = None
     
-    
     class Config:
         from_attributes = True
         
@@ -67,9 +66,25 @@ class ProfileUpdateResponse(BaseModel):
     email: EmailStr
     address: str
     contact_number: str
-    date_of_birth: datetime
-    profile_picture_url: Optional[str] = None
-    profile_picture: str
-    
     class Config:
         from_attributes = True
+
+class NotificationSettings(BaseModel):
+    email: bool = True
+    sms: bool = False
+    push: bool = True
+    appointment_reminders: bool = True
+    medication_alerts: bool = True
+
+class DisplaySettings(BaseModel):
+    theme: str = "system"  # light/dark/system
+    font_size: int = 14
+    density: str = "normal"  # compact/normal/comfortable
+
+class SecurityQuestion(BaseModel):
+    question: str
+    answer: str  # Will be hashed before storage
+
+class UserSettingsUpdate(BaseModel):
+    notifications: Optional[NotificationSettings] = None
+    display: Optional[DisplaySettings] = None
